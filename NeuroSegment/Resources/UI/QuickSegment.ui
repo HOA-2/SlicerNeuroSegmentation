@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>quickSegment</class>
+ <widget class="qSlicerWidget" name="quickSegment">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>422</width>
+    <height>516</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QPushButton" name="loadImageButton">
+     <property name="text">
+      <string>Load image</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="qMRMLSegmentEditorWidget" name="segmentEditorWidget">
+     <property name="segmentationNodeSelectorVisible">
+      <bool>true</bool>
+     </property>
+     <property name="switchToSegmentationsButtonVisible">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="qMRMLWindowLevelWidget" name="windowLevelWidget"/>
+   </item>
+   <item>
+    <widget class="qMRMLVolumeThresholdWidget" name="volumeThresholdWidget"/>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>qMRMLVolumeThresholdWidget</class>
+   <extends>QWidget</extends>
+   <header>qMRMLVolumeThresholdWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLWidget</class>
+   <extends>QWidget</extends>
+   <header>qMRMLWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLWindowLevelWidget</class>
+   <extends>QWidget</extends>
+   <header>qMRMLWindowLevelWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>qSlicerWidget</class>
+   <extends>QWidget</extends>
+   <header>qSlicerWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLSegmentEditorWidget</class>
+   <extends>qMRMLWidget</extends>
+   <header>qMRMLSegmentEditorWidget.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>quickSegment</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>segmentEditorWidget</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>210</x>
+     <y>257</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>210</x>
+     <y>233</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
