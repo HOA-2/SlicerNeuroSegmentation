@@ -29,10 +29,19 @@
         <widget class="qMRMLSegmentEditorWidget" name="segmentEditorWidget"/>
        </item>
        <item>
-        <widget class="qMRMLWindowLevelWidget" name="windowLevelWidget"/>
-       </item>
-       <item>
-        <widget class="qMRMLVolumeThresholdWidget" name="volumeThresholdWidget"/>
+        <widget class="ctkCollapsibleGroupBox" name="CollapsibleGroupBox">
+         <property name="title">
+          <string>Volume display</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <item>
+           <widget class="qMRMLWindowLevelWidget" name="windowLevelWidget"/>
+          </item>
+          <item>
+           <widget class="qMRMLVolumeThresholdWidget" name="volumeThresholdWidget"/>
+          </item>
+         </layout>
+        </widget>
        </item>
       </layout>
      </item>
@@ -48,6 +57,12 @@
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>ctkCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>ctkCollapsibleGroupBox.h</header>
+   <container>1</container>
+  </customwidget>
   <customwidget>
    <class>qMRMLVolumeThresholdWidget</class>
    <extends>QWidget</extends>
