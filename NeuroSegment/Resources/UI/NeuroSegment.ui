@@ -26,10 +26,20 @@
      <item>
       <layout class="QVBoxLayout" name="segmentEditorLayout">
        <item>
-        <widget class="qMRMLSegmentEditorWidget" name="segmentEditorWidget"/>
+        <widget class="qMRMLSegmentEditorWidget" name="segmentEditorWidget">
+         <property name="masterVolumeNodeSelectorVisible">
+          <bool>true</bool>
+         </property>
+         <property name="switchToSegmentationsButtonVisible">
+          <bool>false</bool>
+         </property>
+         <property name="unorderedEffectsVisible">
+          <bool>true</bool>
+         </property>
+        </widget>
        </item>
        <item>
-        <widget class="ctkCollapsibleGroupBox" name="CollapsibleGroupBox">
+        <widget class="ctkCollapsibleGroupBox" name="volumeDisplayGroupBox">
          <property name="title">
           <string>Volume display</string>
          </property>

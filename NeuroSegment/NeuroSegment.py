@@ -47,7 +47,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
-    
+
     self.logic = NeuroSegmentLogic()
 
     uiWidget = slicer.util.loadUI(self.resourcePath('UI/NeuroSegment.ui'))
