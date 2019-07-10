@@ -3,6 +3,7 @@ import unittest
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
+from slicer.util import VTKObservationMixin
 
 #
 # NeuroSegment
@@ -33,15 +34,20 @@ and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR0132
 # NeuroSegmentWidget
 #
 
-class NeuroSegmentWidget(ScriptedLoadableModuleWidget):
+class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
   NEURO_SEGMENT_WIDGET_LAYOUT_ID = 5612
 
+  def __init__(self, parent):
+    ScriptedLoadableModuleWidget.__init__(self, parent)
+    VTKObservationMixin.__init__(self)
+
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
+    
     self.logic = NeuroSegmentLogic()
 
     uiWidget = slicer.util.loadUI(self.resourcePath('UI/NeuroSegment.ui'))
