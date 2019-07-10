@@ -82,7 +82,11 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def enter(self):
     self.selectSegmentEditorParameterNode()
     # Allow switching between effects and selected segment using keyboard shortcuts
-    self.ui.segmentEditorWidget.installKeyboardShortcuts()
+    layoutManager = slicer.app.layoutManager()
+    if layoutManager.layout == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID:
+      self.ui.segmentEditorWidget.installKeyboardShortcuts(self.sliceViewWidget)
+    else:
+      self.ui.segmentEditorWidget.installKeyboardShortcuts()
     self.ui.segmentEditorWidget.setupViewObservations()
     self.ui.segmentEditorWidget.updateWidgetFromMRML()
 
@@ -195,9 +199,11 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     if layoutID != NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID and self.sliceViewWidget:
       self.previousLayout = layoutID
       self.sliceViewWidget.close()
+      self.ui.segmentEditorWidget.installKeyboardShortcuts()
 
     elif layoutID == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID:
       self.sliceViewWidget = qt.QSplitter(qt.Qt.Horizontal)
+      self.ui.segmentEditorWidget.installKeyboardShortcuts(self.sliceViewWidget)
 
       mainViewPanel = qt.QWidget()
       mainViewLayout = qt.QHBoxLayout()
@@ -290,56 +296,6 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
-  def hasImageData(self,volumeNode):
-    """This is an example logic method that
-    returns true if the passed in volume
-    node has valid image data
-    """
-    if not volumeNode:
-      logging.debug('hasImageData failed: no volume node')
-      return False
-    if volumeNode.GetImageData() is None:
-      logging.debug('hasImageData failed: no image data in volume node')
-      return False
-    return True
-
-  def isValidInputOutputData(self, inputVolumeNode, outputVolumeNode):
-    """Validates if the output is not the same as input
-    """
-    if not inputVolumeNode:
-      logging.debug('isValidInputOutputData failed: no input volume node defined')
-      return False
-    if not outputVolumeNode:
-      logging.debug('isValidInputOutputData failed: no output volume node defined')
-      return False
-    if inputVolumeNode.GetID()==outputVolumeNode.GetID():
-      logging.debug('isValidInputOutputData failed: input and output volume is the same. Create a new volume for output to avoid this error.')
-      return False
-    return True
-
-  def run(self, inputVolume, outputVolume, imageThreshold, enableScreenshots=0):
-    """
-    Run the actual algorithm
-    """
-
-    if not self.isValidInputOutputData(inputVolume, outputVolume):
-      slicer.util.errorDisplay('Input volume is the same as output volume. Choose a different output volume.')
-      return False
-
-    logging.info('Processing started')
-
-    # Compute the thresholded output volume using the Threshold Scalar Volume CLI module
-    cliParams = {'InputVolume': inputVolume.GetID(), 'OutputVolume': outputVolume.GetID(), 'ThresholdValue' : imageThreshold, 'ThresholdType' : 'Above'}
-    cliNode = slicer.cli.run(slicer.modules.thresholdscalarvolume, None, cliParams, wait_for_completion=True)
-
-    # Capture screenshot
-    if enableScreenshots:
-      self.takeScreenshot('NeuroSegmentTest-Start','MyScreenshot',-1)
-
-    logging.info('Processing completed')
-
-    return True
-
 
 class NeuroSegmentTest(ScriptedLoadableModuleTest):
   """
@@ -372,17 +328,4 @@ class NeuroSegmentTest(ScriptedLoadableModuleTest):
     """
 
     self.delayDisplay("Starting the test")
-    #
-    # first, get some data
-    #
-    import SampleData
-    SampleData.downloadFromURL(
-      nodeNames='FA',
-      fileNames='FA.nrrd',
-      uris='http://slicer.kitware.com/midas3/download?items=5767')
-    self.delayDisplay('Finished with download and loading')
-
-    volumeNode = slicer.util.getNode(pattern="FA")
-    logic = NeuroSegmentLogic()
-    self.assertIsNotNone( logic.hasImageData(volumeNode) )
     self.delayDisplay('Test passed!')
