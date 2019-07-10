@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>576</width>
-    <height>557</height>
+    <height>539</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -24,28 +24,24 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QWidget" name="segmentationPanel" native="true">
-       <layout class="QVBoxLayout" name="verticalLayout_2">
-        <item>
-         <widget class="qMRMLSegmentEditorWidget" name="segmentEditorWidget"/>
-        </item>
-        <item>
-         <widget class="qMRMLWindowLevelWidget" name="windowLevelWidget"/>
-        </item>
-        <item>
-         <widget class="qMRMLVolumeThresholdWidget" name="volumeThresholdWidget"/>
-        </item>
-       </layout>
-      </widget>
+      <layout class="QVBoxLayout" name="segmentEditorLayout">
+       <item>
+        <widget class="qMRMLSegmentEditorWidget" name="segmentEditorWidget"/>
+       </item>
+       <item>
+        <widget class="qMRMLWindowLevelWidget" name="windowLevelWidget"/>
+       </item>
+       <item>
+        <widget class="qMRMLVolumeThresholdWidget" name="volumeThresholdWidget"/>
+       </item>
+      </layout>
      </item>
      <item>
-      <widget class="QWidget" name="terminologyPanel" native="true">
-       <layout class="QVBoxLayout" name="verticalLayout_3">
-        <item>
-         <widget class="qSlicerTerminologyNavigatorWidget" name="terminologyNavigatorWidget"/>
-        </item>
-       </layout>
-      </widget>
+      <layout class="QVBoxLayout" name="terminologyLayout">
+       <item>
+        <widget class="qSlicerTerminologyNavigatorWidget" name="terminologyNavigatorWidget"/>
+       </item>
+      </layout>
      </item>
     </layout>
    </item>
