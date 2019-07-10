@@ -44,44 +44,71 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget):
     ScriptedLoadableModuleWidget.setup(self)
     self.logic = NeuroSegmentLogic()
 
-    self.undockSliceViewButton = qt.QPushButton("Undock slice views")
-    self.undockSliceViewButton.setCheckable(True)
-    self.undockSliceViewButton.connect('clicked()', self.toggleSliceViews)
-    self.layout.addWidget(self.undockSliceViewButton)
+    uiWidget = slicer.util.loadUI(self.resourcePath('UI/NeuroSegment.ui'))
+    self.layout.addWidget(uiWidget)
+    self.ui = slicer.util.childWidgetVariables(uiWidget)
+    self.ui.segmentEditorWidget.connect("masterVolumeNodeChanged (vtkMRMLVolumeNode *)", self.onMasterVolumeNodeChanged)
+    self.ui.undockSliceViewButton.connect('clicked()', self.toggleSliceViews)
 
-    self.panelLayout = qt.QHBoxLayout()
-    self.layout.addLayout(self.panelLayout)
+    self.selectSegmentEditorParameterNode()
+    uiWidget.setMRMLScene(slicer.mrmlScene)
 
-    # Load widget from .ui file (created by Qt Designer)
-    segmentationPanel = slicer.util.loadUI(self.resourcePath('UI/SegmentationPanel.ui'))
-    #segmentationPanel = slicer.modules.segmenteditor.widgetRepresentation()
-    self.panelLayout.addWidget(segmentationPanel)
-    self.segmentationUI = slicer.util.childWidgetVariables(segmentationPanel)
-    segmentationPanel.setMRMLScene(slicer.mrmlScene)
-
-    if (self.segmentationUI.segmentEditorWidget.mrmlSegmentEditorNode() is None):
-      segmentEditorNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentEditorNode")
-      self.segmentationUI.segmentEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
-
-    self.segmentationUI.segmentEditorWidget.connect("masterVolumeNodeChanged (vtkMRMLVolumeNode *)", self.onMasterVolumeNodeChanged)
-
-    # Load widget from .ui file (created by Qt Designer)
-    terminologyPanel = slicer.util.loadUI(self.resourcePath('UI/TerminologyPanel.ui'))
-    self.panelLayout.addWidget(terminologyPanel)
-    self.terminologyUI = slicer.util.childWidgetVariables(terminologyPanel)
-    terminologyPanel.setMRMLScene(slicer.mrmlScene)
+    self.mainViewWidget3DButton = qt.QPushButton("3D")
+    self.mainViewWidget3DButton.setCheckable(True)
+    self.mainViewWidget3DButton.connect('clicked()', self.updateMainView)
 
     # Add vertical spacer
     self.layout.addStretch(1)
 
     self.sliceViewWidget = None
-    self.setupSliceViews()
-    
+    self.setupLayout()
+
     layoutManager = slicer.app.layoutManager()
     layoutManager.connect('layoutChanged(int)', self.onLayoutChanged)
     self.previousLayout = layoutManager.layout
+    if self.previousLayout == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID:
+      self.previousLayout = 0
 
-  def setupSliceViews(self):
+  def enter(self):
+    self.selectSegmentEditorParameterNode()
+    # Allow switching between effects and selected segment using keyboard shortcuts
+    self.ui.segmentEditorWidget.installKeyboardShortcuts()
+    self.ui.segmentEditorWidget.setupViewObservations()
+    self.ui.segmentEditorWidget.updateWidgetFromMRML()
+
+  def exit(self):
+    self.ui.segmentEditorWidget.setActiveEffect(None)
+    self.ui.segmentEditorWidget.removeViewObservations()
+    self.ui.segmentEditorWidget.uninstallKeyboardShortcuts()
+
+  def onSceneStartClose(self, caller, event):
+    self.ui.segmentEditorWidget.setSegmentationNode(None)
+    self.ui.segmentEditorWidget.removeViewObservations()
+
+  def onSceneEndClose(self, caller, event):
+    if self.parent.isEntered:
+      self.selectSegmentEditorParameterNode()
+      self.ui.segmentEditorWidget.updateWidgetFromMRML()
+
+  def onSceneEndImport(self, caller, event):
+    if self.parent.isEntered:
+      self.selectSegmentEditorParameterNode()
+      self.ui.segmentEditorWidget.updateWidgetFromMRML()
+
+  def selectSegmentEditorParameterNode(self):
+    # Select parameter set node if one is found in the scene, and create one otherwise
+    segmentEditorSingletonTag = "NeruoSegment.SegmentEditor"
+    segmentEditorNode = slicer.mrmlScene.GetSingletonNode(segmentEditorSingletonTag, "vtkMRMLSegmentEditorNode")
+    if segmentEditorNode is None:
+      segmentEditorNode = slicer.vtkMRMLSegmentEditorNode()
+      segmentEditorNode.SetSingletonTag(segmentEditorSingletonTag)
+      segmentEditorNode = slicer.mrmlScene.AddNode(segmentEditorNode)
+    if self.ui.segmentEditorWidget.mrmlSegmentEditorNode() == segmentEditorNode:
+      # nothing changed
+      return
+    self.ui.segmentEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
+
+  def setupLayout(self):
     layout = ("""
 <layout type="horizontal">
  <item>
@@ -117,6 +144,11 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget):
    <property name="viewlabel" action="default">1</property>
   </view>
  </item>
+ <item>
+  <view class="vtkMRMLViewNode" singletontag="M">
+   <property name="viewlabel" action="default">M</property>
+  </view>
+ </item>
 </layout>""")
     layoutManager = slicer.app.layoutManager()
     layoutManager.layoutLogic().GetLayoutNode().AddLayoutDescription(
@@ -124,15 +156,31 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget):
 
   def cleanup(self):
     layoutManager = slicer.app.layoutManager()
+    layoutManager.setLayout(self.previousLayout)
     layoutManager.disconnect('layoutChanged(int)', self.onLayoutChanged)
+    self.mainViewWidget3DButton.setParent(None)
+    self.mainViewWidget3DButton = None
 
   def toggleSliceViews(self):
-    if self.undockSliceViewButton.checked:
+    if self.ui.undockSliceViewButton.checked:
       slicer.app.layoutManager().setLayout(NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID)
     else:
       slicer.app.layoutManager().setLayout(self.previousLayout)
 
+  def updateMainView(self):
+    mainViewWidget = slicer.app.layoutManager().sliceWidget('Main')
+    main3DWidget = slicer.app.layoutManager().threeDWidget('ViewM')
+    if self.mainViewWidget3DButton.checked and main3DWidget is not None:
+      main3DWidget.threeDController().barLayout().addWidget(self.mainViewWidget3DButton)
+    else:
+      mainViewWidget.sliceController().barLayout().addWidget(self.mainViewWidget3DButton)
+
+    mainViewWidget.setVisible(not self.mainViewWidget3DButton.checked)
+    if main3DWidget is not None:
+      main3DWidget.setVisible(self.mainViewWidget3DButton.checked)
+
   def onLayoutChanged(self, layoutID):
+    self.ui.undockSliceViewButton.setChecked(layoutID == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID)
     if layoutID != NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID and self.sliceViewWidget:
       self.previousLayout = layoutID
       self.sliceViewWidget.close()
@@ -143,7 +191,11 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget):
       self.mainViewPanel = qt.QWidget()
       mainPanelLayout = qt.QHBoxLayout()
       self.mainViewPanel.setLayout(mainPanelLayout)
-      mainPanelLayout.addWidget(slicer.app.layoutManager().sliceWidget('Main'))
+
+      mainViewWidget = slicer.app.layoutManager().sliceWidget('Main')
+      mainPanelLayout.addWidget(mainViewWidget)
+      main3DWidget = slicer.app.layoutManager().threeDWidget('ViewM')
+      mainPanelLayout.addWidget(main3DWidget)
       self.mainViewPanel.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
       self.sliceViewWidget.addWidget(self.mainViewPanel)
 
@@ -166,14 +218,27 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget):
             widgetScreen = screen
             break
 
+      self.updateMainView()
+      self.onMasterVolumeNodeChanged(self.ui.segmentEditorWidget.masterVolumeNode())
+
       self.sliceViewWidget.show()
-      self.sliceViewWidget.windowHandle().setScreen(widgetScreen)     
+      self.sliceViewWidget.windowHandle().setScreen(widgetScreen)
       self.sliceViewWidget.showFullScreen() # Will not move to the other monitor with just setScreen. showFullScreen moves the window
       self.sliceViewWidget.showMaximized()
 
   def onMasterVolumeNodeChanged(self, volumeNode):
-    self.segmentationUI.volumeThresholdWidget.setMRMLVolumeNode(volumeNode)
-    self.segmentationUI.windowLevelWidget.setMRMLVolumeNode(volumeNode)
+    self.ui.volumeThresholdWidget.setMRMLVolumeNode(volumeNode)
+    self.ui.windowLevelWidget.setMRMLVolumeNode(volumeNode)
+    layoutManager = slicer.app.layoutManager()
+    sliceWidgetNames = layoutManager.sliceViewNames()
+
+    volumeNodeID = ""
+    if volumeNode is not None:
+      volumeNodeID = volumeNode.GetID()
+
+    for sliceWidgetName in sliceWidgetNames:
+      sliceWidget = layoutManager.sliceWidget(sliceWidgetName)
+      sliceWidget.mrmlSliceCompositeNode().SetBackgroundVolumeID(volumeNodeID)
 
   def showSingleModule(self, singleModule=True, toggle=False):
 
