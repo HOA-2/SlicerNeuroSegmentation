@@ -38,15 +38,23 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget):
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
+  NEURO_SEGMENT_WIDGET_LAYOUT_ID = 5612
+
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
     self.logic = NeuroSegmentLogic()
+
+    self.undockSliceViewButton = qt.QPushButton("Undock slice views")
+    self.undockSliceViewButton.setCheckable(True)
+    self.undockSliceViewButton.connect('clicked()', self.toggleSliceViews)
+    self.layout.addWidget(self.undockSliceViewButton)
 
     self.panelLayout = qt.QHBoxLayout()
     self.layout.addLayout(self.panelLayout)
 
     # Load widget from .ui file (created by Qt Designer)
     segmentationPanel = slicer.util.loadUI(self.resourcePath('UI/SegmentationPanel.ui'))
+    #segmentationPanel = slicer.modules.segmenteditor.widgetRepresentation()
     self.panelLayout.addWidget(segmentationPanel)
     self.segmentationUI = slicer.util.childWidgetVariables(segmentationPanel)
     segmentationPanel.setMRMLScene(slicer.mrmlScene)
@@ -66,60 +74,102 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget):
     # Add vertical spacer
     self.layout.addStretch(1)
 
-    #self.isSingleModuleShown = False
-    #slicer.util.mainWindow().setWindowTitle("QuickEdit")
-    #self.showSingleModule(True)
-    #shortcut = qt.QShortcut(slicer.util.mainWindow())
-    #shortcut.setKey(qt.QKeySequence("Ctrl+Shift+b"))
-    #shortcut.connect('activated()', lambda: self.showSingleModule(toggle=True))
+    self.sliceViewWidget = None
+    self.setupSliceViews()
+    
+    layoutManager = slicer.app.layoutManager()
+    layoutManager.connect('layoutChanged(int)', self.onLayoutChanged)
+    self.previousLayout = layoutManager.layout
 
-    self.onShowSliceViews()
+  def setupSliceViews(self):
+    layout = ("""
+<layout type="horizontal">
+ <item>
+  <view class="vtkMRMLSliceNode" singletontag="Main">
+   <property name="orientation" action="default">Axial</property>
+     <property name="viewlabel" action="default">M</property>
+   <property name="viewcolor" action="default">#808080</property>
+  </view>
+ </item>
+ <item>
+  <view class="vtkMRMLSliceNode" singletontag="Red">
+   <property name="orientation" action="default">Axial</property>
+     <property name="viewlabel" action="default">R</property>
+   <property name="viewcolor" action="default">#F34A33</property>
+  </view>
+ </item>
+ <item>
+  <view class="vtkMRMLSliceNode" singletontag="Green">
+   <property name="orientation" action="default">Axial</property>
+   <property name="viewlabel" action="default">G</property>
+   <property name="viewcolor" action="default">#6EB04B</property>
+  </view>
+ </item>
+ <item>
+  <view class="vtkMRMLSliceNode" singletontag="Yellow">
+   <property name="orientation" action="default">Axial</property>
+   <property name="viewlabel" action="default">Y</property>
+   <property name="viewcolor" action="default">#EDD54C</property>
+  </view>
+ </item>
+ <item>
+  <view class="vtkMRMLViewNode" singletontag="1">
+   <property name="viewlabel" action="default">1</property>
+  </view>
+ </item>
+</layout>""")
+    layoutManager = slicer.app.layoutManager()
+    layoutManager.layoutLogic().GetLayoutNode().AddLayoutDescription(
+      NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID, layout)
 
   def cleanup(self):
-    pass
+    layoutManager = slicer.app.layoutManager()
+    layoutManager.disconnect('layoutChanged(int)', self.onLayoutChanged)
 
-  def onShowSliceViews(self):
-    # ownerNode manages this view instead of the layout manager (it can be any node in the scene)
-    viewOwnerNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLScriptedModuleNode")
+  def toggleSliceViews(self):
+    if self.undockSliceViewButton.checked:
+      slicer.app.layoutManager().setLayout(NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID)
+    else:
+      slicer.app.layoutManager().setLayout(self.previousLayout)
 
-    # Create widget
-    self.sliceViewWidget = qt.QWidget()
-    self.sliceViewWidget.setLayout(qt.QHBoxLayout())
+  def onLayoutChanged(self, layoutID):
+    if layoutID != NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID and self.sliceViewWidget:
+      self.previousLayout = layoutID
+      self.sliceViewWidget.close()
 
-    viewNodes = slicer.util.getNodesByClass("vtkMRMLSliceNode")
+    elif layoutID == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID:
+      self.sliceViewWidget = qt.QSplitter(qt.Qt.Horizontal)
 
-    for viewNode in viewNodes:
-      if viewNode.GetName() != 'Red':
-        continue
+      self.mainViewPanel = qt.QWidget()
+      mainPanelLayout = qt.QHBoxLayout()
+      self.mainViewPanel.setLayout(mainPanelLayout)
+      mainPanelLayout.addWidget(slicer.app.layoutManager().sliceWidget('Main'))
+      self.mainViewPanel.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
+      self.sliceViewWidget.addWidget(self.mainViewPanel)
 
-      # Create MRML nodes
-      mainViewWidget = slicer.qMRMLSliceWidget()
-      mainViewWidget.sliceViewName = 'Red'
-      mainViewWidget.sliceViewLabel = 'R'
-      c = viewNode.GetLayoutColor()
-      mainViewWidget.sliceViewColor = qt.QColor.fromRgbF(c[0],c[1],c[2])
-      mainViewWidget.setMRMLScene(slicer.mrmlScene)
-      mainViewWidget.setMRMLSliceNode(viewNode)
-      self.sliceViewWidget.layout().addWidget(mainViewWidget)
+      self.secondaryViewPanel = qt.QWidget()
+      rightPanelLayout = qt.QVBoxLayout()
+      self.secondaryViewPanel.setLayout(rightPanelLayout)
+      rightPanelLayout.addWidget(slicer.app.layoutManager().sliceWidget('Red'))
+      rightPanelLayout.addWidget(slicer.app.layoutManager().sliceWidget('Green'))
+      rightPanelLayout.addWidget(slicer.app.layoutManager().sliceWidget('Yellow'))
+      self.sliceViewWidget.addWidget(self.secondaryViewPanel)
 
-    rightPanelLayout = qt.QVBoxLayout()
-    self.sliceViewWidget.layout().addLayout(rightPanelLayout)
-    for viewNode in viewNodes:
+      # Find the first screen that is not the main screen
+      # Otherwise default to the main screen
+      mainScreen = slicer.util.mainWindow().windowHandle().screen()
+      widgetScreen = mainScreen
+      screens = slicer.app.screens()
+      if len(screens) > 1:
+        for screen in screens:
+          if mainScreen != screen:
+            widgetScreen = screen
+            break
 
-      if not viewNode.GetName() in ['Red', 'Yellow', 'Green']:
-        continue
-
-      # Create MRML nodes
-      viewWidget = slicer.qMRMLSliceWidget()
-      viewWidget.sliceViewName = viewNode.GetName()
-      viewWidget.sliceViewLabel = viewNode.GetName()[0]
-      c = viewNode.GetLayoutColor()
-      viewWidget.sliceViewColor = qt.QColor.fromRgbF(c[0],c[1],c[2])
-      viewWidget.setMRMLScene(slicer.mrmlScene)
-      viewWidget.setMRMLSliceNode(viewNode)
-      rightPanelLayout.addWidget(viewWidget)
-
-    self.sliceViewWidget.show()
+      self.sliceViewWidget.show()
+      self.sliceViewWidget.windowHandle().setScreen(widgetScreen)     
+      self.sliceViewWidget.showFullScreen() # Will not move to the other monitor with just setScreen. showFullScreen moves the window
+      self.sliceViewWidget.showMaximized()
 
   def onMasterVolumeNodeChanged(self, volumeNode):
     self.segmentationUI.volumeThresholdWidget.setMRMLVolumeNode(volumeNode)
