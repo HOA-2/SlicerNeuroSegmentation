@@ -69,6 +69,10 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget):
     if self.previousLayout == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID:
       self.previousLayout = 0
 
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onSceneEndImport)
+
   def enter(self):
     self.selectSegmentEditorParameterNode()
     # Allow switching between effects and selected segment using keyboard shortcuts
@@ -160,6 +164,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget):
     layoutManager.disconnect('layoutChanged(int)', self.onLayoutChanged)
     self.mainViewWidget3DButton.setParent(None)
     self.mainViewWidget3DButton = None
+    self.removeObservers()
 
   def toggleSliceViews(self):
     if self.ui.undockSliceViewButton.checked:
