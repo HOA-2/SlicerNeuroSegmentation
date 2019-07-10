@@ -31,6 +31,17 @@ and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR0132
 """ # replace with organization, grant and thanks.
 
 #
+# Regular QWidget do not emit a signal when closed
+# Need to subclass to emit a signal on closeEvent
+#
+class UndockedViewWidget(qt.QSplitter):
+
+  closed = qt.Signal()
+  def closeEvent(self, event):
+    self.closed.emit()
+    event.accept()
+
+#
 # NeuroSegmentWidget
 #
 
@@ -194,6 +205,10 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     if main3DWidget is not None:
       main3DWidget.setVisible(self.mainViewWidget3DButton.checked)
 
+  def onUndockedViewClosed(self):
+    self.ui.undockSliceViewButton.setChecked(False)
+    self.toggleSliceViews()
+
   def onLayoutChanged(self, layoutID):
     self.ui.undockSliceViewButton.setChecked(layoutID == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID)
     if layoutID != NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID and self.sliceViewWidget:
@@ -202,14 +217,15 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       self.ui.segmentEditorWidget.installKeyboardShortcuts()
 
     elif layoutID == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID:
-      self.sliceViewWidget = qt.QSplitter(qt.Qt.Horizontal)
+      self.sliceViewWidget = UndockedViewWidget(qt.Qt.Horizontal)
+      self.sliceViewWidget.closed.connect(self.onUndockedViewClosed)
       self.ui.segmentEditorWidget.installKeyboardShortcuts(self.sliceViewWidget)
 
       mainViewPanel = qt.QWidget()
       mainViewLayout = qt.QHBoxLayout()
       mainViewPanel.setLayout(mainViewLayout)
       mainViewLayout.addWidget(slicer.app.layoutManager().sliceWidget('Main'))
-      mainViewLayout.addWidget(slicer.app.layoutManager().threeDWidget('ViewM'))     
+      mainViewLayout.addWidget(slicer.app.layoutManager().threeDWidget('ViewM'))
       self.sliceViewWidget.addWidget(mainViewPanel)
 
       secondaryViewPanel = qt.QWidget()
