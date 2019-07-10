@@ -33,6 +33,9 @@
          <property name="switchToSegmentationsButtonVisible">
           <bool>false</bool>
          </property>
+         <property name="maximumNumberOfUndoStates">
+          <number>10</number>
+         </property>
          <property name="unorderedEffectsVisible">
           <bool>true</bool>
          </property>

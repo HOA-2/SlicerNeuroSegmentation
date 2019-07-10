@@ -179,14 +179,14 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       slicer.app.layoutManager().setLayout(self.previousLayout)
 
   def updateMainView(self):
-    mainViewWidget = slicer.app.layoutManager().sliceWidget('Main')
+    mainSliceWidget = slicer.app.layoutManager().sliceWidget('Main')
     main3DWidget = slicer.app.layoutManager().threeDWidget('ViewM')
     if self.mainViewWidget3DButton.checked and main3DWidget is not None:
       main3DWidget.threeDController().barLayout().addWidget(self.mainViewWidget3DButton)
     else:
-      mainViewWidget.sliceController().barLayout().addWidget(self.mainViewWidget3DButton)
+      mainSliceWidget.sliceController().barLayout().addWidget(self.mainViewWidget3DButton)
 
-    mainViewWidget.setVisible(not self.mainViewWidget3DButton.checked)
+    mainSliceWidget.setVisible(not self.mainViewWidget3DButton.checked)
     if main3DWidget is not None:
       main3DWidget.setVisible(self.mainViewWidget3DButton.checked)
 
@@ -199,24 +199,20 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     elif layoutID == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID:
       self.sliceViewWidget = qt.QSplitter(qt.Qt.Horizontal)
 
-      self.mainViewPanel = qt.QWidget()
-      mainPanelLayout = qt.QHBoxLayout()
-      self.mainViewPanel.setLayout(mainPanelLayout)
+      mainViewPanel = qt.QWidget()
+      mainViewLayout = qt.QHBoxLayout()
+      mainViewPanel.setLayout(mainViewLayout)
+      mainViewLayout.addWidget(slicer.app.layoutManager().sliceWidget('Main'))
+      mainViewLayout.addWidget(slicer.app.layoutManager().threeDWidget('ViewM'))     
+      self.sliceViewWidget.addWidget(mainViewPanel)
 
-      mainViewWidget = slicer.app.layoutManager().sliceWidget('Main')
-      mainPanelLayout.addWidget(mainViewWidget)
-      main3DWidget = slicer.app.layoutManager().threeDWidget('ViewM')
-      mainPanelLayout.addWidget(main3DWidget)
-      self.mainViewPanel.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
-      self.sliceViewWidget.addWidget(self.mainViewPanel)
-
-      self.secondaryViewPanel = qt.QWidget()
-      rightPanelLayout = qt.QVBoxLayout()
-      self.secondaryViewPanel.setLayout(rightPanelLayout)
-      rightPanelLayout.addWidget(slicer.app.layoutManager().sliceWidget('Red'))
-      rightPanelLayout.addWidget(slicer.app.layoutManager().sliceWidget('Green'))
-      rightPanelLayout.addWidget(slicer.app.layoutManager().sliceWidget('Yellow'))
-      self.sliceViewWidget.addWidget(self.secondaryViewPanel)
+      secondaryViewPanel = qt.QWidget()
+      secondaryViewLayout = qt.QVBoxLayout()
+      secondaryViewPanel.setLayout(secondaryViewLayout)
+      secondaryViewLayout.addWidget(slicer.app.layoutManager().sliceWidget('Red'))
+      secondaryViewLayout.addWidget(slicer.app.layoutManager().sliceWidget('Green'))
+      secondaryViewLayout.addWidget(slicer.app.layoutManager().sliceWidget('Yellow'))
+      self.sliceViewWidget.addWidget(secondaryViewPanel)
 
       # Find the first screen that is not the main screen
       # Otherwise default to the main screen
