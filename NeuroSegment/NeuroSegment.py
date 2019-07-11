@@ -201,7 +201,9 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     else:
       mainSliceWidget.sliceController().barLayout().addWidget(self.mainViewWidget3DButton)
 
-    mainSliceWidget.setVisible(not self.mainViewWidget3DButton.checked)
+    # The slice view becomes unhidden if the slice intersection is modified (shift + move in other views).
+    # Show/hide parent widget instead
+    mainSliceWidget.parent().setVisible(not self.mainViewWidget3DButton.checked)
     if main3DWidget is not None:
       main3DWidget.setVisible(self.mainViewWidget3DButton.checked)
 
@@ -223,13 +225,22 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
       mainViewPanel = qt.QWidget()
       mainViewLayout = qt.QHBoxLayout()
+      mainViewLayout.setContentsMargins(0,0,0,0)
       mainViewPanel.setLayout(mainViewLayout)
-      mainViewLayout.addWidget(slicer.app.layoutManager().sliceWidget('Main'))
+      # The slice view becomes unhidden if the slice intersection is modified (shift + move in other views).
+      # By adding it to a parent widget, we can show/hide that widget instead
+      sliceViewContainer = qt.QWidget()
+      sliceViewContainerLayout = qt.QHBoxLayout()
+      sliceViewContainer.setLayout(sliceViewContainerLayout)
+      sliceViewContainerLayout.addWidget(slicer.app.layoutManager().sliceWidget('Main'))
+      sliceViewContainerLayout.setContentsMargins(0,0,0,0)
+      mainViewLayout.addWidget(sliceViewContainer)
       mainViewLayout.addWidget(slicer.app.layoutManager().threeDWidget('ViewM'))
       self.sliceViewWidget.addWidget(mainViewPanel)
 
       secondaryViewPanel = qt.QWidget()
       secondaryViewLayout = qt.QVBoxLayout()
+      secondaryViewLayout.setContentsMargins(0,0,0,0)
       secondaryViewPanel.setLayout(secondaryViewLayout)
       secondaryViewLayout.addWidget(slicer.app.layoutManager().sliceWidget('Red'))
       secondaryViewLayout.addWidget(slicer.app.layoutManager().sliceWidget('Green'))
@@ -250,6 +261,8 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       self.updateMainView()
       self.onMasterVolumeNodeChanged(self.ui.segmentEditorWidget.masterVolumeNode())
 
+      self.sliceViewWidget.setStretchFactor(0, 3)
+      self.sliceViewWidget.setStretchFactor(1, 1)
       self.sliceViewWidget.show()
       self.sliceViewWidget.windowHandle().setScreen(widgetScreen)
       self.sliceViewWidget.showFullScreen() # Will not move to the other monitor with just setScreen. showFullScreen moves the window
