@@ -90,6 +90,13 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onSceneEndImport)
 
+    self.clickedView = None
+    self.clickTimer = qt.QTimer()
+    self.clickTimer.setInterval(300)
+    self.clickTimer.setSingleShot(True)
+    self.clickTimer.timeout.connect(self.switchMainView)
+    self.sliceViewClickObservers = []
+
   def enter(self):
     self.selectSegmentEditorParameterNode()
     # Allow switching between effects and selected segment using keyboard shortcuts
@@ -217,7 +224,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       self.previousLayout = layoutID
       self.sliceViewWidget.close()
       self.ui.segmentEditorWidget.installKeyboardShortcuts()
-
+      self.removeSecondaryViewClickObservers()
     elif layoutID == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID:
       self.sliceViewWidget = UndockedViewWidget(qt.Qt.Horizontal)
       self.sliceViewWidget.closed.connect(self.onUndockedViewClosed)
@@ -267,6 +274,53 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       self.sliceViewWidget.windowHandle().setScreen(widgetScreen)
       self.sliceViewWidget.showFullScreen() # Will not move to the other monitor with just setScreen. showFullScreen moves the window
       self.sliceViewWidget.showMaximized()
+
+      self.addSecondaryViewClickObservers()
+
+  def removeSecondaryViewClickObservers(self):
+    for tag, object in self.sliceViewClickObservers:
+      if object is None:
+        continue
+      object.RemoveObserver(tag)
+    self.sliceViewClickObservers = []
+
+  def addSecondaryViewClickObservers(self):
+      self.removeSliceViewClickObservers()
+      for viewName in ["Red", "Green", "Yellow"]:
+        sliceView = slicer.app.layoutManager().sliceWidget(viewName).sliceView()
+        tag = sliceView.interactor().AddObserver(vtk.vtkCommand.LeftButtonDoubleClickEvent,
+                                           lambda caller, event, viewName=viewName: self.onSecondaryViewDoubleClick(viewName))
+        self.sliceViewClickObservers.append((tag, sliceView.interactor()))
+        tag = sliceView.interactor().AddObserver(vtk.vtkCommand.LeftButtonPressEvent,
+                                           lambda caller, event, viewName=viewName: self.onSecondaryViewClick(viewName))
+        self.sliceViewClickObservers.append((tag, sliceView.interactor()))
+
+  def switchMainView(self):
+    layoutManager = slicer.app.layoutManager()
+    sliceWidget = layoutManager.sliceWidget(self.clickedView)
+    sliceNode = sliceWidget.mrmlSliceNode()
+    mainSliceWidget = layoutManager.sliceWidget('Main')
+    mainSliceNode = mainSliceWidget.mrmlSliceNode()
+    mainSliceNode.GetSliceToRAS().DeepCopy(sliceNode.GetSliceToRAS())
+    mainSliceNode.UpdateMatrices()
+
+  def onSecondaryViewClick(self, viewName):
+    self.clickedView = viewName
+    self.clickTimer.start()
+
+  def onSecondaryViewDoubleClick(self, viewName):
+    layoutManager = slicer.app.layoutManager()
+    sliceWidget = layoutManager.sliceWidget(viewName)
+    eventPositionWorld = [0,0,0,0]
+    eventPosition = sliceWidget.sliceView().interactor().GetEventPosition()
+    eventPositionXY = [eventPosition[0], eventPosition[1], 0, 1]
+    sliceWidget.sliceLogic().GetSliceNode().GetXYToRAS().MultiplyPoint(eventPositionXY, eventPositionWorld);
+    sliceNode = sliceWidget.mrmlSliceNode()
+    sliceNode.JumpAllSlices(sliceNode.GetScene(),
+                            eventPositionWorld[0], eventPositionWorld[1], eventPositionWorld[2],
+                            slicer.vtkMRMLSliceNode.OffsetJumpSlice,
+                            sliceNode.GetViewGroup(), sliceNode)
+    self.clickTimer.stop()
 
   def onMasterVolumeNodeChanged(self, volumeNode):
     self.ui.volumeThresholdWidget.setMRMLVolumeNode(volumeNode)
