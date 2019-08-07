@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>segmentationTimer</class>
- <widget class="qMRMLWidget" name="segmentationTimer">
+ <class>userStatistics</class>
+ <widget class="qMRMLWidget" name="userStatistics">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>676</width>
-    <height>438</height>
+    <width>441</width>
+    <height>571</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -16,7 +16,7 @@
      <item>
       <widget class="QLabel" name="label">
        <property name="text">
-        <string>Timer table node:</string>
+        <string>Statistics table node:</string>
        </property>
       </widget>
      </item>
@@ -28,7 +28,7 @@
         </stringlist>
        </property>
        <property name="baseName">
-        <string>SegmentationTimerNode</string>
+        <string>UserStatisticsTableNode</string>
        </property>
        <property name="noneEnabled">
         <bool>false</bool>
@@ -43,9 +43,55 @@
    <item>
     <widget class="qMRMLTableView" name="statisticsTable"/>
    </item>
+   <item>
+    <widget class="ctkCollapsibleButton" name="CollapsibleButton">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>Merge statistics</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout">
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Statistic table nodes:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="qMRMLCheckableNodeComboBox" name="mergeTablesNodeSelector">
+        <property name="nodeTypes">
+         <stringlist>
+          <string>vtkMRMLTableNode</string>
+         </stringlist>
+        </property>
+        <property name="selectNodeUponCreation">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QPushButton" name="mergeTablesButton">
+        <property name="text">
+         <string>Merge</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>qMRMLCheckableNodeComboBox</class>
+   <extends>qMRMLNodeComboBox</extends>
+   <header>qMRMLCheckableNodeComboBox.h</header>
+  </customwidget>
   <customwidget>
    <class>qMRMLNodeComboBox</class>
    <extends>QWidget</extends>
@@ -60,6 +106,12 @@
    <class>qMRMLWidget</class>
    <extends>QWidget</extends>
    <header>qMRMLWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ctkCollapsibleButton</class>
+   <extends>QWidget</extends>
+   <header>ctkCollapsibleButton.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
@@ -82,7 +134,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>segmentationTimer</sender>
+   <sender>userStatistics</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>tableNodeSelector</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
@@ -98,7 +150,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>segmentationTimer</sender>
+   <sender>userStatistics</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>statisticsTable</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
@@ -110,6 +162,22 @@
     <hint type="destinationlabel">
      <x>337</x>
      <y>232</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>userStatistics</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>mergeTablesNodeSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>220</x>
+     <y>285</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>273</x>
+     <y>350</y>
     </hint>
    </hints>
   </connection>

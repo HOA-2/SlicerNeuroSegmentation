@@ -7,19 +7,19 @@ from slicer.util import VTKObservationMixin
 from datetime import datetime
 
 #
-# SegmentationTimer
+# UserStatistics
 #
 
-class SegmentationTimer(ScriptedLoadableModule):
+class UserStatistics(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "Segmentation Timer"
-    self.parent.categories = ["Segmentation"]
-    self.parent.dependencies = ["Segmentations"]
+    self.parent.title = "User Statistics"
+    self.parent.categories = ["Utilities"]
+    self.parent.dependencies = ["Segmentations", "SegmentEditor"]
     self.parent.contributors = ["Kyle Sunderland (Perk Lab, Queen's University)"]
     self.parent.helpText = """
 This is an example of scripted loadable module bundled in an extension.
@@ -35,7 +35,7 @@ and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR0132
       slicer.app.connect("startupCompleted()", self.initializeModule)
 
   def initializeModule(self):
-    slicer.modules.segmentationtimer.widgetRepresentation()
+    slicer.modules.userstatistics.widgetRepresentation()
     userInfo = slicer.app.applicationLogic().GetUserInformation()
     name = userInfo.GetName()
 
@@ -45,13 +45,13 @@ and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR0132
     message += "\nIf you would to change the user name, it can be changed in the application menu under:\n"\
                "Edit -> Application Settings -> User -> Name\n"
 
-    slicer.util.infoDisplay(message, dontShowAgainSettingsKey = "SegmentationTimer/DontShowSomeMessage")
+    #slicer.util.infoDisplay(message, dontShowAgainSettingsKey = "UserStatistics/DontShowSomeMessage")
 
 #
-# SegmentationTimerWidget
+# UserStatisticsWidget
 #
 
-class SegmentationTimerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
+class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
@@ -63,31 +63,37 @@ class SegmentationTimerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
-    self.logic = SegmentationTimerLogic()
+    self.logic = UserStatisticsLogic()
     # This will use createParameterNode with the provided default options
     self.setParameterNode(self.logic.getParameterNode())
 
     # Load widget from .ui file (created by Qt Designer)
-    uiWidget = slicer.util.loadUI(self.resourcePath('UI/SegmentationTimer.ui'))
+    uiWidget = slicer.util.loadUI(self.resourcePath('UI/UserStatistics.ui'))
     self.layout.addWidget(uiWidget)
 
     self.ui = slicer.util.childWidgetVariables(uiWidget)
-    self.ui.tableNodeSelector.addAttribute("vtkMRMLTableNode", "SegmentationTimer.TableNode", "")
-    self.ui.segmentationTimer.setMRMLScene(slicer.mrmlScene)
+    self.ui.tableNodeSelector.addAttribute("vtkMRMLTableNode", "UserStatistics.TableNode", "")
+    self.ui.userStatistics.setMRMLScene(slicer.mrmlScene)
+
     # Connections
-    self.ui.tableNodeSelector.nodeAdded.connect(self.onNodeAdded)
+    self.ui.tableNodeSelector.nodeAddedByUser.connect(self.onNodeAddedByUser)
     self.ui.tableNodeSelector.currentNodeChanged.connect(self.onCurrentNodeChanged)
+    self.ui.mergeTablesButton.clicked.connect(self.onMergeStatisticTablesClicked)
 
 
   def cleanup(self):
     pass
 
-  def onNodeAdded(self, node):
+  def onNodeAddedByUser(self, node):
     self.logic.setupTimerTableNode(node)
 
   def onCurrentNodeChanged(self, node):
     currentNode = self.ui.tableNodeSelector.currentNode()
-    self.logic.setSegmentationTimerTableNode(currentNode)
+    self.logic.setUserStatisticsTableNode(currentNode)
+
+  def onMergeStatisticTablesClicked(self):
+    checkedNodes = self.ui.mergeTablesNodeSelector.checkedNodes()
+    self.logic.mergeStatisticsTableNodes(checkedNodes)
 
   def parameterNode(self):
     return self._parameterNode
@@ -102,36 +108,39 @@ class SegmentationTimerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self._parameterNode = inputParameterNode
 
   def updateGuiFromMRML(self, caller=None, event=None, callData=None):
-    currentNode = self._parameterNode.GetNodeReference(self.logic.SEGMENTATIONTIMER_TABLE_REFERENCE_ROLE)
+    currentNode = self._parameterNode.GetNodeReference(self.logic.USER_STATISTICS_TABLE_REFERENCE_ROLE)
     self.ui.tableNodeSelector.setCurrentNode(currentNode)
 
-class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
+class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
-  SEGMENTATIONTIMER_TABLE_REFERENCE_ROLE = "segmentationTimerTableRef"
+  USER_STATISTICS_TABLE_REFERENCE_ROLE = "userStatisticsTableRef"
 
-  DATE_FORMAT = "%m/%d/%Y, %H:%M:%S"
+  DATE_FORMAT = "%Y%m%d-%H%M%S"
 
   COMPUTER_COLUMN_NAME = 'computer'
-  USER_COLUMN_NAME = 'user'
-  MASTER_VOLUME_COLUMN_NAME = 'mastervolume'
-  STARTTIME_COLUMN_NAME = 'starttime'
+  USER_COLUMN_NAME = 'userName'
+  MASTER_VOLUME_COLUMN_NAME = 'masterVolumeName'
+  STARTTIME_COLUMN_NAME = 'startTime'
   SCENE_COLUMN_NAME = 'scene'
-  SEGMENTATION_COLUMN_NAME = 'segmentation'
-  SEGMENT_COLUMN_NAME = 'segment'
-  TERMINOLOGY_COLUMN_NAME = 'terminology'
+  SEGMENTATION_COLUMN_NAME = 'segmentationName'
+  SEGMENT_COLUMN_NAME = 'segmentName'
+  TERMINOLOGY_COLUMN_NAME = 'segmentTerminology'
+  MODULENAME_COLUMN_NAME = 'moduleName'
   OPERATION_COLUMN_NAME = 'operation'
-  DURATION_COLUMN_NAME = 'duration'
+  USERACTIVITY_COLUMN_NAMEs = 'userActivity'
+  DURATION_COLUMN_NAME = 'durationSec'
   timerTableColumnNames = [
+    STARTTIME_COLUMN_NAME,
+    OPERATION_COLUMN_NAME,
+    DURATION_COLUMN_NAME,
+    SEGMENT_COLUMN_NAME,
+    MASTER_VOLUME_COLUMN_NAME,
+    SEGMENTATION_COLUMN_NAME,
+    TERMINOLOGY_COLUMN_NAME,
+    MODULENAME_COLUMN_NAME,
     COMPUTER_COLUMN_NAME,
     USER_COLUMN_NAME,
-    MASTER_VOLUME_COLUMN_NAME,
-    STARTTIME_COLUMN_NAME,
     SCENE_COLUMN_NAME,
-    SEGMENTATION_COLUMN_NAME,
-    SEGMENT_COLUMN_NAME,
-    TERMINOLOGY_COLUMN_NAME,
-    OPERATION_COLUMN_NAME,
-    DURATION_COLUMN_NAME
   ]
 
   timerTableColumnTypes = {
@@ -144,7 +153,8 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     SEGMENT_COLUMN_NAME: 'string',
     TERMINOLOGY_COLUMN_NAME: 'string',
     OPERATION_COLUMN_NAME: 'string',
-    DURATION_COLUMN_NAME: 'double'
+    DURATION_COLUMN_NAME: 'double',
+    MODULENAME_COLUMN_NAME: 'string',
   }
   activeRows = {}
 
@@ -156,13 +166,16 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onSceneEndImport)
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.NodeAddedEvent, self.onNodeAdded)
 
-    self.selectSegmentationTimerTableNode()
+    self.selectUserStatisticsTableNode()
     self.addSegmentEditorObservers()
 
     self.sceneClosedTimer = qt.QTimer()
     self.sceneClosedTimer.setInterval(100)
     self.sceneClosedTimer.setSingleShot(True)
-    self.sceneClosedTimer.timeout.connect(self.selectSegmentationTimerTableNode)
+    self.sceneClosedTimer.timeout.connect(self.selectUserStatisticsTableNode)
+
+    #slicer.util.moduleSelector().selectModule('ModelMaker')
+    slicer.util.moduleSelector().moduleSelected.connect(self.updateAllActiveRows)
 
   def onSceneEndClose(self, caller, event):
     self.sceneClosedTimer.start()
@@ -170,23 +183,31 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   def onSceneEndImport(self, caller, event):
     self.sceneClosedTimer.start()
 
-  def selectSegmentationTimerTableNode(self):
+  def mergeStatisticsTableNodes(self, tableNodes):
+    if len(tableNodes) < 2:
+      return
+    original = tableNodes[0]
+    for tableNode in tableNodes:
+      if tableNode is not original:
+        slicer.mrmlScene.RemoveNode(tableNode)
+
+  def selectUserStatisticsTableNode(self):
     tableNode = self.getTimerTableNode()
     if not tableNode is None:
       return
 
     tableNode = slicer.vtkMRMLTableNode()
-    tableNode.SetName("SegmentationTimerNode")
-    tableNode.SetAttribute("SegmentationTimer.TableNode", "")
+    tableNode.SetName("UserStatisticsTableNode")
+    tableNode.SetAttribute("UserStatistics.TableNode", "")
     slicer.mrmlScene.AddNode(tableNode)
     self.setupTimerTableNode(tableNode)
-    self.setSegmentationTimerTableNode(tableNode)
+    self.setUserStatisticsTableNode(tableNode)
 
   def getTimerTableNode(self):
     parameterNode = self.getParameterNode()
     if parameterNode is None:
       return
-    return parameterNode.GetNodeReference(self.SEGMENTATIONTIMER_TABLE_REFERENCE_ROLE)
+    return parameterNode.GetNodeReference(self.USER_STATISTICS_TABLE_REFERENCE_ROLE)
 
   def setupTimerTableNode(self, tableNode):
     if tableNode is None:
@@ -217,52 +238,30 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
   def onEditorNodeModified(self, editorNode, event=None, callData=None):
     tableNode = self.getTimerTableNode()
-    if editorNode is None or tableNode is None:
+    if tableNode is None:
       return
     if not editorNode in self.activeRows:
       self.setActiveRow(editorNode, -1)
 
-    serializedActiveRow = self.serializeActiveRow(editorNode)
-    serializedEditorNode = self.serializeEditorNode(editorNode)
-    if self.activeRows[editorNode] == -1 or serializedActiveRow != serializedEditorNode:
+    serializedScene = self.serializeFromScene(editorNode)
+    serializedTable = self.serializeFromTable(editorNode)
+    if self.activeRows[editorNode] == -1 or serializedScene != serializedTable:
       row = tableNode.AddEmptyRow()
       self.setActiveRow(editorNode, row)
 
-  def serializeEditorNode(self, editorNode):
-    if editorNode is None:
-      return ""
+  def serializeFromScene(self, editorNode):
+    state = UserStatisticsState(self, editorNode)
+    state.populateFromScene()
+    return state.serialize()
 
-    activeState = SegmentEditorState()
-    selectedSegmentID = ""
-    if editorNode.GetSelectedSegmentID():
-      selectedSegmentID = editorNode.GetSelectedSegmentID()
-    segmentationNode = editorNode.GetSegmentationNode()
-    if segmentationNode is not None:
-      activeState.segmentationNodeName = segmentationNode.GetName()
-      segmentation = segmentationNode.GetSegmentation()
-      segment = segmentation.GetSegment(selectedSegmentID)
-      if segment is not None:
-        tag = vtk.mutable("")
-        segment.GetTag(segment.GetTerminologyEntryTagName(), tag)
-        activeState.terminology = tag.get()
-        activeState.segmentName = segment.GetName()
-    activeState.activeEffect = editorNode.GetActiveEffectName()
-    return activeState.serialize()
-
-  def serializeActiveRow(self, editorNode):
-    if editorNode is None:
-      return ""
-
-    activeState = SegmentEditorState()
-    activeState.segmentName = self.getActiveSegmentName(editorNode)
-    activeState.segmentationNodeName = self.getActiveSegmentationNodeName(editorNode)
-    activeState.activeEffect = self.getActiveEditorEffect(editorNode)
-    activeState.terminology = self.getActiveTerminology(editorNode)
-    return activeState.serialize()
+  def serializeFromTable(self, editorNode):
+    state = UserStatisticsState(self, editorNode)
+    state.populateFromTable()
+    return state.serialize()
 
   def updateAllActiveRows(self, caller=None, event=None, callData=None):
     for editorNode in self.activeRows.keys():
-      self.updateActiveRow(editorNode)
+      self.onEditorNodeModified(editorNode)
 
   def updateActiveRow(self, editorNode, columns=[]):
     if not editorNode in self.activeRows:
@@ -279,61 +278,7 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       name = tableNode.GetColumnName(column)
       if columns != [] and not name in columns:
         continue
-
-      value = ""
-
-      if name == self.COMPUTER_COLUMN_NAME:
-        hostInfo = qt.QHostInfo()
-        value = hostInfo.localHostName()
-
-      elif name == self.USER_COLUMN_NAME:
-        userInfo = slicer.app.applicationLogic().GetUserInformation()
-        value = userInfo.GetName()
-
-      elif name == self.MASTER_VOLUME_COLUMN_NAME:
-        masterVolume = editorNode.GetMasterVolumeNode()
-        if masterVolume:
-          value = masterVolume.GetName()
-
-      elif name == self.STARTTIME_COLUMN_NAME:
-        if tableNode.GetCellText(activeRow, column) == "":
-          value = datetime.now().strftime(self.DATE_FORMAT)
-
-      elif name == self.SCENE_COLUMN_NAME:
-        pass
-
-      elif name == self.SEGMENTATION_COLUMN_NAME:
-        segmentationNode = editorNode.GetSegmentationNode()
-        if segmentationNode is not None:
-          value = segmentationNode.GetName()
-
-      elif name == self.SEGMENT_COLUMN_NAME:
-        if segmentationNode is not None:
-          segmentation = segmentationNode.GetSegmentation()
-          if editorNode.GetSelectedSegmentID():
-            segment = segmentation.GetSegment(editorNode.GetSelectedSegmentID())
-            if segment:
-              value = segment.GetName()
-
-      elif name == self.TERMINOLOGY_COLUMN_NAME:
-        if segmentationNode is not None:
-          segmentation = segmentationNode.GetSegmentation()
-          if editorNode.GetSelectedSegmentID():
-            segment = segmentation.GetSegment(editorNode.GetSelectedSegmentID())
-            if segment is not None:
-              tag = vtk.mutable("")
-              segment.GetTag(segment.GetTerminologyEntryTagName(), tag)
-              value = tag.get()
-
-      elif name == self.OPERATION_COLUMN_NAME:
-        value = editorNode.GetActiveEffectName()
-
-      elif name == self.DURATION_COLUMN_NAME:
-        value = str((datetime.now() - self.getActiveStartTime(editorNode)).total_seconds())
-
-      else:
-        continue
-      tableNode.SetCellText(activeRow, column, value)
+      tableNode.SetCellText(activeRow, column, self.getCurrentSceneStatus(editorNode, name))
 
   def setActiveRow(self, editorNode, row):
     if editorNode in self.activeRows:
@@ -343,55 +288,85 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.activeRows[editorNode] = row
     self.updateActiveRow(editorNode)
 
-  def getActiveStartTime(self, editorNode):
-    tableNode = self.getTimerTableNode()
-    if tableNode is None or editorNode is None:
-      return datetime.now()
-    activeRow = self.activeRows[editorNode]
-    if activeRow < 0:
-      return datetime.now()
-    startText = tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(self.STARTTIME_COLUMN_NAME))
-    if startText == "":
-      return datetime.now()
-    return datetime.strptime(startText, self.DATE_FORMAT)
-
-  def getActiveEditorEffect(self, editorNode):
+  def getCurrentTableText(self, editorNode, name):
     tableNode = self.getTimerTableNode()
     if tableNode is None or editorNode is None:
       return ""
     activeRow = self.activeRows[editorNode]
     if activeRow < 0:
       return ""
-    return tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(self.OPERATION_COLUMN_NAME))
+    return tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(name))
 
-  def getActiveSegmentationNodeName(self, editorNode):
+  def getCurrentSceneStatus(self, editorNode, name):
+    value = ""
+    segmentationNode = editorNode.GetSegmentationNode()
     tableNode = self.getTimerTableNode()
-    if tableNode is None or editorNode is None:
+    if tableNode is None:
       return ""
     activeRow = self.activeRows[editorNode]
-    if activeRow < 0:
+    if activeRow == -1:
       return ""
-    return tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(self.SEGMENTATION_COLUMN_NAME))
 
-  def getActiveSegmentName(self, editorNode):
-    tableNode = self.getTimerTableNode()
-    if tableNode is None or editorNode is None:
-      return ""
-    activeRow = self.activeRows[editorNode]
-    if activeRow < 0:
-      return ""
-    return tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(self.SEGMENT_COLUMN_NAME))
+    if name == self.COMPUTER_COLUMN_NAME:
+      hostInfo = qt.QHostInfo()
+      value = hostInfo.localHostName()
 
-  def getActiveTerminology(self, editorNode):
-    tableNode = self.getTimerTableNode()
-    if tableNode is None or editorNode is None:
-      return ""
-    activeRow = self.activeRows[editorNode]
-    if activeRow < 0:
-      return ""
-    return tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(self.TERMINOLOGY_COLUMN_NAME))
+    elif name == self.USER_COLUMN_NAME:
+      userInfo = slicer.app.applicationLogic().GetUserInformation()
+      value = userInfo.GetName()
 
-  def setSegmentationTimerTableNode(self, node):
+    elif name == self.MASTER_VOLUME_COLUMN_NAME:
+      masterVolume = editorNode.GetMasterVolumeNode()
+      if masterVolume:
+        value = masterVolume.GetName()
+
+    elif name == self.STARTTIME_COLUMN_NAME:
+      value = tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(name))
+      if value == "":
+        value = datetime.now().strftime(self.DATE_FORMAT)
+
+    elif name == self.SCENE_COLUMN_NAME:
+      value = slicer.mrmlScene.GetURL()
+
+    elif name == self.SEGMENTATION_COLUMN_NAME:
+      if segmentationNode is not None:
+        value = segmentationNode.GetName()
+
+    elif name == self.SEGMENT_COLUMN_NAME:
+      if segmentationNode is not None:
+        segmentation = segmentationNode.GetSegmentation()
+        if editorNode.GetSelectedSegmentID():
+          segment = segmentation.GetSegment(editorNode.GetSelectedSegmentID())
+          if segment:
+            value = segment.GetName()
+
+    elif name == self.TERMINOLOGY_COLUMN_NAME:
+      if segmentationNode is not None:
+        segmentation = segmentationNode.GetSegmentation()
+        if editorNode.GetSelectedSegmentID():
+          segment = segmentation.GetSegment(editorNode.GetSelectedSegmentID())
+          if segment is not None:
+            tag = vtk.mutable("")
+            segment.GetTag(segment.GetTerminologyEntryTagName(), tag)
+            value = tag.get()
+
+    elif name == self.OPERATION_COLUMN_NAME:
+      value = editorNode.GetActiveEffectName()
+
+    elif name == self.DURATION_COLUMN_NAME:
+      startTimeText = self.getCurrentTableText(editorNode, self.STARTTIME_COLUMN_NAME)
+      if startTimeText == "":
+        startTime = datetime.now()
+      else:
+        startTime = datetime.strptime(startTimeText, self.DATE_FORMAT)
+      value = str((datetime.now() - startTime).total_seconds())
+
+    elif name == self.MODULENAME_COLUMN_NAME:
+      value = slicer.util.moduleSelector().selectedModule
+
+    return value
+
+  def setUserStatisticsTableNode(self, node):
     parameterNode = self.getParameterNode()
     if parameterNode is None:
       return
@@ -402,32 +377,38 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     nodeID = ""
     if node:
       nodeID = node.GetID()
-    parameterNode.SetNodeReferenceID(self.SEGMENTATIONTIMER_TABLE_REFERENCE_ROLE, nodeID)
+    parameterNode.SetNodeReferenceID(self.USER_STATISTICS_TABLE_REFERENCE_ROLE, nodeID)
 
-class SegmentEditorState():
-  segmentationNodeName = ""
-  segmentName = ""
-  activeEffect = ""
-  terminology = ""
+class UserStatisticsState():
+
+  def __init__(self, logic, editorNode):
+    self.logic = logic
+    self.editorNode = editorNode
+
+  parameters = {}
+  ignoredParameters = [
+    UserStatisticsLogic.DURATION_COLUMN_NAME,
+    UserStatisticsLogic.STARTTIME_COLUMN_NAME,
+  ]
+
+  def populateFromScene(self):
+    for name in UserStatisticsLogic.timerTableColumnNames:
+      self.parameters[name] = self.logic.getCurrentSceneStatus(self.editorNode, name)
+
+  def populateFromTable(self):
+    for name in UserStatisticsLogic.timerTableColumnNames:
+      self.parameters[name] = self.logic.getCurrentTableText(self.editorNode, name)
 
   def serialize(self):
-    if self.segmentationNodeName == None:
-      self.segmentationNodeName = ""
-    if self.segmentName == None:
-      self.segmentName = ""
-    if self.activeEffect == None:
-      self.activeEffect = ""
-    if self.terminology == None:
-      self.terminology = ""
-
     output = ""
-    output += self.segmentationNodeName + ","
-    output += self.segmentName + ","
-    output += self.activeEffect + ","
-    output += self.terminology + ","
+    for name in self.parameters.keys():
+      if name in self.ignoredParameters:
+        continue
+      value = self.parameters[name]
+      output += str(value) + ","
     return output
 
-class SegmentationTimerTest(ScriptedLoadableModuleTest):
+class UserStatisticsTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
   Uses ScriptedLoadableModuleTest base class, available at:
@@ -443,9 +424,9 @@ class SegmentationTimerTest(ScriptedLoadableModuleTest):
     """Run as few or as many tests as needed here.
     """
     self.setUp()
-    self.test_SegmentationTimer1()
+    self.test_UserStatistics1()
 
-  def test_SegmentationTimer1(self):
+  def test_UserStatistics1(self):
     """ Ideally you should have several levels of tests.  At the lowest level
     tests should exercise the functionality of the logic with different inputs
     (both valid and invalid).  At higher levels your tests should emulate the
