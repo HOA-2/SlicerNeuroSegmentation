@@ -73,12 +73,11 @@ class SegmentationTimerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     self.ui = slicer.util.childWidgetVariables(uiWidget)
     self.ui.tableNodeSelector.addAttribute("vtkMRMLTableNode", "SegmentationTimer.TableNode", "")
-    self.ui.tableNodeSelector.setMRMLScene(slicer.mrmlScene)
-    self.ui.statisticsTable.setMRMLScene(slicer.mrmlScene)
-
+    self.ui.segmentationTimer.setMRMLScene(slicer.mrmlScene)
     # Connections
     self.ui.tableNodeSelector.nodeAdded.connect(self.onNodeAdded)
     self.ui.tableNodeSelector.currentNodeChanged.connect(self.onCurrentNodeChanged)
+
 
   def cleanup(self):
     pass
@@ -87,7 +86,8 @@ class SegmentationTimerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.logic.setupTimerTableNode(node)
 
   def onCurrentNodeChanged(self, node):
-    self.logic.setSegmentationTimerTableNode(node)
+    currentNode = self.ui.tableNodeSelector.currentNode()
+    self.logic.setSegmentationTimerTableNode(currentNode)
 
   def parameterNode(self):
     return self._parameterNode
@@ -103,17 +103,17 @@ class SegmentationTimerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
   def updateGuiFromMRML(self, caller=None, event=None, callData=None):
     currentNode = self._parameterNode.GetNodeReference(self.logic.SEGMENTATIONTIMER_TABLE_REFERENCE_ROLE)
-    wasBlocking = self.ui.tableNodeSelector.blockSignals(True)
     self.ui.tableNodeSelector.setCurrentNode(currentNode)
-    self.ui.tableNodeSelector.blockSignals(wasBlocking)
 
 class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
   SEGMENTATIONTIMER_TABLE_REFERENCE_ROLE = "segmentationTimerTableRef"
 
   DATE_FORMAT = "%m/%d/%Y, %H:%M:%S"
+
   COMPUTER_COLUMN_NAME = 'computer'
   USER_COLUMN_NAME = 'user'
+  MASTER_VOLUME_COLUMN_NAME = 'mastervolume'
   STARTTIME_COLUMN_NAME = 'starttime'
   SCENE_COLUMN_NAME = 'scene'
   SEGMENTATION_COLUMN_NAME = 'segmentation'
@@ -124,6 +124,7 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   timerTableColumnNames = [
     COMPUTER_COLUMN_NAME,
     USER_COLUMN_NAME,
+    MASTER_VOLUME_COLUMN_NAME,
     STARTTIME_COLUMN_NAME,
     SCENE_COLUMN_NAME,
     SEGMENTATION_COLUMN_NAME,
@@ -136,6 +137,7 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   timerTableColumnTypes = {
     COMPUTER_COLUMN_NAME: 'string',
     USER_COLUMN_NAME: 'string',
+    MASTER_VOLUME_COLUMN_NAME : 'string',
     STARTTIME_COLUMN_NAME: 'string',
     SCENE_COLUMN_NAME: 'string',
     SEGMENTATION_COLUMN_NAME: 'string',
@@ -150,7 +152,6 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     ScriptedLoadableModuleLogic.__init__(self, parent)
     VTKObservationMixin.__init__(self)
 
-    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onSceneEndImport)
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.NodeAddedEvent, self.onNodeAdded)
@@ -158,14 +159,16 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.selectSegmentationTimerTableNode()
     self.addSegmentEditorObservers()
 
-  def onSceneStartClose(self, caller, event):
-    pass
+    self.sceneClosedTimer = qt.QTimer()
+    self.sceneClosedTimer.setInterval(100)
+    self.sceneClosedTimer.setSingleShot(True)
+    self.sceneClosedTimer.timeout.connect(self.selectSegmentationTimerTableNode)
 
   def onSceneEndClose(self, caller, event):
-    self.selectSegmentationTimerTableNode()
+    self.sceneClosedTimer.start()
 
   def onSceneEndImport(self, caller, event):
-    self.selectSegmentationTimerTableNode()
+    self.sceneClosedTimer.start()
 
   def selectSegmentationTimerTableNode(self):
     tableNode = self.getTimerTableNode()
@@ -186,6 +189,9 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     return parameterNode.GetNodeReference(self.SEGMENTATIONTIMER_TABLE_REFERENCE_ROLE)
 
   def setupTimerTableNode(self, tableNode):
+    if tableNode is None:
+      return
+    tableNode.RemoveAllColumns()
     for name in self.timerTableColumnNames:
       type = self.timerTableColumnTypes[name]
       column = tableNode.AddColumn()
@@ -226,7 +232,7 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     if editorNode is None:
       return ""
 
-    activeState = SegmentationState()
+    activeState = SegmentEditorState()
     selectedSegmentID = ""
     if editorNode.GetSelectedSegmentID():
       selectedSegmentID = editorNode.GetSelectedSegmentID()
@@ -247,7 +253,7 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     if editorNode is None:
       return ""
 
-    activeState = SegmentationState()
+    activeState = SegmentEditorState()
     activeState.segmentName = self.getActiveSegmentName(editorNode)
     activeState.segmentationNodeName = self.getActiveSegmentationNodeName(editorNode)
     activeState.activeEffect = self.getActiveEditorEffect(editorNode)
@@ -266,6 +272,9 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       return
 
     tableNode = self.getTimerTableNode()
+    if tableNode is None:
+      return
+
     for column in range(tableNode.GetNumberOfColumns()):
       name = tableNode.GetColumnName(column)
       if columns != [] and not name in columns:
@@ -280,6 +289,11 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       elif name == self.USER_COLUMN_NAME:
         userInfo = slicer.app.applicationLogic().GetUserInformation()
         value = userInfo.GetName()
+
+      elif name == self.MASTER_VOLUME_COLUMN_NAME:
+        masterVolume = editorNode.GetMasterVolumeNode()
+        if masterVolume:
+          value = masterVolume.GetName()
 
       elif name == self.STARTTIME_COLUMN_NAME:
         if tableNode.GetCellText(activeRow, column) == "":
@@ -385,9 +399,12 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       return
     for editorNode in self.activeRows.keys():
       self.setActiveRow(editorNode, -1)
-    parameterNode.SetNodeReferenceID(self.SEGMENTATIONTIMER_TABLE_REFERENCE_ROLE, node.GetID())
+    nodeID = ""
+    if node:
+      nodeID = node.GetID()
+    parameterNode.SetNodeReferenceID(self.SEGMENTATIONTIMER_TABLE_REFERENCE_ROLE, nodeID)
 
-class SegmentationState():
+class SegmentEditorState():
   segmentationNodeName = ""
   segmentName = ""
   activeEffect = ""
