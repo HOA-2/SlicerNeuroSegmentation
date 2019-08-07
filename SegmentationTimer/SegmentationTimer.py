@@ -32,10 +32,20 @@ and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR0132
 """ # replace with organization, grant and thanks.
 
     if not slicer.app.commandOptions().noMainWindow :
-      slicer.app.connect("startupCompleted()", self.initializeWidget)
+      slicer.app.connect("startupCompleted()", self.initializeModule)
 
-  def initializeWidget(self):
+  def initializeModule(self):
     slicer.modules.segmentationtimer.widgetRepresentation()
+    userInfo = slicer.app.applicationLogic().GetUserInformation()
+    name = userInfo.GetName()
+
+    message = "User name is not set.\n"
+    if name != "":
+      message = "The current user name is: " + name + ".\n"
+    message += "\nIf you would to change the user name, it can be changed in the application menu under:\n"\
+               "Edit -> Application Settings -> User -> Name\n"
+
+    slicer.util.infoDisplay(message, dontShowAgainSettingsKey = "SegmentationTimer/DontShowSomeMessage")
 
 #
 # SegmentationTimerWidget
