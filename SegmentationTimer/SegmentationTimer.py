@@ -70,9 +70,6 @@ class SegmentationTimerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.tableNodeSelector.nodeAdded.connect(self.onNodeAdded)
     self.ui.tableNodeSelector.currentNodeChanged.connect(self.onCurrentNodeChanged)
 
-    # Add vertical spacer
-    self.layout.addStretch(1)
-
   def cleanup(self):
     pass
 
@@ -106,17 +103,19 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
   DATE_FORMAT = "%m/%d/%Y, %H:%M:%S"
   COMPUTER_COLUMN = 0
-  STARTTIME_COLUMN = 1
-  SCENE_COLUMN = 2
-  SEGMENTATION_COLUMN = 3
-  SEGMENT_COLUMN = 4
-  TERMINOLOGY_COLUMN = 5
-  OPERATION_COLUMN = 6
-  DURATION_COLUMN = 7
-  LAST_COLUMN = 8
+  USER_COLUMN = 1
+  STARTTIME_COLUMN = 2
+  SCENE_COLUMN = 3
+  SEGMENTATION_COLUMN = 4
+  SEGMENT_COLUMN = 5
+  TERMINOLOGY_COLUMN = 6
+  OPERATION_COLUMN = 7
+  DURATION_COLUMN = 8
+  LAST_COLUMN = 9
   timerTableColumnNames = []
   timerTableColumnTypes = {
     'computer': 'string',
+    'user': 'string',
     'starttime': 'string',
     'scene': 'string',
     'segmentation': 'string',
@@ -133,6 +132,7 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
     self.timerTableColumnNames = [None] * self.LAST_COLUMN
     self.timerTableColumnNames[self.COMPUTER_COLUMN] = 'computer'
+    self.timerTableColumnNames[self.USER_COLUMN] = 'user'
     self.timerTableColumnNames[self.STARTTIME_COLUMN] = 'starttime'
     self.timerTableColumnNames[self.SCENE_COLUMN] = 'scene'
     self.timerTableColumnNames[self.SEGMENTATION_COLUMN] = 'segmentation'
@@ -260,22 +260,38 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       name = self.timerTableColumnNames[column]
       if columns != [] and not name in columns:
         continue
+
       value = ""
-      if name == 'computer':
+
+      if column == self.COMPUTER_COLUMN:
         hostInfo = qt.QHostInfo()
         value = hostInfo.localHostName()
-      elif name == 'starttime':
+
+      elif column == self.USER_COLUMN:
+        userInfo = slicer.app.applicationLogic().GetUserInformation()
+        value = userInfo.GetName()
+
+      elif column == self.STARTTIME_COLUMN:
         if tableNode.GetCellText(activeRow, self.STARTTIME_COLUMN) == "":
           value = datetime.now().strftime(self.DATE_FORMAT)
-      elif name == 'scene':
+
+      elif column == self.SCENE_COLUMN:
         pass
-      elif name == 'segmentation':
+
+      elif column == self.SEGMENTATION_COLUMN:
         segmentationNode = editorNode.GetSegmentationNode()
         if segmentationNode is not None:
-          value = segmentationNode.GetID()
-      elif name == 'segment':
-        value = editorNode.GetSelectedSegmentID()
-      elif name == 'terminology':
+          value = segmentationNode.GetName()
+
+      elif column == self.SEGMENT_COLUMN:
+        if segmentationNode is not None:
+          segmentation = segmentationNode.GetSegmentation()
+          if editorNode.GetSelectedSegmentID():
+            segment = segmentation.GetSegment(editorNode.GetSelectedSegmentID())
+            if segment:
+              value = segment.GetName()
+
+      elif column == self.TERMINOLOGY_COLUMN:
         if segmentationNode is not None:
           segmentation = segmentationNode.GetSegmentation()
           if editorNode.GetSelectedSegmentID():
@@ -284,10 +300,13 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
               tag = vtk.mutable("")
               segment.GetTag(segment.GetTerminologyEntryTagName(), tag)
               value = tag.get()
-      elif name == "operation":
+
+      elif column == self.OPERATION_COLUMN:
         value = editorNode.GetActiveEffectName()
-      elif name == 'duration':
+
+      elif column == self.DURATION_COLUMN:
         value = str((datetime.now() - self.getActiveStartTime(editorNode)).total_seconds())
+
       else:
         continue
       tableNode.SetCellText(activeRow, column, value)
