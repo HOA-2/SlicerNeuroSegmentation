@@ -112,44 +112,43 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   SEGMENTATIONTIMER_TABLE_REFERENCE_ROLE = "segmentationTimerTableRef"
 
   DATE_FORMAT = "%m/%d/%Y, %H:%M:%S"
-  COMPUTER_COLUMN = 0
-  USER_COLUMN = 1
-  STARTTIME_COLUMN = 2
-  SCENE_COLUMN = 3
-  SEGMENTATION_COLUMN = 4
-  SEGMENT_COLUMN = 5
-  TERMINOLOGY_COLUMN = 6
-  OPERATION_COLUMN = 7
-  DURATION_COLUMN = 8
-  LAST_COLUMN = 9
-  timerTableColumnNames = []
+  COMPUTER_COLUMN_NAME = 'computer'
+  USER_COLUMN_NAME = 'user'
+  STARTTIME_COLUMN_NAME = 'starttime'
+  SCENE_COLUMN_NAME = 'scene'
+  SEGMENTATION_COLUMN_NAME = 'segmentation'
+  SEGMENT_COLUMN_NAME = 'segment'
+  TERMINOLOGY_COLUMN_NAME = 'terminology'
+  OPERATION_COLUMN_NAME = 'operation'
+  DURATION_COLUMN_NAME = 'duration'
+  timerTableColumnNames = [
+    COMPUTER_COLUMN_NAME,
+    USER_COLUMN_NAME,
+    STARTTIME_COLUMN_NAME,
+    SCENE_COLUMN_NAME,
+    SEGMENTATION_COLUMN_NAME,
+    SEGMENT_COLUMN_NAME,
+    TERMINOLOGY_COLUMN_NAME,
+    OPERATION_COLUMN_NAME,
+    DURATION_COLUMN_NAME
+  ]
+
   timerTableColumnTypes = {
-    'computer': 'string',
-    'user': 'string',
-    'starttime': 'string',
-    'scene': 'string',
-    'segmentation': 'string',
-    'segment': 'string',
-    'terminology': 'string',
-    'operation': 'string',
-    'duration': 'double'
+    COMPUTER_COLUMN_NAME: 'string',
+    USER_COLUMN_NAME: 'string',
+    STARTTIME_COLUMN_NAME: 'string',
+    SCENE_COLUMN_NAME: 'string',
+    SEGMENTATION_COLUMN_NAME: 'string',
+    SEGMENT_COLUMN_NAME: 'string',
+    TERMINOLOGY_COLUMN_NAME: 'string',
+    OPERATION_COLUMN_NAME: 'string',
+    DURATION_COLUMN_NAME: 'double'
   }
   activeRows = {}
 
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
     VTKObservationMixin.__init__(self)
-
-    self.timerTableColumnNames = [None] * self.LAST_COLUMN
-    self.timerTableColumnNames[self.COMPUTER_COLUMN] = 'computer'
-    self.timerTableColumnNames[self.USER_COLUMN] = 'user'
-    self.timerTableColumnNames[self.STARTTIME_COLUMN] = 'starttime'
-    self.timerTableColumnNames[self.SCENE_COLUMN] = 'scene'
-    self.timerTableColumnNames[self.SEGMENTATION_COLUMN] = 'segmentation'
-    self.timerTableColumnNames[self.SEGMENT_COLUMN] = 'segment'
-    self.timerTableColumnNames[self.TERMINOLOGY_COLUMN] = 'terminology'
-    self.timerTableColumnNames[self.OPERATION_COLUMN] = 'operation'
-    self.timerTableColumnNames[self.DURATION_COLUMN] = 'duration'
 
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
@@ -187,8 +186,7 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     return parameterNode.GetNodeReference(self.SEGMENTATIONTIMER_TABLE_REFERENCE_ROLE)
 
   def setupTimerTableNode(self, tableNode):
-    for columnIndex in range(self.LAST_COLUMN):
-      name = self.timerTableColumnNames[columnIndex]
+    for name in self.timerTableColumnNames:
       type = self.timerTableColumnTypes[name]
       column = tableNode.AddColumn()
       column.SetName(name)
@@ -229,17 +227,19 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       return ""
 
     activeState = SegmentationState()
+    selectedSegmentID = ""
     if editorNode.GetSelectedSegmentID():
-      activeState.segmentID = editorNode.GetSelectedSegmentID()
+      selectedSegmentID = editorNode.GetSelectedSegmentID()
     segmentationNode = editorNode.GetSegmentationNode()
     if segmentationNode is not None:
-      activeState.segmentationNodeID = segmentationNode.GetID()
+      activeState.segmentationNodeName = segmentationNode.GetName()
       segmentation = segmentationNode.GetSegmentation()
-      segment = segmentation.GetSegment(activeState.segmentID)
+      segment = segmentation.GetSegment(selectedSegmentID)
       if segment is not None:
         tag = vtk.mutable("")
         segment.GetTag(segment.GetTerminologyEntryTagName(), tag)
         activeState.terminology = tag.get()
+        activeState.segmentName = segment.GetName()
     activeState.activeEffect = editorNode.GetActiveEffectName()
     return activeState.serialize()
 
@@ -248,8 +248,8 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       return ""
 
     activeState = SegmentationState()
-    activeState.segmentID = self.getActiveSegmentID(editorNode)
-    activeState.segmentationNodeID = self.getActiveSegmentationNodeID(editorNode)
+    activeState.segmentName = self.getActiveSegmentName(editorNode)
+    activeState.segmentationNodeName = self.getActiveSegmentationNodeName(editorNode)
     activeState.activeEffect = self.getActiveEditorEffect(editorNode)
     activeState.terminology = self.getActiveTerminology(editorNode)
     return activeState.serialize()
@@ -266,34 +266,34 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       return
 
     tableNode = self.getTimerTableNode()
-    for column in range(self.LAST_COLUMN):
-      name = self.timerTableColumnNames[column]
+    for column in range(tableNode.GetNumberOfColumns()):
+      name = tableNode.GetColumnName(column)
       if columns != [] and not name in columns:
         continue
 
       value = ""
 
-      if column == self.COMPUTER_COLUMN:
+      if name == self.COMPUTER_COLUMN_NAME:
         hostInfo = qt.QHostInfo()
         value = hostInfo.localHostName()
 
-      elif column == self.USER_COLUMN:
+      elif name == self.USER_COLUMN_NAME:
         userInfo = slicer.app.applicationLogic().GetUserInformation()
         value = userInfo.GetName()
 
-      elif column == self.STARTTIME_COLUMN:
-        if tableNode.GetCellText(activeRow, self.STARTTIME_COLUMN) == "":
+      elif name == self.STARTTIME_COLUMN_NAME:
+        if tableNode.GetCellText(activeRow, column) == "":
           value = datetime.now().strftime(self.DATE_FORMAT)
 
-      elif column == self.SCENE_COLUMN:
+      elif name == self.SCENE_COLUMN_NAME:
         pass
 
-      elif column == self.SEGMENTATION_COLUMN:
+      elif name == self.SEGMENTATION_COLUMN_NAME:
         segmentationNode = editorNode.GetSegmentationNode()
         if segmentationNode is not None:
           value = segmentationNode.GetName()
 
-      elif column == self.SEGMENT_COLUMN:
+      elif name == self.SEGMENT_COLUMN_NAME:
         if segmentationNode is not None:
           segmentation = segmentationNode.GetSegmentation()
           if editorNode.GetSelectedSegmentID():
@@ -301,7 +301,7 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
             if segment:
               value = segment.GetName()
 
-      elif column == self.TERMINOLOGY_COLUMN:
+      elif name == self.TERMINOLOGY_COLUMN_NAME:
         if segmentationNode is not None:
           segmentation = segmentationNode.GetSegmentation()
           if editorNode.GetSelectedSegmentID():
@@ -311,10 +311,10 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
               segment.GetTag(segment.GetTerminologyEntryTagName(), tag)
               value = tag.get()
 
-      elif column == self.OPERATION_COLUMN:
+      elif name == self.OPERATION_COLUMN_NAME:
         value = editorNode.GetActiveEffectName()
 
-      elif column == self.DURATION_COLUMN:
+      elif name == self.DURATION_COLUMN_NAME:
         value = str((datetime.now() - self.getActiveStartTime(editorNode)).total_seconds())
 
       else:
@@ -323,9 +323,9 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
   def setActiveRow(self, editorNode, row):
     if editorNode in self.activeRows:
-      if self.activeRows == row:
+      if self.activeRows[editorNode] == row:
         return
-    self.updateActiveRow(editorNode, ["duration"])
+    self.updateActiveRow(editorNode, [self.DURATION_COLUMN_NAME])
     self.activeRows[editorNode] = row
     self.updateActiveRow(editorNode)
 
@@ -336,7 +336,7 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     activeRow = self.activeRows[editorNode]
     if activeRow < 0:
       return datetime.now()
-    startText = tableNode.GetCellText(activeRow, self.STARTTIME_COLUMN)
+    startText = tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(self.STARTTIME_COLUMN_NAME))
     if startText == "":
       return datetime.now()
     return datetime.strptime(startText, self.DATE_FORMAT)
@@ -348,25 +348,25 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     activeRow = self.activeRows[editorNode]
     if activeRow < 0:
       return ""
-    return tableNode.GetCellText(activeRow, self.OPERATION_COLUMN)
+    return tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(self.OPERATION_COLUMN_NAME))
 
-  def getActiveSegmentationNodeID(self, editorNode):
+  def getActiveSegmentationNodeName(self, editorNode):
     tableNode = self.getTimerTableNode()
     if tableNode is None or editorNode is None:
       return ""
     activeRow = self.activeRows[editorNode]
     if activeRow < 0:
       return ""
-    return tableNode.GetCellText(activeRow, self.SEGMENTATION_COLUMN)
+    return tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(self.SEGMENTATION_COLUMN_NAME))
 
-  def getActiveSegmentID(self, editorNode):
+  def getActiveSegmentName(self, editorNode):
     tableNode = self.getTimerTableNode()
     if tableNode is None or editorNode is None:
       return ""
     activeRow = self.activeRows[editorNode]
     if activeRow < 0:
       return ""
-    return tableNode.GetCellText(activeRow, self.SEGMENT_COLUMN)
+    return tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(self.SEGMENT_COLUMN_NAME))
 
   def getActiveTerminology(self, editorNode):
     tableNode = self.getTimerTableNode()
@@ -375,7 +375,7 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     activeRow = self.activeRows[editorNode]
     if activeRow < 0:
       return ""
-    return tableNode.GetCellText(activeRow, self.TERMINOLOGY_COLUMN)
+    return tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(self.TERMINOLOGY_COLUMN_NAME))
 
   def setSegmentationTimerTableNode(self, node):
     parameterNode = self.getParameterNode()
@@ -388,24 +388,24 @@ class SegmentationTimerLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     parameterNode.SetNodeReferenceID(self.SEGMENTATIONTIMER_TABLE_REFERENCE_ROLE, node.GetID())
 
 class SegmentationState():
-  segmentationNodeID = ""
-  segmentID = ""
+  segmentationNodeName = ""
+  segmentName = ""
   activeEffect = ""
   terminology = ""
 
   def serialize(self):
-    if self.segmentationNodeID == None:
-      self.segmentationNodeID = ""
-    if self.segmentID == None:
-      self.segmentID = ""
+    if self.segmentationNodeName == None:
+      self.segmentationNodeName = ""
+    if self.segmentName == None:
+      self.segmentName = ""
     if self.activeEffect == None:
       self.activeEffect = ""
     if self.terminology == None:
       self.terminology = ""
 
     output = ""
-    output += self.segmentationNodeID + ","
-    output += self.segmentID + ","
+    output += self.segmentationNodeName + ","
+    output += self.segmentName + ","
     output += self.activeEffect + ","
     output += self.terminology + ","
     return output
