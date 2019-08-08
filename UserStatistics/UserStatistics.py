@@ -71,6 +71,7 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.ui = slicer.util.childWidgetVariables(uiWidget)
     self.ui.tableNodeSelector.addAttribute("vtkMRMLTableNode", "UserStatistics.TableNode", "")
+    self.ui.mergeTablesNodeSelector.addAttribute("vtkMRMLTableNode", "UserStatistics.TableNode", "")
     self.ui.userStatistics.setMRMLScene(slicer.mrmlScene)
 
     # Connections
@@ -173,7 +174,6 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
   USER_STATISTICS_TABLE_REFERENCE_ROLE = "userStatisticsTableRef"
-  ACTIVE_ROW_PARAMETER_NAME = "ActiveRow"
 
   DATE_FORMAT = "%Y%m%d-%H%M%S"
 
@@ -329,21 +329,75 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.importInProgress = False
 
   def getActiveRow(self):
-    parameterNode = self.getParameterNode()
-    if parameterNode is None:
+    tableNode = self.getUserStatisticsTableNode()
+    if tableNode is None:
       return -1
-    activeRow = parameterNode.GetParameter(self.ACTIVE_ROW_PARAMETER_NAME)
-    if not activeRow or activeRow == "":
-      return -1
-    return int(activeRow)
+    return tableNode.GetNumberOfRows() - 1
 
   def mergeStatisticsTableNodes(self, tableNodes):
     if len(tableNodes) < 2:
       return
-    original = tableNodes[0]
+
+    currentRowIndexes = {}
     for tableNode in tableNodes:
-      if tableNode is not original:
-        slicer.mrmlScene.RemoveNode(tableNode)
+      currentRowIndexes[tableNode] = 0
+
+    newTableNode = slicer.vtkMRMLTableNode()
+    newTableNode.SetName("UserStatisticsTableNode")
+    newTableNode.SetAttribute("UserStatistics.TableNode", "")
+    self.setupTimerTableNode(newTableNode)
+
+    completed = False
+    while not completed:
+      rows = {}
+
+      # Popupulate the list of rows starting at the top of each table and moving down
+      for tableNode in tableNodes:
+        currentIndex = currentRowIndexes[tableNode]
+        if currentIndex < tableNode.GetNumberOfRows():
+          row = vtk.vtkVariantArray()
+          tableNode.GetTable().GetRow(currentIndex, row)
+          rows[tableNode] = row
+
+      # Done! There are no more rows left in any of the tables
+      if rows == {}:
+        completed = True
+      else:
+        # Find the "minimum" row by comparing the string format contents of all rows
+        nodeForRow = None
+        rowToAdd = None
+        rowToAddString = None
+        for tableNode in rows.keys():
+          row = rows[tableNode]
+          rowString = self.variantArrayToString(row)
+
+          # This row is the new "minimum" row to be added to the table next
+          if rowToAdd is None or rowString < rowToAddString:
+            nodeForRow = tableNode
+            rowToAdd = row
+            rowToAddString = rowString
+
+          # This row is the same as the current "minimum". It is a duplicate so discard it
+          elif rowString == rowToAddString:
+            currentRowIndexes[tableNode] += 1
+
+        # Add the "minimum" row and increment the index of the corresponding table node
+        currentRowIndexes[nodeForRow] += 1
+        newTableNode.GetTable().InsertNextRow(rowToAdd)
+        newTableNode.GetTable().Modified()
+
+    slicer.mrmlScene.AddNode(newTableNode)
+    for tableNode in tableNodes:
+      slicer.mrmlScene.RemoveNode(tableNode)
+
+  def variantArrayToString(self, array):
+    if array is None:
+      return ""
+    output = ""
+    for i in range(array.GetNumberOfValues()):
+      variant = array.GetValue(i)
+      output += variant.ToString()
+    return output
 
   def getUserStatisticsTableNode(self):
     parameterNode = self.getParameterNode()
@@ -378,9 +432,6 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       tableNode = parameterNode.GetNodeReference(self.USER_STATISTICS_TABLE_REFERENCE_ROLE)
       if node is tableNode:
         return
-
-      if tableNode:
-        self.setActiveRow(-1)
 
       nodeID = ""
       if node:
@@ -427,8 +478,9 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     serializedScene = self.serializeFromScene()
     serializedTable = self.serializeFromTable()
     if self.getActiveRow() == -1 or serializedScene != serializedTable:
+      self.updateActiveRow([self.DURATION_COLUMN_NAME])
       row = tableNode.AddEmptyRow()
-      self.setActiveRow(row)
+      self.updateActiveRow()
 
   def serializeFromScene(self):
     output = ""
@@ -443,15 +495,6 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       value = self.getActiveTableText(name)
       output += str(value) + ","
     return output
-
-  def setActiveRow(self, row):
-    parameterNode = self.getParameterNode()
-    if parameterNode is None:
-      return
-
-    self.updateActiveRow([self.DURATION_COLUMN_NAME])
-    parameterNode.SetParameter(self.ACTIVE_ROW_PARAMETER_NAME, str(row))
-    self.updateActiveRow()
 
   def updateActiveRow(self, columnsToUpdate=[], columnsToIgnore=[]):
     tableNode = self.getUserStatisticsTableNode()
