@@ -96,6 +96,14 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.importInProgress = False
 
+    self.idleDetectionEventFilter = IdleDetectionEventFilter()
+    self.idleDetectionEventFilter.setInterval(self.logic.IDLE_TIMEOUT_SECONDS * 1000)
+    slicer.app.installEventFilter(self.idleDetectionEventFilter)
+    self.idleDetectionEventFilter.idleStarted.connect(self.onIdleStarted)
+    self.idleDetectionEventFilter.idleEnded.connect(self.onIdleEnded)
+    self.idleDetectionEventFilter.start()
+    self.idleDetectionEventFilter.deleteLater()
+
     # This will use createParameterNode with the provided default options
     self.setParameterNode(self.logic.getParameterNode())
 
@@ -120,6 +128,12 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.importInProgress = False
     self.logic.onSceneEndImport()
     self.updateGuiFromMRML()
+
+  def onIdleStarted(self):
+    self.logic.onIdleStarted()
+
+  def onIdleEnded(self):
+    self.logic.onIdleEnded()
 
   def cleanup(self):
     pass
@@ -206,7 +220,11 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
   ACTIVITY_ACTIVE = "active"
   ACTIVITY_WAIT = "wait"
-  ACTIVITY_IDLE = "wait"
+  ACTIVITY_IDLE = "idle"
+
+  WAIT_TIMEOUT_SECONDS = 1.0
+  WAIT_TIMEOUT_THRESHOLD_SECONDS = 1.1 * WAIT_TIMEOUT_SECONDS
+  IDLE_TIMEOUT_SECONDS = 30.0
 
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
@@ -229,11 +247,9 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
     slicer.util.moduleSelector().moduleSelected.connect(self.updateTable)
 
-    self.waitDectectionIntervalMilliseconds = 1000
-    self.waitDetectionThresholdSeconds = 1.1 * (self.waitDectectionIntervalMilliseconds / 1000)
     self.waitDetectionLastTimeout = vtk.vtkTimerLog.GetUniversalTime()
     self.waitDetectionTimer = qt.QTimer()
-    self.waitDetectionTimer.setInterval(self.waitDectectionIntervalMilliseconds)
+    self.waitDetectionTimer.setInterval(self.WAIT_TIMEOUT_SECONDS * 1000)
     self.waitDetectionTimer.setSingleShot(False)
     self.waitDetectionTimer.timeout.connect(self.onWaitDetectionTimer)
     self.waitDetectionTimer.start()
@@ -248,13 +264,12 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     oldTime = self.waitDetectionLastTimeout
     self.waitDetectionLastTimeout = vtk.vtkTimerLog.GetUniversalTime()
     waitLength = self.waitDetectionLastTimeout - oldTime
-    if waitLength > self.waitDetectionThresholdSeconds:
+    if waitLength > self.WAIT_TIMEOUT_THRESHOLD_SECONDS:
       self.onWaitDetected(waitLength)
 
   def onWaitDetected(self, length):
     if self.importInProgress:
       return
-
     tableNode = self.getUserStatisticsTableNode()
     if tableNode is None:
       return
@@ -278,6 +293,30 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       tableNode.SetCellText(waitRow, startTimeColumnIndex, oldStartTime.strftime(self.DATE_FORMAT))
     # Update duration in the new active row
     self.setDurationForRow(waitRow, length)
+
+  def onIdleStarted(self):
+    if self.importInProgress:
+      return
+    tableNode = self.getUserStatisticsTableNode()
+    if tableNode is None:
+      return
+
+    oldRow = self.getActiveRow()
+    self.userActivity = self.ACTIVITY_IDLE
+    self.updateTable()
+    idleRow = self.getActiveRow()
+    if oldRow > -1:
+      oldRowDuration = self.getDurationForRow(oldRow) - self.IDLE_TIMEOUT_SECONDS
+      self.setDurationForRow(oldRow, oldRowDuration)
+      startTimeColumnIndex = tableNode.GetColumnIndex(self.START_TIME_COLUMN_NAME)
+      oldStartTimeText = tableNode.GetCellText(oldRow, startTimeColumnIndex)
+      oldStartTime = datetime.strptime(oldStartTimeText, self.DATE_FORMAT)
+      oldStartTime += timedelta(seconds=oldRowDuration)
+      tableNode.SetCellText(idleRow, startTimeColumnIndex, oldStartTime.strftime(self.DATE_FORMAT))
+
+  def onIdleEnded(self):
+    self.userActivity = self.ACTIVITY_ACTIVE
+    self.updateTable()
 
   def onSceneEndClose(self, caller=None, event=None):
     self.getUserStatisticsTableNode()
@@ -574,3 +613,43 @@ class UserStatisticsTest(ScriptedLoadableModuleTest):
 
     self.delayDisplay("Starting the test")
     self.delayDisplay('Test passed!')
+
+class IdleDetectionEventFilter(qt.QObject):
+
+  idleTimeoutSeconds = 30
+  idleStarted = qt.Signal()
+  idleEnded = qt.Signal()
+
+  events = [
+    qt.QEvent.MouseMove,
+    qt.QEvent.KeyPress,
+  ]
+
+  def __init__(self):
+    qt.QObject.__init__(self)
+
+    self.idleTimer = qt.QTimer()
+    self.idleTimer.setSingleShot(True)
+    self.idleTimer.timeout.connect(self.onIdleStarted)
+    self.idling = False
+
+  def setInterval(self, interval):
+    self.idleTimer.setInterval(interval)
+
+  def start(self):
+    self.idleTimer.start()
+
+  def eventFilter(self, object, event):
+    if event.type() in self.events:
+      self.idleTimer.start()
+      if self.idling:
+        self.idling = False
+        self.onIdleEnded()
+    return False
+
+  def onIdleStarted(self):
+    self.idleStarted.emit()
+    self.idling = True
+
+  def onIdleEnded(self):
+    self.idleEnded.emit()
