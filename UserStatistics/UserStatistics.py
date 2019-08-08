@@ -3,8 +3,8 @@ import unittest
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
-from slicer.util import VTKObservationMixin
-from datetime import datetime
+from slicer.util import VTKObservationMixin, NodeModify
+from datetime import datetime, timedelta
 
 #
 # UserStatistics
@@ -64,8 +64,6 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
     self.logic = UserStatisticsLogic()
-    # This will use createParameterNode with the provided default options
-    self.setParameterNode(self.logic.getParameterNode())
 
     # Load widget from .ui file (created by Qt Designer)
     uiWidget = slicer.util.loadUI(self.resourcePath('UI/UserStatistics.ui'))
@@ -80,6 +78,48 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.tableNodeSelector.currentNodeChanged.connect(self.onCurrentNodeChanged)
     self.ui.mergeTablesButton.clicked.connect(self.onMergeStatisticTablesClicked)
 
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
+
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartImportEvent, self.onSceneStartImport)
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onSceneEndImport)
+
+    self.sceneClosedTimer = qt.QTimer()
+    self.sceneClosedTimer.setInterval(1)
+    self.sceneClosedTimer.setSingleShot(True)
+    self.sceneClosedTimer.timeout.connect(self.onSceneClosed)
+
+    self.sceneImportTimer = qt.QTimer()
+    self.sceneImportTimer.setInterval(1)
+    self.sceneImportTimer.setSingleShot(True)
+    self.sceneImportTimer.timeout.connect(self.onSceneImport)
+
+    self.importInProgress = False
+
+    # This will use createParameterNode with the provided default options
+    self.setParameterNode(self.logic.getParameterNode())
+
+  def onSceneStartClose(self, caller, event):
+    self.setParameterNode(None)
+
+  def onSceneEndClose(self, caller=None, event=None):
+    self.sceneClosedTimer.start()
+
+  def onSceneClosed(self, caller=None, event=None):
+    self.logic.onSceneEndClose()
+    self.setParameterNode(self.logic.getParameterNode())
+
+  def onSceneStartImport(self, caller, event):
+    self.importInProgress = True
+    self.logic.onSceneStartImport()
+
+  def onSceneEndImport(self, caller, event):
+    self.sceneImportTimer.start()
+
+  def onSceneImport(self, caller=None, event=None):
+    self.importInProgress = False
+    self.logic.onSceneEndImport()
+    self.updateGuiFromMRML()
 
   def cleanup(self):
     pass
@@ -88,6 +128,8 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.logic.setupTimerTableNode(node)
 
   def onCurrentNodeChanged(self, node):
+    if self.importInProgress:
+      return
     currentNode = self.ui.tableNodeSelector.currentNode()
     self.logic.setUserStatisticsTableNode(currentNode)
 
@@ -106,82 +148,155 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     if inputParameterNode is not None:
       self.addObserver(inputParameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGuiFromMRML)
     self._parameterNode = inputParameterNode
+    self.updateGuiFromMRML()
 
   def updateGuiFromMRML(self, caller=None, event=None, callData=None):
-    currentNode = self._parameterNode.GetNodeReference(self.logic.USER_STATISTICS_TABLE_REFERENCE_ROLE)
-    self.ui.tableNodeSelector.setCurrentNode(currentNode)
+    currentNode = self.logic.getUserStatisticsTableNode()
+    selectedNode = self.ui.tableNodeSelector.currentNode()
+    if not currentNode is selectedNode:
+      self.ui.tableNodeSelector.setCurrentNode(currentNode)
 
 class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
   USER_STATISTICS_TABLE_REFERENCE_ROLE = "userStatisticsTableRef"
+  ACTIVE_ROW_PARAMETER_NAME = "ActiveRow"
 
   DATE_FORMAT = "%Y%m%d-%H%M%S"
 
   COMPUTER_COLUMN_NAME = 'computer'
-  USER_COLUMN_NAME = 'userName'
-  MASTER_VOLUME_COLUMN_NAME = 'masterVolumeName'
-  STARTTIME_COLUMN_NAME = 'startTime'
+  USER_NAME_COLUMN_NAME = 'userName'
+  MASTER_VOLUME_NAME_COLUMN_NAME = 'masterVolumeName'
+  START_TIME_COLUMN_NAME = 'startTime'
   SCENE_COLUMN_NAME = 'scene'
-  SEGMENTATION_COLUMN_NAME = 'segmentationName'
-  SEGMENT_COLUMN_NAME = 'segmentName'
+  SEGMENTATION_NAME_COLUMN_NAME = 'segmentationName'
+  SEGMENT_NAME_COLUMN_NAME = 'segmentName'
   TERMINOLOGY_COLUMN_NAME = 'segmentTerminology'
-  MODULENAME_COLUMN_NAME = 'moduleName'
+  MODULE_NAME_COLUMN_NAME = 'moduleName'
   OPERATION_COLUMN_NAME = 'operation'
-  USERACTIVITY_COLUMN_NAMEs = 'userActivity'
+  USER_ACTIVITY_COLUMN_NAME = 'userActivity'
   DURATION_COLUMN_NAME = 'durationSec'
+
   timerTableColumnNames = [
-    STARTTIME_COLUMN_NAME,
+    START_TIME_COLUMN_NAME,
     OPERATION_COLUMN_NAME,
     DURATION_COLUMN_NAME,
-    SEGMENT_COLUMN_NAME,
-    MASTER_VOLUME_COLUMN_NAME,
-    SEGMENTATION_COLUMN_NAME,
+    SEGMENT_NAME_COLUMN_NAME,
+    MASTER_VOLUME_NAME_COLUMN_NAME,
+    SEGMENTATION_NAME_COLUMN_NAME,
     TERMINOLOGY_COLUMN_NAME,
-    MODULENAME_COLUMN_NAME,
+    MODULE_NAME_COLUMN_NAME,
+    USER_ACTIVITY_COLUMN_NAME,
     COMPUTER_COLUMN_NAME,
-    USER_COLUMN_NAME,
+    USER_NAME_COLUMN_NAME,
     SCENE_COLUMN_NAME,
   ]
 
-  timerTableColumnTypes = {
-    COMPUTER_COLUMN_NAME: 'string',
-    USER_COLUMN_NAME: 'string',
-    MASTER_VOLUME_COLUMN_NAME : 'string',
-    STARTTIME_COLUMN_NAME: 'string',
-    SCENE_COLUMN_NAME: 'string',
-    SEGMENTATION_COLUMN_NAME: 'string',
-    SEGMENT_COLUMN_NAME: 'string',
-    TERMINOLOGY_COLUMN_NAME: 'string',
-    OPERATION_COLUMN_NAME: 'string',
-    DURATION_COLUMN_NAME: 'double',
-    MODULENAME_COLUMN_NAME: 'string',
-  }
-  activeRows = {}
+  serializedParameters = [
+    OPERATION_COLUMN_NAME,
+    SEGMENT_NAME_COLUMN_NAME,
+    MASTER_VOLUME_NAME_COLUMN_NAME,
+    SEGMENTATION_NAME_COLUMN_NAME,
+    TERMINOLOGY_COLUMN_NAME,
+    MODULE_NAME_COLUMN_NAME,
+    USER_ACTIVITY_COLUMN_NAME,
+    COMPUTER_COLUMN_NAME,
+    USER_NAME_COLUMN_NAME,
+    SCENE_COLUMN_NAME,
+  ]
+
+  ACTIVITY_ACTIVE = "active"
+  ACTIVITY_WAIT = "wait"
+  ACTIVITY_IDLE = "wait"
 
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
     VTKObservationMixin.__init__(self)
 
-    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
-    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onSceneEndImport)
+    self.timerTableColumnTypes = {}
+    for name in self.timerTableColumnNames:
+      if name == self.DURATION_COLUMN_NAME:
+        self.timerTableColumnTypes[name] = 'double'
+      else:
+        self.timerTableColumnTypes[name] = 'string'
+
+    self.editorNode = None
+    self.userActivity = self.ACTIVITY_ACTIVE
+    self.importInProgress = False
+
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.NodeAddedEvent, self.onNodeAdded)
 
-    self.selectUserStatisticsTableNode()
     self.addSegmentEditorObservers()
 
-    self.sceneClosedTimer = qt.QTimer()
-    self.sceneClosedTimer.setInterval(100)
-    self.sceneClosedTimer.setSingleShot(True)
-    self.sceneClosedTimer.timeout.connect(self.selectUserStatisticsTableNode)
+    slicer.util.moduleSelector().moduleSelected.connect(self.updateTable)
 
-    #slicer.util.moduleSelector().selectModule('ModelMaker')
-    slicer.util.moduleSelector().moduleSelected.connect(self.updateAllActiveRows)
+    self.waitDectectionIntervalMilliseconds = 1000
+    self.waitDetectionThresholdSeconds = 1.1 * (self.waitDectectionIntervalMilliseconds / 1000)
+    self.waitDetectionLastTimeout = vtk.vtkTimerLog.GetUniversalTime()
+    self.waitDetectionTimer = qt.QTimer()
+    self.waitDetectionTimer.setInterval(self.waitDectectionIntervalMilliseconds)
+    self.waitDetectionTimer.setSingleShot(False)
+    self.waitDetectionTimer.timeout.connect(self.onWaitDetectionTimer)
+    self.waitDetectionTimer.start()
 
-  def onSceneEndClose(self, caller, event):
-    self.sceneClosedTimer.start()
+    self.getUserStatisticsTableNode()
 
-  def onSceneEndImport(self, caller, event):
-    self.sceneClosedTimer.start()
+  def onSceneClosed(self):
+    self.getUserStatisticsTableNode()
+    self.updateTable()
+
+  def onWaitDetectionTimer(self):
+    oldTime = self.waitDetectionLastTimeout
+    self.waitDetectionLastTimeout = vtk.vtkTimerLog.GetUniversalTime()
+    waitLength = self.waitDetectionLastTimeout - oldTime
+    if waitLength > self.waitDetectionThresholdSeconds:
+      self.onWaitDetected(waitLength)
+
+  def onWaitDetected(self, length):
+    if self.importInProgress:
+      return
+
+    tableNode = self.getUserStatisticsTableNode()
+    if tableNode is None:
+      return
+
+    oldRow = self.getActiveRow()
+    self.userActivity = self.ACTIVITY_WAIT
+    self.updateTable()
+    waitRow = self.getActiveRow()
+    self.userActivity = self.ACTIVITY_ACTIVE
+    self.updateTable()
+
+    if oldRow > -1:
+      # Update duration in old active row
+      oldRowDuration = self.getDurationForRow(oldRow) - length
+      self.setDurationForRow(oldRow, oldRowDuration)
+      # Update start time in the new wait row
+      startTimeColumnIndex = tableNode.GetColumnIndex(self.START_TIME_COLUMN_NAME)
+      oldStartTimeText = tableNode.GetCellText(oldRow, startTimeColumnIndex)
+      oldStartTime = datetime.strptime(oldStartTimeText, self.DATE_FORMAT)
+      oldStartTime += timedelta(seconds=oldRowDuration)
+      tableNode.SetCellText(waitRow, startTimeColumnIndex, oldStartTime.strftime(self.DATE_FORMAT))
+    # Update duration in the new active row
+    self.setDurationForRow(waitRow, length)
+
+  def onSceneEndClose(self, caller=None, event=None):
+    self.getUserStatisticsTableNode()
+    self.updateTable()
+
+  def onSceneStartImport(self, caller=None, event=None):
+    self.importInProgress = True
+
+  def onSceneEndImport(self, caller=None, event=None):
+    self.importInProgress = False
+
+  def getActiveRow(self):
+    parameterNode = self.getParameterNode()
+    if parameterNode is None:
+      return -1
+    activeRow = parameterNode.GetParameter(self.ACTIVE_ROW_PARAMETER_NAME)
+    if not activeRow or activeRow == "":
+      return -1
+    return int(activeRow)
 
   def mergeStatisticsTableNodes(self, tableNodes):
     if len(tableNodes) < 2:
@@ -191,23 +306,47 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       if tableNode is not original:
         slicer.mrmlScene.RemoveNode(tableNode)
 
-  def selectUserStatisticsTableNode(self):
-    tableNode = self.getTimerTableNode()
-    if not tableNode is None:
-      return
-
-    tableNode = slicer.vtkMRMLTableNode()
-    tableNode.SetName("UserStatisticsTableNode")
-    tableNode.SetAttribute("UserStatistics.TableNode", "")
-    slicer.mrmlScene.AddNode(tableNode)
-    self.setupTimerTableNode(tableNode)
-    self.setUserStatisticsTableNode(tableNode)
-
-  def getTimerTableNode(self):
+  def getUserStatisticsTableNode(self):
     parameterNode = self.getParameterNode()
     if parameterNode is None:
       return
-    return parameterNode.GetNodeReference(self.USER_STATISTICS_TABLE_REFERENCE_ROLE)
+
+    tableNode = parameterNode.GetNodeReference(self.USER_STATISTICS_TABLE_REFERENCE_ROLE)
+    if not tableNode is None:
+      return tableNode
+
+    tableNodes = slicer.util.getNodesByClass("vtkMRMLTableNode")
+    for node in tableNodes:
+      if node.GetAttribute("UserStatistics.TableNode"):
+        tableNode = node
+        break
+
+    if tableNode is None:
+      tableNode = slicer.vtkMRMLTableNode()
+      tableNode.SetName("UserStatisticsTableNode")
+      tableNode.SetAttribute("UserStatistics.TableNode", "")
+      slicer.mrmlScene.AddNode(tableNode)
+      self.setupTimerTableNode(tableNode)
+    self.setUserStatisticsTableNode(tableNode)
+    return tableNode
+
+  def setUserStatisticsTableNode(self, node):
+    parameterNode = self.getParameterNode()
+    if parameterNode is None:
+      return
+
+    with NodeModify(parameterNode):
+      tableNode = parameterNode.GetNodeReference(self.USER_STATISTICS_TABLE_REFERENCE_ROLE)
+      if node is tableNode:
+        return
+
+      if tableNode:
+        self.setActiveRow(-1)
+
+      nodeID = ""
+      if node:
+        nodeID = node.GetID()
+      parameterNode.SetNodeReferenceID(self.USER_STATISTICS_TABLE_REFERENCE_ROLE, nodeID)
 
   def setupTimerTableNode(self, tableNode):
     if tableNode is None:
@@ -237,176 +376,171 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.onEditorNodeModified(editorNode)
 
   def onEditorNodeModified(self, editorNode, event=None, callData=None):
-    tableNode = self.getTimerTableNode()
+    self.editorNode = editorNode
+    self.updateTable()
+
+  def updateTable(self):
+    tableNode = self.getUserStatisticsTableNode()
     if tableNode is None:
       return
-    if not editorNode in self.activeRows:
-      self.setActiveRow(editorNode, -1)
 
-    serializedScene = self.serializeFromScene(editorNode)
-    serializedTable = self.serializeFromTable(editorNode)
-    if self.activeRows[editorNode] == -1 or serializedScene != serializedTable:
+    serializedScene = self.serializeFromScene()
+    serializedTable = self.serializeFromTable()
+    if self.getActiveRow() == -1 or serializedScene != serializedTable:
       row = tableNode.AddEmptyRow()
-      self.setActiveRow(editorNode, row)
+      self.setActiveRow(row)
 
-  def serializeFromScene(self, editorNode):
-    state = UserStatisticsState(self, editorNode)
-    state.populateFromScene()
-    return state.serialize()
+  def serializeFromScene(self):
+    output = ""
+    for name in self.serializedParameters:
+      value = self.getCurrentSceneStatus(name)
+      output += str(value) + ","
+    return output
 
-  def serializeFromTable(self, editorNode):
-    state = UserStatisticsState(self, editorNode)
-    state.populateFromTable()
-    return state.serialize()
+  def serializeFromTable(self):
+    output = ""
+    for name in self.serializedParameters:
+      value = self.getActiveTableText(name)
+      output += str(value) + ","
+    return output
 
-  def updateAllActiveRows(self, caller=None, event=None, callData=None):
-    for editorNode in self.activeRows.keys():
-      self.onEditorNodeModified(editorNode)
-
-  def updateActiveRow(self, editorNode, columns=[]):
-    if not editorNode in self.activeRows:
-      return
-    activeRow = self.activeRows[editorNode]
-    if activeRow == -1:
+  def setActiveRow(self, row):
+    parameterNode = self.getParameterNode()
+    if parameterNode is None:
       return
 
-    tableNode = self.getTimerTableNode()
-    if tableNode is None:
+    self.updateActiveRow([self.DURATION_COLUMN_NAME])
+    parameterNode.SetParameter(self.ACTIVE_ROW_PARAMETER_NAME, str(row))
+    self.updateActiveRow()
+
+  def updateActiveRow(self, columnsToUpdate=[], columnsToIgnore=[]):
+    tableNode = self.getUserStatisticsTableNode()
+    if self.getActiveRow() == -1 or tableNode is None:
       return
 
     for column in range(tableNode.GetNumberOfColumns()):
       name = tableNode.GetColumnName(column)
-      if columns != [] and not name in columns:
+      if columnsToUpdate != [] and not name in columnsToUpdate:
         continue
-      tableNode.SetCellText(activeRow, column, self.getCurrentSceneStatus(editorNode, name))
+      if name in columnsToIgnore:
+        continue
+      tableNode.SetCellText(self.getActiveRow(), column, self.getCurrentSceneStatus(name))
 
-  def setActiveRow(self, editorNode, row):
-    if editorNode in self.activeRows:
-      if self.activeRows[editorNode] == row:
-        return
-    self.updateActiveRow(editorNode, [self.DURATION_COLUMN_NAME])
-    self.activeRows[editorNode] = row
-    self.updateActiveRow(editorNode)
+  def getDurationForRow(self, row):
+    tableNode = self.getUserStatisticsTableNode()
+    if tableNode is None:
+      return 0.0
+    return float(tableNode.GetCellText(row, tableNode.GetColumnIndex(self.DURATION_COLUMN_NAME)))
 
-  def getCurrentTableText(self, editorNode, name):
-    tableNode = self.getTimerTableNode()
-    if tableNode is None or editorNode is None:
-      return ""
-    activeRow = self.activeRows[editorNode]
-    if activeRow < 0:
-      return ""
-    return tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(name))
+  def setDurationForRow(self, row, duration):
+    tableNode = self.getUserStatisticsTableNode()
+    if tableNode is None:
+      return
+    tableNode.SetCellText(row, tableNode.GetColumnIndex(self.DURATION_COLUMN_NAME), str(duration))
 
-  def getCurrentSceneStatus(self, editorNode, name):
-    value = ""
-    segmentationNode = editorNode.GetSegmentationNode()
-    tableNode = self.getTimerTableNode()
+  def getActiveTableText(self, name):
+    tableNode = self.getUserStatisticsTableNode()
     if tableNode is None:
       return ""
-    activeRow = self.activeRows[editorNode]
-    if activeRow == -1:
+    if self.getActiveRow() < 0:
       return ""
+    return tableNode.GetCellText(self.getActiveRow(), tableNode.GetColumnIndex(name))
+
+  def getCurrentSceneStatus(self, name):
+
+    tableNode = self.getUserStatisticsTableNode()
+    if tableNode is None:
+      return ""
+    if self.getActiveRow() == -1:
+      return ""
+
+    value = ""
 
     if name == self.COMPUTER_COLUMN_NAME:
       hostInfo = qt.QHostInfo()
       value = hostInfo.localHostName()
 
-    elif name == self.USER_COLUMN_NAME:
+    elif name == self.USER_NAME_COLUMN_NAME:
       userInfo = slicer.app.applicationLogic().GetUserInformation()
       value = userInfo.GetName()
 
-    elif name == self.MASTER_VOLUME_COLUMN_NAME:
-      masterVolume = editorNode.GetMasterVolumeNode()
+    elif name == self.MASTER_VOLUME_NAME_COLUMN_NAME:
+      masterVolume = self.getMasterVolumeNode()
       if masterVolume:
         value = masterVolume.GetName()
 
-    elif name == self.STARTTIME_COLUMN_NAME:
-      value = tableNode.GetCellText(activeRow, tableNode.GetColumnIndex(name))
+    elif name == self.START_TIME_COLUMN_NAME:
+      value = tableNode.GetCellText(self.getActiveRow(), tableNode.GetColumnIndex(name))
       if value == "":
         value = datetime.now().strftime(self.DATE_FORMAT)
 
     elif name == self.SCENE_COLUMN_NAME:
       value = slicer.mrmlScene.GetURL()
 
-    elif name == self.SEGMENTATION_COLUMN_NAME:
+    elif name == self.SEGMENTATION_NAME_COLUMN_NAME:
+      segmentationNode = self.getSegmentationNode()
       if segmentationNode is not None:
         value = segmentationNode.GetName()
 
-    elif name == self.SEGMENT_COLUMN_NAME:
-      if segmentationNode is not None:
-        segmentation = segmentationNode.GetSegmentation()
-        if editorNode.GetSelectedSegmentID():
-          segment = segmentation.GetSegment(editorNode.GetSelectedSegmentID())
-          if segment:
-            value = segment.GetName()
+    elif name == self.SEGMENT_NAME_COLUMN_NAME:
+      segment = self.getSelectedSegment()
+      if segment:
+        value = segment.GetName()
 
     elif name == self.TERMINOLOGY_COLUMN_NAME:
-      if segmentationNode is not None:
-        segmentation = segmentationNode.GetSegmentation()
-        if editorNode.GetSelectedSegmentID():
-          segment = segmentation.GetSegment(editorNode.GetSelectedSegmentID())
-          if segment is not None:
-            tag = vtk.mutable("")
-            segment.GetTag(segment.GetTerminologyEntryTagName(), tag)
-            value = tag.get()
+      segment = self.getSelectedSegment()
+      if segment is not None:
+        tag = vtk.mutable("")
+        segment.GetTag(segment.GetTerminologyEntryTagName(), tag)
+        value = tag.get()
 
     elif name == self.OPERATION_COLUMN_NAME:
-      value = editorNode.GetActiveEffectName()
+      if self.editorNode:
+        value = self.editorNode.GetActiveEffectName()
 
     elif name == self.DURATION_COLUMN_NAME:
-      startTimeText = self.getCurrentTableText(editorNode, self.STARTTIME_COLUMN_NAME)
+      startTimeText = self.getActiveTableText(self.START_TIME_COLUMN_NAME)
       if startTimeText == "":
         startTime = datetime.now()
       else:
         startTime = datetime.strptime(startTimeText, self.DATE_FORMAT)
       value = str((datetime.now() - startTime).total_seconds())
 
-    elif name == self.MODULENAME_COLUMN_NAME:
+    elif name == self.MODULE_NAME_COLUMN_NAME:
       value = slicer.util.moduleSelector().selectedModule
+
+    elif name == self.USER_ACTIVITY_COLUMN_NAME:
+      value = self.userActivity
 
     return value
 
-  def setUserStatisticsTableNode(self, node):
-    parameterNode = self.getParameterNode()
-    if parameterNode is None:
-      return
-    if node is self.getTimerTableNode():
-      return
-    for editorNode in self.activeRows.keys():
-      self.setActiveRow(editorNode, -1)
-    nodeID = ""
-    if node:
-      nodeID = node.GetID()
-    parameterNode.SetNodeReferenceID(self.USER_STATISTICS_TABLE_REFERENCE_ROLE, nodeID)
+  def getSegmentationNode(self):
+    if self.editorNode is None:
+      return None
+    return self.editorNode.GetSegmentationNode()
 
-class UserStatisticsState():
+  def getMasterVolumeNode(self):
+    if self.editorNode is None:
+      return None
+    return self.editorNode.GetMasterVolumeNode()
 
-  def __init__(self, logic, editorNode):
-    self.logic = logic
-    self.editorNode = editorNode
+  def getSelectedSegment(self):
+    if self.editorNode is None:
+      return None
 
-  parameters = {}
-  ignoredParameters = [
-    UserStatisticsLogic.DURATION_COLUMN_NAME,
-    UserStatisticsLogic.STARTTIME_COLUMN_NAME,
-  ]
+    segmentationNode = self.getSegmentationNode()
+    if segmentationNode is None:
+      return None
 
-  def populateFromScene(self):
-    for name in UserStatisticsLogic.timerTableColumnNames:
-      self.parameters[name] = self.logic.getCurrentSceneStatus(self.editorNode, name)
+    segmentation = segmentationNode.GetSegmentation()
+    if segmentation is None:
+      return None
 
-  def populateFromTable(self):
-    for name in UserStatisticsLogic.timerTableColumnNames:
-      self.parameters[name] = self.logic.getCurrentTableText(self.editorNode, name)
+    segmentID = self.editorNode.GetSelectedSegmentID()
+    if segmentID is None or segmentID == "":
+      return None
 
-  def serialize(self):
-    output = ""
-    for name in self.parameters.keys():
-      if name in self.ignoredParameters:
-        continue
-      value = self.parameters[name]
-      output += str(value) + ","
-    return output
+    return segmentation.GetSegment(segmentID)
 
 class UserStatisticsTest(ScriptedLoadableModuleTest):
   """
