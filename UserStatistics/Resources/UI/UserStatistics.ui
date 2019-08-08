@@ -41,7 +41,11 @@
     </layout>
    </item>
    <item>
-    <widget class="qMRMLTableView" name="statisticsTable"/>
+    <widget class="qMRMLTableView" name="statisticsTable">
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="ctkCollapsibleButton" name="CollapsibleButton">
