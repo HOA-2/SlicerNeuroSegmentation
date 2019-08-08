@@ -399,6 +399,7 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       tableNode.SetColumnProperty(name, "type", type)
     tableNode.SetUseFirstColumnAsRowHeader(False)
     tableNode.SetUseColumnNameAsColumnHeader(True)
+    tableNode.SetLocked(True)
 
   def addSegmentEditorObservers(self):
     editorNodes = slicer.util.getNodesByClass("vtkMRMLSegmentEditorNode")
