@@ -254,7 +254,7 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
   MINIMUM_TIME_BETWEEN_STATES_SECONDS = 20.0
   WAIT_TIMEOUT_SECONDS = 1.0
-  WAIT_TIMEOUT_THRESHOLD_SECONDS = 1.1 * WAIT_TIMEOUT_SECONDS
+  WAIT_TIMEOUT_THRESHOLD_SECONDS = 1.5 * WAIT_TIMEOUT_SECONDS
   IDLE_TIMEOUT_SECONDS = 30.0
 
   def __init__(self, parent=None):
@@ -452,32 +452,27 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
     completed = False
     while not completed:
-      rows = {}
+      remainingTableNodes = []
 
       # Popupulate the list of rows starting at the top of each table and moving down
       for tableNode in tableNodes:
         currentIndex = currentRowIndexes[tableNode]
         if currentIndex < tableNode.GetNumberOfRows():
-          row = vtk.vtkVariantArray()
-          tableNode.GetTable().GetRow(currentIndex, row)
-          rows[tableNode] = row
+          remainingTableNodes.append(tableNode)
 
       # Done! There are no more rows left in any of the tables
-      if rows == {}:
+      if remainingTableNodes == []:
         completed = True
       else:
         # Find the "minimum" row by comparing the string format contents of all rows
-        nodeForRow = None
-        rowToAdd = None
+        oldTableNode = None
         rowToAddString = None
-        for tableNode in rows.keys():
-          row = rows[tableNode]
-          rowString = self.variantArrayToString(row)
+        for tableNode in remainingTableNodes:
+          rowString = self.serializeFromTable(currentRowIndexes[tableNode], tableNode, self.timerTableColumnNames)
 
           # This row is the new "minimum" row to be added to the table next
-          if rowToAdd is None or rowString < rowToAddString:
-            nodeForRow = tableNode
-            rowToAdd = row
+          if oldTableNode is None or rowString < rowToAddString:
+            oldTableNode = tableNode
             rowToAddString = rowString
 
           # This row is the same as the current "minimum". It is a duplicate so discard it
@@ -485,9 +480,18 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
             currentRowIndexes[tableNode] += 1
 
         # Add the "minimum" row and increment the index of the corresponding table node
-        currentRowIndexes[nodeForRow] += 1
-        newTableNode.GetTable().InsertNextRow(rowToAdd)
-        newTableNode.GetTable().Modified()
+        newTableRowIndex = newTableNode.AddEmptyRow()
+        oldTableRowIndex = currentRowIndexes[oldTableNode]
+        currentRowIndexes[oldTableNode] += 1
+        for name in self.timerTableColumnNames:
+          oldTableColumnIndex = oldTableNode.GetColumnIndex(name)
+          if oldTableColumnIndex < 0:
+            continue
+          newTableColumnIndex = newTableNode.GetColumnIndex(name)
+          if newTableColumnIndex < 0:
+            continue
+          cellText = oldTableNode.GetCellText(oldTableRowIndex, oldTableColumnIndex)
+          newTableNode.SetCellText(newTableRowIndex, newTableColumnIndex, cellText)
 
     slicer.mrmlScene.AddNode(newTableNode)
     for tableNode in tableNodes:
@@ -575,7 +579,7 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
   def updateTable(self):
     serializedScene = self.serializeFromScene()
-    serializedTable = self.serializeFromTable()
+    serializedTable = self.serializeFromTable(self.getActiveRow(), self.getUserStatisticsTableNode())
     if self.getActiveRow() == -1 or serializedScene != serializedTable:
       self.createNewEntry()
 
@@ -586,10 +590,12 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       output += str(value) + ","
     return output
 
-  def serializeFromTable(self):
+  def serializeFromTable(self, row, tableNode, serializedParameters=[]):
+    if serializedParameters is []:
+      serializedParameters = self.serializedParameters
     output = ""
-    for name in self.serializedParameters:
-      value = self.getActiveTableText(name)
+    for name in serializedParameters:
+      value = self.getTableText(row, name, tableNode)
       output += str(value) + ","
     return output
 
@@ -620,11 +626,14 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
   def getActiveTableText(self, name):
     tableNode = self.getUserStatisticsTableNode()
+    return self.getTableText(self.getActiveRow(), name, tableNode)
+
+  def getTableText(self, row, name, tableNode):
     if tableNode is None:
       return ""
     if self.getActiveRow() < 0:
       return ""
-    return tableNode.GetCellText(self.getActiveRow(), tableNode.GetColumnIndex(name))
+    return tableNode.GetCellText(row, tableNode.GetColumnIndex(name))
 
   def getCurrentSceneStatus(self, name):
 
