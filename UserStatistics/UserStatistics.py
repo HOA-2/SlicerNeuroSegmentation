@@ -78,6 +78,10 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.tableNodeSelector.nodeAddedByUser.connect(self.onNodeAddedByUser)
     self.ui.tableNodeSelector.currentNodeChanged.connect(self.onCurrentNodeChanged)
     self.ui.mergeTablesButton.clicked.connect(self.onMergeStatisticTablesClicked)
+    self.ui.screenshotEnabledCheckbox.stateChanged.connect(self.onScreenshotEnabledChanged)
+    self.ui.screenshotDirectoryButton.directoryChanged.connect(self.onScreenshotDirectoryChanged)
+
+    defaultOutputPath = os.path.abspath(os.path.join(slicer.app.defaultScenePath, 'SlicerCapture'))
 
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
@@ -108,6 +112,18 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     # This will use createParameterNode with the provided default options
     self.setParameterNode(self.logic.getParameterNode())
 
+  def onScreenshotEnabledChanged(self):
+    parameterNode = self.logic.getParameterNode()
+    if parameterNode is None:
+      return
+    self.logic.setScreenshotEnabled(self.ui.screenshotEnabledCheckbox.checked)
+
+  def onScreenshotDirectoryChanged(self):
+    parameterNode = self.logic.getParameterNode()
+    if parameterNode is None:
+      return
+    self.logic.setScreenshotDirectory(self.ui.screenshotDirectoryButton.directory())
+
   def onSceneStartClose(self, caller, event):
     self.setParameterNode(None)
 
@@ -128,7 +144,7 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def onSceneImport(self, caller=None, event=None):
     self.importInProgress = False
     self.logic.onSceneEndImport()
-    self.updateGuiFromMRML()
+    self.updateGUIFromMRML()
 
   def onIdleStarted(self):
     self.logic.onIdleStarted()
@@ -159,21 +175,35 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     if inputParameterNode == self._parameterNode:
       return
     if self._parameterNode is not None:
-      self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGuiFromMRML)
+      self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromMRML)
     if inputParameterNode is not None:
-      self.addObserver(inputParameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGuiFromMRML)
+      self.addObserver(inputParameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromMRML)
     self._parameterNode = inputParameterNode
-    self.updateGuiFromMRML()
+    self.updateGUIFromMRML()
 
-  def updateGuiFromMRML(self, caller=None, event=None, callData=None):
+  def updateGUIFromMRML(self, caller=None, event=None, callData=None):
     currentNode = self.logic.getUserStatisticsTableNode()
     selectedNode = self.ui.tableNodeSelector.currentNode()
-    if not currentNode is selectedNode:
-      self.ui.tableNodeSelector.setCurrentNode(currentNode)
+
+    wasBlocking = self.ui.tableNodeSelector.blockSignals(True)
+    self.ui.tableNodeSelector.setCurrentNode(currentNode)
+    self.ui.statisticsTable.setMRMLTableNode(currentNode)
+    self.ui.tableNodeSelector.blockSignals(wasBlocking)
+
+    wasBlocking = self.ui.screenshotEnabledCheckbox.blockSignals(True)
+    self.ui.screenshotEnabledCheckbox.checked = self.logic.getScreenshotEnabled()
+    self.ui.screenshotEnabledCheckbox.blockSignals(wasBlocking)
+
+    wasBlocking = self.ui.screenshotDirectoryButton.blockSignals(True)
+    self.ui.screenshotDirectoryButton.directory = self.logic.getScreenshotDirectory()
+    self.ui.screenshotDirectoryButton.blockSignals(wasBlocking)
+
 
 class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
   USER_STATISTICS_TABLE_REFERENCE_ROLE = "userStatisticsTableRef"
+  SCREENSHOT_ENABLED_PARAMETER_NAME = "ScreenshotEnabled"
+  SCREENSHOT_DIRECTORY_PARAMETER_NAME = "ScreenshotDirectory"
 
   DATE_FORMAT = "%Y%m%d-%H%M%S"
 
@@ -222,6 +252,7 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   ACTIVITY_WAIT = "wait"
   ACTIVITY_IDLE = "idle"
 
+  MINIMUM_TIME_BETWEEN_STATES_SECONDS = 20.0
   WAIT_TIMEOUT_SECONDS = 1.0
   WAIT_TIMEOUT_THRESHOLD_SECONDS = 1.1 * WAIT_TIMEOUT_SECONDS
   IDLE_TIMEOUT_SECONDS = 30.0
@@ -229,6 +260,8 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
     VTKObservationMixin.__init__(self)
+
+    self.parameterNode = None
 
     self.timerTableColumnTypes = {}
     for name in self.timerTableColumnNames:
@@ -254,7 +287,77 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.waitDetectionTimer.timeout.connect(self.onWaitDetectionTimer)
     self.waitDetectionTimer.start()
 
+    self.screenshotEnabled = False
+    self.autoScreenshotTimer = qt.QTimer()
+    self.autoScreenshotTimer.setInterval(self.MINIMUM_TIME_BETWEEN_STATES_SECONDS * 1000)
+    self.autoScreenshotTimer.setSingleShot(False)
+    self.autoScreenshotTimer.timeout.connect(self.createNewEntry)
+    self.autoScreenshotTimer.start()
+
     self.getUserStatisticsTableNode()
+
+  def getParameterNode(self):
+    """Returns the current parameter node and creates one if it doesn't exist yet"""
+    if not self.parameterNode:
+      self.setParameterNode(ScriptedLoadableModuleLogic.getParameterNode(self))
+    return self.parameterNode
+
+  def setParameterNode(self, parameterNode):
+    """Set the current parameter node and initialize all unset parameters to their default values"""
+    if self.parameterNode == parameterNode:
+      return
+    self.setDefaultParameters(parameterNode)
+    self.parameterNode = parameterNode
+
+  def setDefaultParameters(self, parameterNode):
+    if not parameterNode.GetParameter(self.SCREENSHOT_ENABLED_PARAMETER_NAME):
+      parameterNode.SetParameter(self.SCREENSHOT_ENABLED_PARAMETER_NAME, str(False))
+    if not parameterNode.GetParameter(self.SCREENSHOT_DIRECTORY_PARAMETER_NAME):
+      defaultOutputPath = os.path.abspath(os.path.join(slicer.app.defaultScenePath,'SlicerUserStatistics'))
+      parameterNode.SetParameter(self.SCREENSHOT_DIRECTORY_PARAMETER_NAME, defaultOutputPath)
+
+  def setScreenshotEnabled(self, enabled):
+    parameterNode = self.getParameterNode()
+    if parameterNode is None:
+      return
+    parameterNode.SetParameter(self.SCREENSHOT_ENABLED_PARAMETER_NAME, str(enabled))
+
+  def getScreenshotEnabled(self):
+    parameterNode = self.getParameterNode()
+    if parameterNode is None:
+      return False
+    return parameterNode.GetParameter(self.SCREENSHOT_ENABLED_PARAMETER_NAME) == str(True)
+
+  def setScreenshotDirectory(self, directory):
+    parameterNode = self.getParameterNode()
+    if parameterNode is None:
+      return
+    parameterNode.SetParameter(self.SCREENSHOT_DIRECTORY_PARAMETER_NAME, directory)
+
+  def getScreenshotDirectory(self):
+    parameterNode = self.getParameterNode()
+    if parameterNode is None:
+      return
+    return parameterNode.GetParameter(self.SCREENSHOT_DIRECTORY_PARAMETER_NAME)
+
+  def createNewEntry(self):
+    tableNode = self.getUserStatisticsTableNode()
+    if tableNode is None:
+      return
+
+    self.updateActiveRow([self.DURATION_COLUMN_NAME])
+    tableNode.AddEmptyRow()
+    self.updateActiveRow()
+    self.autoScreenshotTimer.start()
+
+    if self.getScreenshotEnabled():
+      image = slicer.util.mainWindow().grab().toImage()
+      filename = self.getScreenshotDirectory() + "\\" + self.getActiveTableText(self.COMPUTER_COLUMN_NAME) + \
+                 self.getActiveTableText(self.START_TIME_COLUMN_NAME) + '.png'
+      directory = qt.QDir(self.getScreenshotDirectory())
+      if not directory.exists():
+        directory.mkpath(".")
+      image.save(filename)
 
   def onSceneClosed(self):
     self.getUserStatisticsTableNode()
@@ -471,16 +574,10 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.updateTable()
 
   def updateTable(self):
-    tableNode = self.getUserStatisticsTableNode()
-    if tableNode is None:
-      return
-
     serializedScene = self.serializeFromScene()
     serializedTable = self.serializeFromTable()
     if self.getActiveRow() == -1 or serializedScene != serializedTable:
-      self.updateActiveRow([self.DURATION_COLUMN_NAME])
-      row = tableNode.AddEmptyRow()
-      self.updateActiveRow()
+      self.createNewEntry()
 
   def serializeFromScene(self):
     output = ""
