@@ -82,10 +82,6 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.sceneClosedTimer.setInterval(1)
     self.sceneClosedTimer.setSingleShot(True)
 
-    self.idleDetectionEventFilter = IdleDetectionEventFilter()
-    self.idleDetectionEventFilter.setInterval(self.logic.IDLE_TIMEOUT_SECONDS * 1000)
-    slicer.app.installEventFilter(self.idleDetectionEventFilter)
-
     # Observers
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
@@ -100,9 +96,6 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.screenshotDirectoryButton.directoryChanged.connect(self.onScreenshotDirectoryChanged)
     self.sceneClosedTimer.timeout.connect(self.onSceneClosed)
     self.sceneImportTimer.timeout.connect(self.onSceneImport)
-    self.idleDetectionEventFilter.idleStarted.connect(self.onIdleStarted)
-    self.idleDetectionEventFilter.idleEnded.connect(self.onIdleEnded)
-    self.idleDetectionEventFilter.start()
 
     # This will use createParameterNode with the provided default options
     self.setParameterNode(self.logic.getParameterNode())
@@ -141,19 +134,10 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.logic.onSceneEndImport()
     self.updateGUIFromMRML()
 
-  def onIdleStarted(self):
-    self.logic.onIdleStarted()
-
-  def onIdleEnded(self):
-    self.logic.onIdleEnded()
-
   def cleanup(self):
     self.logic.cleanup()
     self.sceneClosedTimer.stop()
     self.sceneImportTimer.stop()
-    self.idleDetectionEventFilter.stop()
-    slicer.app.removeEventFilter(self.idleDetectionEventFilter)
-    self.idleDetectionEventFilter.deleteLater()
     self.removeObservers()
 
   def onNodeAddedByUser(self, node):
@@ -236,7 +220,7 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     SCENE_COLUMN_NAME,
   ]
 
-  serializedParameters = [
+  defaultSerializedParameters = [
     OPERATION_COLUMN_NAME,
     SEGMENT_NAME_COLUMN_NAME,
     MASTER_VOLUME_NAME_COLUMN_NAME,
@@ -253,7 +237,7 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   ACTIVITY_WAIT = "wait"
   ACTIVITY_IDLE = "idle"
 
-  MINIMUM_TIME_BETWEEN_STATES_SECONDS = 20.0
+  AUTO_ROW_CREATION_INTERVAL_SECONDS = 20.0
   WAIT_TIMEOUT_SECONDS = 1.0
   WAIT_TIMEOUT_THRESHOLD_SECONDS = 1.5 * WAIT_TIMEOUT_SECONDS
   IDLE_TIMEOUT_SECONDS = 30.0
@@ -287,11 +271,23 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.waitDetectionTimer.start()
 
     self.screenshotEnabled = False
-    self.createNewRowTimer = qt.QTimer()
-    self.createNewRowTimer.setInterval(self.MINIMUM_TIME_BETWEEN_STATES_SECONDS * 1000)
-    self.createNewRowTimer.setSingleShot(False)
-    self.createNewRowTimer.timeout.connect(self.createNewRow)
-    self.createNewRowTimer.start()
+    self.autoRowCreationTimer = qt.QTimer()
+    self.autoRowCreationTimer.setInterval(self.AUTO_ROW_CREATION_INTERVAL_SECONDS * 1000)
+    self.autoRowCreationTimer.setSingleShot(False)
+    self.autoRowCreationTimer.timeout.connect(self.onAutoRowCreationTimer)
+    self.autoRowCreationTimer.start()
+
+    self.takeScreenshotTimer = qt.QTimer()
+    self.takeScreenshotTimer.setInterval(1)
+    self.takeScreenshotTimer.setSingleShot(True)
+    self.takeScreenshotTimer.timeout.connect(self.onTakeScreenshot)
+
+    self.idleDetectionEventFilter = IdleDetectionEventFilter()
+    self.idleDetectionEventFilter.setInterval(self.IDLE_TIMEOUT_SECONDS * 1000)
+    slicer.app.installEventFilter(self.idleDetectionEventFilter)
+    self.idleDetectionEventFilter.idleStarted.connect(self.onIdleStarted)
+    self.idleDetectionEventFilter.idleEnded.connect(self.onIdleEnded)
+    self.idleDetectionEventFilter.start()
 
     self.getUserStatisticsTableNode()
     self.addSegmentEditorObservers()
@@ -299,7 +295,11 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   def cleanup(self):
     slicer.util.moduleSelector().moduleSelected.disconnect(self.updateTable)
     self.waitDetectionTimer.stop()
-    self.createNewRowTimer.stop()
+    self.autoRowCreationTimer.stop()
+    self.takeScreenshotTimer.stop()
+    self.idleDetectionEventFilter.stop()
+    slicer.app.removeEventFilter(self.idleDetectionEventFilter)
+    self.idleDetectionEventFilter.deleteLater()
     self.removeObservers()
 
   def getParameterNode(self):
@@ -346,6 +346,12 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       return
     return parameterNode.GetParameter(self.SCREENSHOT_DIRECTORY_PARAMETER_NAME)
 
+  def onAutoRowCreationTimer(self):
+    # User has not moved the mouse or clicked a button, so there is no reason to create a new row
+    timeSinceLastEvent = self.idleDetectionEventFilter.getTimeSinceLastEvent()
+    if timeSinceLastEvent < self.AUTO_ROW_CREATION_INTERVAL_SECONDS:
+      self.createNewRow()
+
   def createNewRow(self):
     tableNode = self.getUserStatisticsTableNode()
     if tableNode is None:
@@ -354,16 +360,19 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.updateActiveRow([self.DURATION_COLUMN_NAME])
     tableNode.AddEmptyRow()
     self.updateActiveRow()
-    self.createNewRowTimer.start()
+    self.autoRowCreationTimer.start()
 
     if self.getScreenshotEnabled():
-      image = slicer.util.mainWindow().grab().toImage()
-      filename = self.getScreenshotDirectory() + "\\" + self.getActiveTableText(self.COMPUTER_COLUMN_NAME) + \
-                 self.getActiveTableText(self.START_TIME_COLUMN_NAME) + '.png'
-      directory = qt.QDir(self.getScreenshotDirectory())
-      if not directory.exists():
-        directory.mkpath(".")
-      image.save(filename)
+      self.takeScreenshotTimer.start()
+
+  def onTakeScreenshot(self):
+    image = slicer.util.mainWindow().grab().toImage()
+    filename = self.getScreenshotDirectory() + "\\" + self.getActiveTableText(self.COMPUTER_COLUMN_NAME) + \
+               self.getActiveTableText(self.START_TIME_COLUMN_NAME) + '.png'
+    directory = qt.QDir(self.getScreenshotDirectory())
+    if not directory.exists():
+      directory.mkpath(".")
+    image.save(filename)
 
   def onSceneClosed(self):
     self.parameterNode = None
@@ -392,16 +401,16 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.updateTable()
 
     if oldRow > -1:
-      # Update duration in old active row
-      oldRowDuration = self.getDurationForRow(oldRow) - length
+      # Update the duration in old active row
+      oldRowDuration = max(0, self.getDurationForRow(oldRow) - length)
       self.setDurationForRow(oldRow, oldRowDuration)
       # Update start time in the new wait row
       startTimeColumnIndex = tableNode.GetColumnIndex(self.START_TIME_COLUMN_NAME)
       oldStartTimeText = tableNode.GetCellText(oldRow, startTimeColumnIndex)
       oldStartTime = datetime.strptime(oldStartTimeText, self.DATE_FORMAT)
-      oldStartTime += timedelta(seconds=oldRowDuration)
-      tableNode.SetCellText(waitRow, startTimeColumnIndex, oldStartTime.strftime(self.DATE_FORMAT))
-    # Update duration in the new active row
+      waitRowStartTime = oldStartTime + timedelta(seconds=oldRowDuration)
+      tableNode.SetCellText(waitRow, startTimeColumnIndex, waitRowStartTime.strftime(self.DATE_FORMAT))
+    # Update duration in the wait row
     self.setDurationForRow(waitRow, length)
 
   def onIdleStarted(self):
@@ -416,13 +425,13 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.updateTable()
     idleRow = self.getActiveRow()
     if oldRow > -1:
-      oldRowDuration = self.getDurationForRow(oldRow) - self.IDLE_TIMEOUT_SECONDS
+      oldRowDuration = max(0, self.getDurationForRow(oldRow) - self.idleDetectionEventFilter.getTimeSinceLastEvent())
       self.setDurationForRow(oldRow, oldRowDuration)
       startTimeColumnIndex = tableNode.GetColumnIndex(self.START_TIME_COLUMN_NAME)
       oldStartTimeText = tableNode.GetCellText(oldRow, startTimeColumnIndex)
       oldStartTime = datetime.strptime(oldStartTimeText, self.DATE_FORMAT)
-      oldStartTime += timedelta(seconds=oldRowDuration)
-      tableNode.SetCellText(idleRow, startTimeColumnIndex, oldStartTime.strftime(self.DATE_FORMAT))
+      idleStartTime = oldStartTime + timedelta(seconds=oldRowDuration)
+      tableNode.SetCellText(idleRow, startTimeColumnIndex, idleStartTime.strftime(self.DATE_FORMAT))
 
   def onIdleEnded(self):
     self.userActivity = self.ACTIVITY_ACTIVE
@@ -599,14 +608,14 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
   def serializeFromScene(self):
     output = ""
-    for name in self.serializedParameters:
+    for name in self.defaultSerializedParameters:
       value = self.getCurrentSceneStatus(name)
       output += str(value) + ","
     return output
 
   def serializeFromTable(self, row, tableNode, serializedParameters=[]):
     if serializedParameters is []:
-      serializedParameters = self.serializedParameters
+      serializedParameters = self.defaultSerializedParameters
     output = ""
     for name in serializedParameters:
       value = self.getTableText(row, name, tableNode)
@@ -795,6 +804,7 @@ class IdleDetectionEventFilter(qt.QObject):
     self.idleTimer = qt.QTimer(self)
     self.idleTimer.setSingleShot(True)
     self.idling = False
+    self.timeSinceLastEvent = vtk.vtkTimerLog.GetUniversalTime()
 
   def setInterval(self, interval):
     self.idleTimer.setInterval(interval)
@@ -809,11 +819,15 @@ class IdleDetectionEventFilter(qt.QObject):
 
   def eventFilter(self, object, event):
     if event.type() in self.events:
+      self.timeSinceLastEvent = vtk.vtkTimerLog.GetUniversalTime()
       self.idleTimer.start()
       if self.idling:
         self.onIdleEnded()
       self.idling = False
     return False
+
+  def getTimeSinceLastEvent(self):
+    return vtk.vtkTimerLog.GetUniversalTime() - self.timeSinceLastEvent
 
   def onIdleStarted(self):
     self.idleStarted.emit()
