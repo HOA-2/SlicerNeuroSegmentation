@@ -274,6 +274,7 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.editorNode = None
     self.userActivity = self.ACTIVITY_ACTIVE
     self.importInProgress = False
+    self.closeInProgress = False
 
     slicer.util.moduleSelector().moduleSelected.connect(self.updateTable)
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.NodeAddedEvent, self.onNodeAdded)
@@ -427,7 +428,11 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.userActivity = self.ACTIVITY_ACTIVE
     self.updateTable()
 
+  def onSceneStartClose(self, caller=None, event=None):
+    self.closeInProgress = True
+
   def onSceneEndClose(self, caller=None, event=None):
+    self.closeInProgress = False
     self.getUserStatisticsTableNode()
     self.updateTable()
 
@@ -584,6 +589,9 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.updateTable()
 
   def updateTable(self):
+    if self.importInProgress or self.closeInProgress:
+      return
+
     serializedScene = self.serializeFromScene()
     serializedTable = self.serializeFromTable(self.getActiveRow(), self.getUserStatisticsTableNode())
     if self.getActiveRow() == -1 or serializedScene != serializedTable:
