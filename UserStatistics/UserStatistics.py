@@ -36,16 +36,12 @@ and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR0132
 
   def initializeModule(self):
     slicer.modules.userstatistics.widgetRepresentation()
-    userInfo = slicer.app.applicationLogic().GetUserInformation()
-    name = userInfo.GetName()
+    qt.QTimer.singleShot(1, self.showUserConfirmationDialog)
 
-    message = "User name is not set.\n"
-    if name != "":
-      message = "The current user name is: " + name + ".\n"
-    message += "\nIf you would to change the user name, it can be changed in the application menu under:\n"\
-               "Edit -> Application Settings -> User -> Name\n"
-
-    #slicer.util.infoDisplay(message, dontShowAgainSettingsKey = "UserStatistics/DontShowSomeMessage")
+  def showUserConfirmationDialog(self):
+    userConfirmationDialog = UserConfirmationDialog(slicer.util.mainWindow())
+    userConfirmationDialog.deleteLater()
+    userConfirmationDialog.exec_()
 
 #
 # UserStatisticsWidget
@@ -786,6 +782,25 @@ class UserStatisticsTest(ScriptedLoadableModuleTest):
 
     self.delayDisplay("Starting the test")
     self.delayDisplay('Test passed!')
+
+class UserConfirmationDialog(qt.QDialog):
+
+  def __init__(self, parent):
+    qt.QDialog.__init__(self, parent)
+
+    layout = qt.QVBoxLayout()
+    self.setLayout(layout)
+
+    self.setWindowTitle("Current user information")
+
+    self.settingsUserPanel = slicer.qSlicerSettingsUserInformationPanel()
+    self.settingsUserPanel.setUserInformation(slicer.app.applicationLogic().GetUserInformation())
+    layout.addWidget(self.settingsUserPanel)
+
+    self.dialogButtons = qt.QDialogButtonBox()
+    self.dialogButtons.addButton(qt.QDialogButtonBox.Ok)
+    self.dialogButtons.accepted.connect(self.accept)
+    layout.addWidget(self.dialogButtons)
 
 class IdleDetectionEventFilter(qt.QObject):
 
