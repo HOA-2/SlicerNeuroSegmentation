@@ -74,40 +74,35 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.mergeTablesNodeSelector.addAttribute("vtkMRMLTableNode", "UserStatistics.TableNode", "")
     self.ui.userStatistics.setMRMLScene(slicer.mrmlScene)
 
+    self.importInProgress = False
+    self.sceneImportTimer = qt.QTimer()
+    self.sceneImportTimer.setInterval(1)
+    self.sceneImportTimer.setSingleShot(True)
+    self.sceneClosedTimer = qt.QTimer()
+    self.sceneClosedTimer.setInterval(1)
+    self.sceneClosedTimer.setSingleShot(True)
+
+    self.idleDetectionEventFilter = IdleDetectionEventFilter()
+    self.idleDetectionEventFilter.setInterval(self.logic.IDLE_TIMEOUT_SECONDS * 1000)
+    slicer.app.installEventFilter(self.idleDetectionEventFilter)
+
+    # Observers
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartImportEvent, self.onSceneStartImport)
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onSceneEndImport)
+
     # Connections
     self.ui.tableNodeSelector.nodeAddedByUser.connect(self.onNodeAddedByUser)
     self.ui.tableNodeSelector.currentNodeChanged.connect(self.onCurrentNodeChanged)
     self.ui.mergeTablesButton.clicked.connect(self.onMergeStatisticTablesClicked)
     self.ui.screenshotEnabledCheckbox.stateChanged.connect(self.onScreenshotEnabledChanged)
     self.ui.screenshotDirectoryButton.directoryChanged.connect(self.onScreenshotDirectoryChanged)
-
-    defaultOutputPath = os.path.abspath(os.path.join(slicer.app.defaultScenePath, 'SlicerCapture'))
-
-    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
-    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
-
-    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartImportEvent, self.onSceneStartImport)
-    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onSceneEndImport)
-
-    self.sceneClosedTimer = qt.QTimer()
-    self.sceneClosedTimer.setInterval(1)
-    self.sceneClosedTimer.setSingleShot(True)
     self.sceneClosedTimer.timeout.connect(self.onSceneClosed)
-
-    self.sceneImportTimer = qt.QTimer()
-    self.sceneImportTimer.setInterval(1)
-    self.sceneImportTimer.setSingleShot(True)
     self.sceneImportTimer.timeout.connect(self.onSceneImport)
-
-    self.importInProgress = False
-
-    self.idleDetectionEventFilter = IdleDetectionEventFilter()
-    self.idleDetectionEventFilter.setInterval(self.logic.IDLE_TIMEOUT_SECONDS * 1000)
-    slicer.app.installEventFilter(self.idleDetectionEventFilter)
     self.idleDetectionEventFilter.idleStarted.connect(self.onIdleStarted)
     self.idleDetectionEventFilter.idleEnded.connect(self.onIdleEnded)
     self.idleDetectionEventFilter.start()
-    self.idleDetectionEventFilter.deleteLater()
 
     # This will use createParameterNode with the provided default options
     self.setParameterNode(self.logic.getParameterNode())
@@ -153,7 +148,13 @@ class UserStatisticsWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.logic.onIdleEnded()
 
   def cleanup(self):
-    pass
+    self.logic.cleanup()
+    self.sceneClosedTimer.stop()
+    self.sceneImportTimer.stop()
+    self.idleDetectionEventFilter.stop()
+    slicer.app.removeEventFilter(self.idleDetectionEventFilter)
+    self.idleDetectionEventFilter.deleteLater()
+    self.removeObservers()
 
   def onNodeAddedByUser(self, node):
     self.logic.setupTimerTableNode(node)
@@ -274,11 +275,8 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.userActivity = self.ACTIVITY_ACTIVE
     self.importInProgress = False
 
-    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.NodeAddedEvent, self.onNodeAdded)
-
-    self.addSegmentEditorObservers()
-
     slicer.util.moduleSelector().moduleSelected.connect(self.updateTable)
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.NodeAddedEvent, self.onNodeAdded)
 
     self.waitDetectionLastTimeout = vtk.vtkTimerLog.GetUniversalTime()
     self.waitDetectionTimer = qt.QTimer()
@@ -288,13 +286,20 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.waitDetectionTimer.start()
 
     self.screenshotEnabled = False
-    self.autoScreenshotTimer = qt.QTimer()
-    self.autoScreenshotTimer.setInterval(self.MINIMUM_TIME_BETWEEN_STATES_SECONDS * 1000)
-    self.autoScreenshotTimer.setSingleShot(False)
-    self.autoScreenshotTimer.timeout.connect(self.createNewEntry)
-    self.autoScreenshotTimer.start()
+    self.createNewRowTimer = qt.QTimer()
+    self.createNewRowTimer.setInterval(self.MINIMUM_TIME_BETWEEN_STATES_SECONDS * 1000)
+    self.createNewRowTimer.setSingleShot(False)
+    self.createNewRowTimer.timeout.connect(self.createNewRow)
+    self.createNewRowTimer.start()
 
     self.getUserStatisticsTableNode()
+    self.addSegmentEditorObservers()
+
+  def cleanup(self):
+    slicer.util.moduleSelector().moduleSelected.disconnect(self.updateTable)
+    self.waitDetectionTimer.stop()
+    self.createNewRowTimer.stop()
+    self.removeObservers()
 
   def getParameterNode(self):
     """Returns the current parameter node and creates one if it doesn't exist yet"""
@@ -340,7 +345,7 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       return
     return parameterNode.GetParameter(self.SCREENSHOT_DIRECTORY_PARAMETER_NAME)
 
-  def createNewEntry(self):
+  def createNewRow(self):
     tableNode = self.getUserStatisticsTableNode()
     if tableNode is None:
       return
@@ -348,7 +353,7 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.updateActiveRow([self.DURATION_COLUMN_NAME])
     tableNode.AddEmptyRow()
     self.updateActiveRow()
-    self.autoScreenshotTimer.start()
+    self.createNewRowTimer.start()
 
     if self.getScreenshotEnabled():
       image = slicer.util.mainWindow().grab().toImage()
@@ -360,6 +365,7 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
       image.save(filename)
 
   def onSceneClosed(self):
+    self.parameterNode = None
     self.getUserStatisticsTableNode()
     self.updateTable()
 
@@ -581,7 +587,7 @@ class UserStatisticsLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     serializedScene = self.serializeFromScene()
     serializedTable = self.serializeFromTable(self.getActiveRow(), self.getUserStatisticsTableNode())
     if self.getActiveRow() == -1 or serializedScene != serializedTable:
-      self.createNewEntry()
+      self.createNewRow()
 
   def serializeFromScene(self):
     output = ""
@@ -778,23 +784,27 @@ class IdleDetectionEventFilter(qt.QObject):
   def __init__(self):
     qt.QObject.__init__(self)
 
-    self.idleTimer = qt.QTimer()
+    self.idleTimer = qt.QTimer(self)
     self.idleTimer.setSingleShot(True)
-    self.idleTimer.timeout.connect(self.onIdleStarted)
     self.idling = False
 
   def setInterval(self, interval):
     self.idleTimer.setInterval(interval)
 
   def start(self):
+    self.idleTimer.timeout.connect(self.onIdleStarted)
     self.idleTimer.start()
+
+  def stop(self):
+    self.idleTimer.timeout.disconnect(self.onIdleStarted)
+    self.idleTimer.stop()
 
   def eventFilter(self, object, event):
     if event.type() in self.events:
       self.idleTimer.start()
       if self.idling:
-        self.idling = False
         self.onIdleEnded()
+      self.idling = False
     return False
 
   def onIdleStarted(self):
