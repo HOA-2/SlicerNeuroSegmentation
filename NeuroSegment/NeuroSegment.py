@@ -285,7 +285,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.sliceViewClickObservers = []
 
   def addSecondaryViewClickObservers(self):
-      self.removeSliceViewClickObservers()
+      self.removeSecondaryViewClickObservers()
       for viewName in ["Red", "Green", "Yellow"]:
         sliceView = slicer.app.layoutManager().sliceWidget(viewName).sliceView()
         tag = sliceView.interactor().AddObserver(vtk.vtkCommand.LeftButtonDoubleClickEvent,
