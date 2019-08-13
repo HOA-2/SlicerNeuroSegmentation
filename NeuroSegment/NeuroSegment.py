@@ -67,6 +67,10 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.segmentEditorWidget.connect("masterVolumeNodeChanged (vtkMRMLVolumeNode *)", self.onMasterVolumeNodeChanged)
     self.ui.undockSliceViewButton.connect('clicked()', self.toggleSliceViews)
 
+    self.segmentationNodeComboBox = self.ui.segmentEditorWidget.findChild(
+      slicer.qMRMLNodeComboBox, "SegmentationNodeComboBox")
+    self.segmentationNodeComboBox.nodeAddedByUser.connect(self.onNodeAddedByUser)
+
     self.selectSegmentEditorParameterNode()
     uiWidget.setMRMLScene(slicer.mrmlScene)
 
@@ -97,6 +101,11 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.clickTimer.timeout.connect(self.switchMainView)
     self.sliceViewClickObservers = []
 
+    self.defaultSegmentationFileName = self.getPath() + "/Resources/Segmentations/DefaultSegmentation.seg.nrrd"
+
+  def getPath(self):
+    return os.path.dirname(slicer.modules.neurosegment.path)
+
   def enter(self):
     self.selectSegmentEditorParameterNode()
     # Allow switching between effects and selected segment using keyboard shortcuts
@@ -126,6 +135,15 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     if self.parent.isEntered:
       self.selectSegmentEditorParameterNode()
       self.ui.segmentEditorWidget.updateWidgetFromMRML()
+
+  def onNodeAddedByUser(self, node):
+    if not node.AddDefaultStorageNode():
+      return
+    storageNode = node.GetStorageNode()
+    oldFileName = storageNode.GetFileName()
+    storageNode.SetFileName(self.defaultSegmentationFileName)
+    storageNode.ReadData(node)
+    storageNode.SetFileName(oldFileName)
 
   def selectSegmentEditorParameterNode(self):
     # Select parameter set node if one is found in the scene, and create one otherwise
