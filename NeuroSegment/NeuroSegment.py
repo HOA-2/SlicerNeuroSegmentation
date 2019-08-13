@@ -78,6 +78,11 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.mainViewWidget3DButton.setCheckable(True)
     self.mainViewWidget3DButton.connect('clicked()', self.updateMainView)
 
+    self.mainSliceViewName = "Main"
+    self.main3DViewName = "ViewM"
+    self.secondarySliceViewNames = ["Red", "Green", "Yellow"]
+    self.allSliceViewNames = [self.mainSliceViewName] + self. secondarySliceViewNames
+
     # Add vertical spacer
     self.layout.addStretch(1)
 
@@ -219,8 +224,8 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       slicer.app.layoutManager().setLayout(self.previousLayout)
 
   def updateMainView(self):
-    mainSliceWidget = slicer.app.layoutManager().sliceWidget('Main')
-    main3DWidget = slicer.app.layoutManager().threeDWidget('ViewM')
+    mainSliceWidget = slicer.app.layoutManager().sliceWidget(self.mainSliceViewName)
+    main3DWidget = slicer.app.layoutManager().threeDWidget(self.main3DViewName)
     if self.mainViewWidget3DButton.checked and main3DWidget is not None:
       main3DWidget.threeDController().barLayout().addWidget(self.mainViewWidget3DButton)
     else:
@@ -234,9 +239,9 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
   def onUndockedViewClosed(self):
     widgets = []
-    for sliceViewName in ['Main', "Red", "Green", "Yellow"]:
+    for sliceViewName in self.allSliceViewNames:
       widgets.append(slicer.app.layoutManager().sliceWidget(sliceViewName))
-    threeDView = slicer.app.layoutManager().threeDWidget('ViewM')
+    threeDView = slicer.app.layoutManager().threeDWidget(self.main3DViewName)
     widgets.append(threeDView)
 
     for widget in widgets:
@@ -245,7 +250,6 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.ui.undockSliceViewButton.setChecked(False)
     self.toggleSliceViews()
-    self.sliceViewWidget.deleteLater()
 
   def onLayoutChanged(self, layoutID):
     self.ui.undockSliceViewButton.setChecked(layoutID == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID)
@@ -256,6 +260,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       self.removeSecondaryViewClickObservers()
     elif layoutID == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID:
       self.sliceViewWidget = UndockedViewWidget(qt.Qt.Horizontal)
+      self.sliceViewWidget.setAttribute(qt.Qt.WA_DeleteOnClose)
       self.sliceViewWidget.closed.connect(self.onUndockedViewClosed)
       self.ui.segmentEditorWidget.installKeyboardShortcuts(self.sliceViewWidget)
 
@@ -268,19 +273,18 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       sliceViewContainer = qt.QWidget()
       sliceViewContainerLayout = qt.QHBoxLayout()
       sliceViewContainer.setLayout(sliceViewContainerLayout)
-      sliceViewContainerLayout.addWidget(slicer.app.layoutManager().sliceWidget('Main'))
+      sliceViewContainerLayout.addWidget(slicer.app.layoutManager().sliceWidget(self.mainSliceViewName))
       sliceViewContainerLayout.setContentsMargins(0,0,0,0)
       mainViewLayout.addWidget(sliceViewContainer)
-      mainViewLayout.addWidget(slicer.app.layoutManager().threeDWidget('ViewM'))
+      mainViewLayout.addWidget(slicer.app.layoutManager().threeDWidget(self.main3DViewName))
       self.sliceViewWidget.addWidget(mainViewPanel)
 
       secondaryViewPanel = qt.QWidget()
       secondaryViewLayout = qt.QVBoxLayout()
       secondaryViewLayout.setContentsMargins(0,0,0,0)
       secondaryViewPanel.setLayout(secondaryViewLayout)
-      secondaryViewLayout.addWidget(slicer.app.layoutManager().sliceWidget('Red'))
-      secondaryViewLayout.addWidget(slicer.app.layoutManager().sliceWidget('Green'))
-      secondaryViewLayout.addWidget(slicer.app.layoutManager().sliceWidget('Yellow'))
+      for secondaryViewName in self.secondarySliceViewNames:
+        secondaryViewLayout.addWidget(slicer.app.layoutManager().sliceWidget(secondaryViewName))
       self.sliceViewWidget.addWidget(secondaryViewPanel)
 
       # Find the first screen that is not the main screen
@@ -295,7 +299,9 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             break
 
       self.updateMainView()
-      self.onMasterVolumeNodeChanged(self.ui.segmentEditorWidget.masterVolumeNode())
+      masterVolumeNode = self.ui.segmentEditorWidget.masterVolumeNode()
+      if masterVolumeNode is not None:
+        self.onMasterVolumeNodeChanged(masterVolumeNode)
 
       self.sliceViewWidget.setStretchFactor(0, 3)
       self.sliceViewWidget.setStretchFactor(1, 1)
@@ -315,7 +321,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
   def addSecondaryViewClickObservers(self):
       self.removeSecondaryViewClickObservers()
-      for viewName in ["Red", "Green", "Yellow"]:
+      for viewName in self.secondarySliceViewNames:
         sliceView = slicer.app.layoutManager().sliceWidget(viewName).sliceView()
         tag = sliceView.interactor().AddObserver(vtk.vtkCommand.LeftButtonDoubleClickEvent,
                                            lambda caller, event, viewName=viewName: self.onSecondaryViewDoubleClick(viewName))
@@ -328,7 +334,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     layoutManager = slicer.app.layoutManager()
     sliceWidget = layoutManager.sliceWidget(self.clickedView)
     sliceNode = sliceWidget.mrmlSliceNode()
-    mainSliceWidget = layoutManager.sliceWidget('Main')
+    mainSliceWidget = layoutManager.sliceWidget(self.mainSliceViewName)
     mainSliceNode = mainSliceWidget.mrmlSliceNode()
     mainSliceNode.GetSliceToRAS().DeepCopy(sliceNode.GetSliceToRAS())
     mainSliceNode.UpdateMatrices()
