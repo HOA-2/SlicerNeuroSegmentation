@@ -215,11 +215,15 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       main3DWidget.setVisible(self.mainViewWidget3DButton.checked)
 
   def onUndockedViewClosed(self):
+    widgets = []
     for sliceViewName in ['Main', "Red", "Green", "Yellow"]:
-      sliceView = slicer.app.layoutManager().sliceWidget(sliceViewName)
-      sliceView.setParent(slicer.app.layoutManager().viewport())
+      widgets.append(slicer.app.layoutManager().sliceWidget(sliceViewName))
     threeDView = slicer.app.layoutManager().threeDWidget('ViewM')
-    threeDView.setParent(slicer.app.layoutManager().viewport())
+    widgets.append(threeDView)
+
+    for widget in widgets:
+      if widget.window() == self.sliceViewWidget:
+        widget.setParent(slicer.app.layoutManager().viewport())
 
     self.ui.undockSliceViewButton.setChecked(False)
     self.toggleSliceViews()
