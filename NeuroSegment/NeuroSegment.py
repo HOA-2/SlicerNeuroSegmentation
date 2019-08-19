@@ -66,6 +66,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui = slicer.util.childWidgetVariables(uiWidget)
     self.ui.segmentEditorWidget.connect("masterVolumeNodeChanged (vtkMRMLVolumeNode *)", self.onMasterVolumeNodeChanged)
     self.ui.undockSliceViewButton.connect('clicked()', self.toggleSliceViews)
+    self.ui.infoExpandableWidget.setVisible(False)
 
     self.segmentationNodeComboBox = self.ui.segmentEditorWidget.findChild(
       slicer.qMRMLNodeComboBox, "SegmentationNodeComboBox")

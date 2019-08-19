@@ -59,23 +59,26 @@
       </layout>
      </item>
      <item>
-      <layout class="QVBoxLayout" name="terminologyLayout">
-       <item>
-        <widget class="qSlicerTerminologyNavigatorWidget" name="terminologyNavigatorWidget"/>
-       </item>
-      </layout>
+      <widget class="ctkExpandButton" name="expandInfoButton">
+       <property name="checked">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="ctkExpandableWidget" name="infoExpandableWidget">
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <widget class="qSlicerTerminologyNavigatorWidget" name="terminologyNavigatorWidget"/>
+        </item>
+       </layout>
+      </widget>
      </item>
     </layout>
    </item>
   </layout>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>ctkCollapsibleGroupBox</class>
-   <extends>QGroupBox</extends>
-   <header>ctkCollapsibleGroupBox.h</header>
-   <container>1</container>
-  </customwidget>
   <customwidget>
    <class>qMRMLVolumeThresholdWidget</class>
    <extends>QWidget</extends>
@@ -108,6 +111,23 @@
    <extends>qMRMLWidget</extends>
    <header>qSlicerTerminologyNavigatorWidget.h</header>
   </customwidget>
+  <customwidget>
+   <class>ctkCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>ctkCollapsibleGroupBox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ctkExpandButton</class>
+   <extends>QToolButton</extends>
+   <header>ctkExpandButton.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkExpandableWidget</class>
+   <extends>QFrame</extends>
+   <header>ctkExpandableWidget.h</header>
+   <container>1</container>
+  </customwidget>
  </customwidgets>
  <resources/>
  <connections>
@@ -128,18 +148,18 @@
    </hints>
   </connection>
   <connection>
-   <sender>neuroSegment</sender>
-   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
-   <receiver>terminologyNavigatorWidget</receiver>
-   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <sender>expandInfoButton</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>infoExpandableWidget</receiver>
+   <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>287</x>
-     <y>278</y>
+     <x>319</x>
+     <y>283</y>
     </hint>
     <hint type="destinationlabel">
-     <x>501</x>
-     <y>292</y>
+     <x>448</x>
+     <y>283</y>
     </hint>
    </hints>
   </connection>
