@@ -81,7 +81,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.mainSliceViewName = "Main"
     self.main3DViewName = "ViewM"
-    self.secondarySliceViewNames = ["Red", "Green", "Yellow"]
+    self.secondarySliceViewNames = ["Red2", "Green2", "Yellow2"]
     self.allSliceViewNames = [self.mainSliceViewName] + self. secondarySliceViewNames
 
     # Add vertical spacer
@@ -165,32 +165,32 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.segmentEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
 
   def setupLayout(self):
-    layout = ("""
+    layout = ('''
 <layout type="horizontal">
  <item>
-  <view class="vtkMRMLSliceNode" singletontag="Main">
+  <view class="vtkMRMLSliceNode" singletontag="'''+self.allSliceViewNames[0]+'''">
    <property name="orientation" action="default">Axial</property>
      <property name="viewlabel" action="default">M</property>
    <property name="viewcolor" action="default">#808080</property>
   </view>
  </item>
  <item>
-  <view class="vtkMRMLSliceNode" singletontag="Red">
+  <view class="vtkMRMLSliceNode" singletontag="'''+self.allSliceViewNames[1]+'''">
    <property name="orientation" action="default">Axial</property>
      <property name="viewlabel" action="default">R</property>
    <property name="viewcolor" action="default">#F34A33</property>
   </view>
  </item>
  <item>
-  <view class="vtkMRMLSliceNode" singletontag="Green">
-   <property name="orientation" action="default">Axial</property>
+  <view class="vtkMRMLSliceNode" singletontag="'''+self.allSliceViewNames[2]+'''">
+   <property name="orientation" action="default">Sagittal</property>
    <property name="viewlabel" action="default">G</property>
    <property name="viewcolor" action="default">#6EB04B</property>
   </view>
  </item>
  <item>
-  <view class="vtkMRMLSliceNode" singletontag="Yellow">
-   <property name="orientation" action="default">Axial</property>
+  <view class="vtkMRMLSliceNode" singletontag="'''+self.allSliceViewNames[3]+'''">
+   <property name="orientation" action="default">Coronal</property>
    <property name="viewlabel" action="default">Y</property>
    <property name="viewcolor" action="default">#EDD54C</property>
   </view>
@@ -205,7 +205,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
    <property name="viewlabel" action="default">M</property>
   </view>
  </item>
-</layout>""")
+</layout>''')
     layoutManager = slicer.app.layoutManager()
     layoutManager.layoutLogic().GetLayoutNode().AddLayoutDescription(
       NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID, layout)
@@ -254,11 +254,12 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
   def onLayoutChanged(self, layoutID):
     self.ui.undockSliceViewButton.setChecked(layoutID == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID)
-    if layoutID != NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID and self.sliceViewWidget:
+    if layoutID != NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID:
       self.previousLayout = layoutID
-      self.sliceViewWidget.close()
-      self.ui.segmentEditorWidget.installKeyboardShortcuts()
-      self.removeSecondaryViewClickObservers()
+      if self.sliceViewWidget:
+        self.removeSecondaryViewClickObservers()
+        self.sliceViewWidget.close()
+        self.ui.segmentEditorWidget.installKeyboardShortcuts()
     elif layoutID == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID:
       self.sliceViewWidget = UndockedViewWidget(qt.Qt.Horizontal)
       self.sliceViewWidget.setAttribute(qt.Qt.WA_DeleteOnClose)
@@ -299,19 +300,19 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             widgetScreen = screen
             break
 
+      self.sliceViewWidget.setStretchFactor(0, 3)
+      self.sliceViewWidget.setStretchFactor(1, 1)
+      self.sliceViewWidget.showFullScreen() # Will not move to the other monitor with just setScreen. showFullScreen moves the window
+      self.sliceViewWidget.windowHandle().setScreen(widgetScreen)
+      self.sliceViewWidget.showMaximized()
+      self.sliceViewWidget.show()
+
+      self.addSecondaryViewClickObservers()
+
       self.updateMainView()
       masterVolumeNode = self.ui.segmentEditorWidget.masterVolumeNode()
       if masterVolumeNode is not None:
         self.onMasterVolumeNodeChanged(masterVolumeNode)
-
-      self.sliceViewWidget.setStretchFactor(0, 3)
-      self.sliceViewWidget.setStretchFactor(1, 1)
-      self.sliceViewWidget.show()
-      self.sliceViewWidget.windowHandle().setScreen(widgetScreen)
-      self.sliceViewWidget.showFullScreen() # Will not move to the other monitor with just setScreen. showFullScreen moves the window
-      self.sliceViewWidget.showMaximized()
-
-      self.addSecondaryViewClickObservers()
 
   def removeSecondaryViewClickObservers(self):
     for tag, object in self.sliceViewClickObservers:
@@ -327,7 +328,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         tag = sliceView.interactor().AddObserver(vtk.vtkCommand.LeftButtonDoubleClickEvent,
                                            lambda caller, event, viewName=viewName: self.onSecondaryViewDoubleClick(viewName))
         self.sliceViewClickObservers.append((tag, sliceView.interactor()))
-        tag = sliceView.interactor().AddObserver(vtk.vtkCommand.LeftButtonPressEvent,
+        tag = sliceView.interactor().AddObserver(vtk.vtkCommand.LeftButtonReleaseEvent,
                                            lambda caller, event, viewName=viewName: self.onSecondaryViewClick(viewName))
         self.sliceViewClickObservers.append((tag, sliceView.interactor()))
 
