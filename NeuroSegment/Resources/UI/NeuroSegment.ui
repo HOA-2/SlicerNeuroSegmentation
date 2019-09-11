@@ -26,17 +26,23 @@
      <item>
       <layout class="QVBoxLayout" name="segmentEditorLayout">
        <item>
-        <widget class="qMRMLSegmentEditorWidget" name="segmentEditorWidget">
-         <property name="masterVolumeNodeSelectorVisible">
+        <widget class="qMRMLSegmentEditorWidget" name="segmentEditorWidget" native="true">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="masterVolumeNodeSelectorVisible" stdset="0">
           <bool>true</bool>
          </property>
-         <property name="switchToSegmentationsButtonVisible">
+         <property name="switchToSegmentationsButtonVisible" stdset="0">
           <bool>false</bool>
          </property>
-         <property name="maximumNumberOfUndoStates">
+         <property name="maximumNumberOfUndoStates" stdset="0">
           <number>10</number>
          </property>
-         <property name="unorderedEffectsVisible">
+         <property name="unorderedEffectsVisible" stdset="0">
           <bool>true</bool>
          </property>
         </widget>
@@ -48,10 +54,10 @@
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_2">
           <item>
-           <widget class="qMRMLWindowLevelWidget" name="windowLevelWidget"/>
+           <widget class="qMRMLWindowLevelWidget" name="windowLevelWidget" native="true"/>
           </item>
           <item>
-           <widget class="qMRMLVolumeThresholdWidget" name="volumeThresholdWidget"/>
+           <widget class="qMRMLVolumeThresholdWidget" name="volumeThresholdWidget" native="true"/>
           </item>
          </layout>
         </widget>
@@ -69,7 +75,7 @@
       <widget class="ctkExpandableWidget" name="infoExpandableWidget">
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
-         <widget class="qSlicerTerminologyNavigatorWidget" name="terminologyNavigatorWidget"/>
+         <widget class="qSlicerTerminologyNavigatorWidget" name="terminologyNavigatorWidget" native="true"/>
         </item>
        </layout>
       </widget>
@@ -105,11 +111,13 @@
    <class>qMRMLSegmentEditorWidget</class>
    <extends>qMRMLWidget</extends>
    <header>qMRMLSegmentEditorWidget.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>qSlicerTerminologyNavigatorWidget</class>
    <extends>qMRMLWidget</extends>
    <header>qSlicerTerminologyNavigatorWidget.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>ctkCollapsibleGroupBox</class>

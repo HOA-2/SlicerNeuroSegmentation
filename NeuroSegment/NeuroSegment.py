@@ -84,9 +84,6 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.secondarySliceViewNames = ["Red2", "Green2", "Yellow2"]
     self.allSliceViewNames = [self.mainSliceViewName] + self. secondarySliceViewNames
 
-    # Add vertical spacer
-    self.layout.addStretch(1)
-
     self.sliceViewWidget = None
     self.setupLayout()
 
@@ -104,7 +101,12 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.clickTimer = qt.QTimer()
     self.clickTimer.setInterval(300)
     self.clickTimer.setSingleShot(True)
-    self.clickTimer.timeout.connect(self.switchMainView)
+    self.clickTimer.timeout.connect(self.switchMainView)   
+    self.clickNonResponsive = False
+    self.clickNonResponseTimer = qt.QTimer()
+    self.clickNonResponseTimer.setInterval(100)
+    self.clickNonResponseTimer.setSingleShot(True)
+    self.clickNonResponseTimer.timeout.connect(self.clickNonResponseOff)
     self.sliceViewClickObservers = []
 
     self.defaultSegmentationFileName = self.getPath() + "/Resources/Segmentations/DefaultSegmentation.seg.nrrd"
@@ -341,7 +343,15 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     mainSliceNode.GetSliceToRAS().DeepCopy(sliceNode.GetSliceToRAS())
     mainSliceNode.UpdateMatrices()
 
+  def clickNonResponseOn(self):
+    self.clickNonResponsive = True
+
+  def clickNonResponseOff(self):
+    self.clickNonResponsive = False
+
   def onSecondaryViewClick(self, viewName):
+    if self.clickNonResponsive:
+      return
     self.clickedView = viewName
     self.clickTimer.start()
 
@@ -358,6 +368,8 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                             slicer.vtkMRMLSliceNode.OffsetJumpSlice,
                             sliceNode.GetViewGroup(), sliceNode)
     self.clickTimer.stop()
+    self.clickNonResponseOn()
+    self.clickNonResponseTimer.start()
 
   def onMasterVolumeNodeChanged(self, volumeNode):
     self.ui.volumeThresholdWidget.setMRMLVolumeNode(volumeNode)
