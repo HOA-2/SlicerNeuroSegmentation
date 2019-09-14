@@ -24,13 +24,13 @@ Topic 1: Surface drawing is the next project
 - Use lines to cut up surface, needs careful design  
 - Probably provide query using txt file containing rules for landmarks/boundaries/rules; algorithm uses text file input to chop up cortex 
 - Shouldn’t be hard coded, since rules will change 
-- TO DO: Provide example text file  (from WMQL) for AL/KS (#16)
+- TO DO: Provide example text file  (from WMQL) for AL/KS (https://github.com/PerkLab/BwhNeuroImagingCollab/issues/16)
 
 TOPIC #2: Interoperability between FreeSurfer and Slicer
 --------------------------------------------------------
 
 - Free view export is not perfect, there are some transforms. 
-- TO DO: Send examples to Queens (#17)
+- TO DO: Send examples to Queens (https://github.com/PerkLab/BwhNeuroImagingCollab/issues/17)
 - AL: Slicer has importers, may have to update 
 
 TOPIC #3: Multiple Segments
