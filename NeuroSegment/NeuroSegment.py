@@ -104,7 +104,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.clickTimer.timeout.connect(self.switchMainView)   
     self.clickNonResponsive = False
     self.clickNonResponseTimer = qt.QTimer()
-    self.clickNonResponseTimer.setInterval(100)
+    self.clickNonResponseTimer.setInterval(200)
     self.clickNonResponseTimer.setSingleShot(True)
     self.clickNonResponseTimer.timeout.connect(self.clickNonResponseOff)
     self.sliceViewClickObservers = []
