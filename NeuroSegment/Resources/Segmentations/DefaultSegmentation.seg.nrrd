@@ -7,7 +7,7 @@ space: right-anterior-superior
 sizes: 1 1 1
 space directions: (1,-0,0) (-0,1,-0) (0,-0,1)
 kinds: domain domain domain
-encoding: gzip
+encoding: raw
 space origin: (-0,0,-0)
 measurement frame: (1,0,0) (0,1,0) (0,0,1)
 Segment0_Color:=0.470588 0.0705882 0.52549
@@ -222,4 +222,4 @@ Segmentation_ConversionParameters:=Collapse labelmaps|1|Merge the labelmaps into
 Segmentation_MasterRepresentation:=Binary labelmap
 Segmentation_ReferenceImageExtentOffset:=0 0 0
 
-ã      c  çÔ“   
+ 
