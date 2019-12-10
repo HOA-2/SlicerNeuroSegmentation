@@ -72,6 +72,38 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       slicer.qMRMLNodeComboBox, "SegmentationNodeComboBox")
     self.segmentationNodeComboBox.nodeAddedByUser.connect(self.onNodeAddedByUser)
 
+    self.neuroSegHistogramMethodButtonGroup = qt.QButtonGroup()
+    self.neuroSegHistogramMethodButtonGroup.setExclusive(True)
+
+    thresholdEffects = [self.ui.segmentEditorWidget.effectByName("Threshold"), self.ui.segmentEditorWidget.effectByName("LocalThreshold")]
+    for thresholdEffect in thresholdEffects:
+      if thresholdEffect is None:
+        continue
+
+      lowerLayout = thresholdEffect.self().histogramLowerThresholdAverageButton.parentWidget().layout()
+      upperLayout = thresholdEffect.self().histogramUpperThresholdAverageButton.parentWidget().layout()
+
+      thresholdEffect.self().histogramLowerThresholdAverageButton.hide()
+      thresholdEffect.self().histogramLowerThresholdLowerButton.hide()
+      thresholdEffect.self().histogramLowerThresholdMinimumButton.hide()
+      thresholdEffect.self().histogramUpperThresholdAverageButton.hide()
+      thresholdEffect.self().histogramUpperThresholdUpperButton.hide()
+      thresholdEffect.self().histogramUpperThresholdMaximumButton.hide()
+
+      self.histogramMinAverageThresholdButton = qt.QPushButton()
+      self.histogramMinAverageThresholdButton.setText("Minimum to average")
+      self.histogramMinAverageThresholdButton.setCheckable(True)
+      self.histogramMinAverageThresholdButton.clicked.connect(self.updateHistogram)
+      lowerLayout.addWidget(self.histogramMinAverageThresholdButton)
+      self.neuroSegHistogramMethodButtonGroup.addButton(self.histogramMinAverageThresholdButton)
+
+      self.histogramAverageMaxThresholdButton = qt.QPushButton()
+      self.histogramAverageMaxThresholdButton.setText("Average to maximum")
+      self.histogramAverageMaxThresholdButton.setCheckable(True)
+      self.histogramAverageMaxThresholdButton.clicked.connect(self.updateHistogram)
+      upperLayout.addWidget(self.histogramAverageMaxThresholdButton)
+      self.neuroSegHistogramMethodButtonGroup.addButton(self.histogramAverageMaxThresholdButton)
+
     self.selectSegmentEditorParameterNode()
     uiWidget.setMRMLScene(slicer.mrmlScene)
 
@@ -101,7 +133,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.clickTimer = qt.QTimer()
     self.clickTimer.setInterval(300)
     self.clickTimer.setSingleShot(True)
-    self.clickTimer.timeout.connect(self.switchMainView)   
+    self.clickTimer.timeout.connect(self.switchMainView)
     self.clickNonResponsive = False
     self.clickNonResponseTimer = qt.QTimer()
     self.clickNonResponseTimer.setInterval(200)
@@ -110,6 +142,26 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.sliceViewClickObservers = []
 
     self.defaultSegmentationFileName = self.getPath() + "/Resources/Segmentations/DefaultSegmentation.seg.nrrd"
+
+  def updateHistogram(self):
+    thresholdEffects = [self.ui.segmentEditorWidget.effectByName("Threshold"), self.ui.segmentEditorWidget.effectByName("LocalThreshold")]
+    for thresholdEffect in thresholdEffects:
+      if thresholdEffect is None:
+        continue
+      thresholdEffect.self().histogramLowerThresholdLowerButton.setChecked(False)
+      thresholdEffect.self().histogramUpperThresholdUpperButton.setChecked(False)
+
+      if self.histogramAverageMaxThresholdButton.checked:
+        thresholdEffect.self().histogramLowerThresholdAverageButton.setChecked(True)
+        thresholdEffect.self().histogramLowerThresholdMinimumButton.setChecked(False)
+        thresholdEffect.self().histogramUpperThresholdAverageButton.setChecked(False)
+        thresholdEffect.self().histogramUpperThresholdMaximumButton.setChecked(True)
+      elif self.histogramMinAverageThresholdButton.checked:
+        thresholdEffect.self().histogramLowerThresholdAverageButton.setChecked(False)
+        thresholdEffect.self().histogramLowerThresholdMinimumButton.setChecked(True)
+        thresholdEffect.self().histogramUpperThresholdAverageButton.setChecked(True)
+        thresholdEffect.self().histogramUpperThresholdMaximumButton.setChecked(False)
+      thresholdEffect.self().updateMRMLFromGUI()
 
   def getPath(self):
     return os.path.dirname(slicer.modules.neurosegment.path)
