@@ -94,6 +94,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       self.histogramMinAverageThresholdButton.setText("Minimum to average")
       self.histogramMinAverageThresholdButton.setCheckable(True)
       self.histogramMinAverageThresholdButton.clicked.connect(self.updateHistogram)
+      self.histogramMinAverageThresholdButton.checked = True
       lowerLayout.addWidget(self.histogramMinAverageThresholdButton)
       self.neuroSegHistogramMethodButtonGroup.addButton(self.histogramMinAverageThresholdButton)
 
@@ -101,6 +102,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       self.histogramAverageMaxThresholdButton.setText("Average to maximum")
       self.histogramAverageMaxThresholdButton.setCheckable(True)
       self.histogramAverageMaxThresholdButton.clicked.connect(self.updateHistogram)
+      self.histogramMinAverageThresholdButton.checked = False
       upperLayout.addWidget(self.histogramAverageMaxThresholdButton)
       self.neuroSegHistogramMethodButtonGroup.addButton(self.histogramAverageMaxThresholdButton)
 
@@ -168,6 +170,8 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
   def enter(self):
     self.selectSegmentEditorParameterNode()
+    self.updateHistogram()
+
     # Allow switching between effects and selected segment using keyboard shortcuts
     layoutManager = slicer.app.layoutManager()
     if layoutManager.layout == NeuroSegmentWidget.NEURO_SEGMENT_WIDGET_LAYOUT_ID:
