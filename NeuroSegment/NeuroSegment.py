@@ -14,21 +14,193 @@ class NeuroSegment(ScriptedLoadableModule):
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
+  # Setting attributes
+  CURRENT_DIRECTORY_SETTING = "NeuroSeg/CurrentDirectory"
+  SUBJECT_NAME_PARAMETER = "SubjectName"
+  SESSION_NAME_PARAMETER = "SessionName"
+
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "NeuroSegment" # TODO make this more human readable by adding spaces
+    self.parent.title = "NeuroSegment"
     self.parent.categories = ["Examples"]
-    self.parent.dependencies = []
-    self.parent.contributors = ["John Doe (AnyWare Corp.)"] # replace with "Firstname Lastname (Organization)"
+    self.parent.dependencies = ["Data"]
+    self.parent.contributors = ["Kyle Sunderland (Perk Lab, Queen's University)"]
     self.parent.helpText = """
-This is an example of scripted loadable module bundled in an extension.
-It performs a simple thresholding on the input volume and optionally captures a screenshot.
+This is a module that organizes a workflow for brain segmentation.
 """
     self.parent.helpText += self.getDefaultModuleDocumentationLink()
     self.parent.acknowledgementText = """
-This file was originally developed by Jean-Christophe Fillion-Robin, Kitware Inc.
-and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR013218-12S1.
-""" # replace with organization, grant and thanks.
+This file was originally developed by Kyle Sunderland (Perk Lab, Queen's University), and was partially funded by Brigham and Women’s Hospital through NIH grant R01MH112748
+"""
+    if not slicer.app.commandOptions().noMainWindow :
+      slicer.app.connect("startupCompleted()", self.initializeModule)
+
+  def initializeModule(self):
+    moduleWidget = slicer.modules.neurosegment.widgetRepresentation().self()
+
+    #qt.QTimer.singleShot(1, widget.showLoadSessionDialog) # Disabled for now
+
+    loadSessionIcon = qt.QIcon(moduleWidget.resourcePath('Icons/LoadSession.png'))
+    self.loadSessionAction = slicer.util.mainWindow().findChild("QToolBar").addAction("")
+    self.loadSessionAction.setIcon(loadSessionIcon)
+    self.loadSessionAction.triggered.connect(moduleWidget.showLoadSessionDialog)
+
+    saveSessionIcon = qt.QIcon(moduleWidget.resourcePath('Icons/SaveSession.png'))
+    self.saveSessionAction = slicer.util.mainWindow().findChild("QToolBar").addAction("")
+    self.saveSessionAction.setIcon(saveSessionIcon)
+    self.saveSessionAction.triggered.connect(moduleWidget.showSaveSessionDialog)
+
+class LoadSessionDialog(qt.QDialog):
+  def __init__(self, parent):
+    qt.QDialog.__init__(self, parent)
+    self.setWindowTitle("Load session")
+
+    layout = qt.QVBoxLayout()
+    self.setLayout(layout)
+
+    moduleWidget = slicer.modules.neurosegment.widgetRepresentation().self()
+    uiWidget = slicer.util.loadUI(moduleWidget.resourcePath('UI/LoadSessionWidget.ui'))
+    layout.addWidget(uiWidget)
+    self.ui = slicer.util.childWidgetVariables(uiWidget)
+
+    settings = qt.QSettings()
+    self.ui.directoryButton.directory = settings.value(NeuroSegment.CURRENT_DIRECTORY_SETTING, slicer.mrmlScene.GetRootDirectory())
+
+    # Connections
+    self.ui.directoryButton.directoryChanged.connect(self.onDirectoryChanged)
+    self.ui.loadButton.clicked.connect(self.loadSelectedSession)
+    self.ui.treeWidget.itemSelectionChanged.connect(self.onTreeSelectionChanged)
+
+    self.onDirectoryChanged()
+
+  def onDirectoryChanged(self):
+    path = self.ui.directoryButton.directory
+    directory = qt.QDir(path)
+
+    self.ui.treeWidget.clear()
+    subjectInfoList = directory.entryInfoList(qt.QDir.Dirs | qt.QDir.NoDotAndDotDot)
+
+    settings = qt.QSettings()
+    settings.setValue(NeuroSegment.CURRENT_DIRECTORY_SETTING, path)
+
+    for subjectInfo in subjectInfoList:
+      subjectName = subjectInfo.fileName()
+      subjectItem = qt.QTreeWidgetItem();
+      subjectItem.setData(0, qt.Qt.UserRole, subjectName)
+      subjectItem.setData(0, qt.Qt.UserRole, subjectName)
+      subjectItem.setText(0, subjectName)
+      subjectItem.setText(2, subjectInfo.lastModified().toString())
+      self.ui.treeWidget.addTopLevelItem(subjectItem)
+
+      subjectPath = self.ui.directoryButton.directory + "/" + subjectInfo.fileName()
+      subjectDir = qt.QDir(subjectPath)
+      sessionInfoList = subjectDir.entryInfoList(qt.QDir.Dirs | qt.QDir.NoDotAndDotDot)
+      for sessionInfo in sessionInfoList:
+        sessionName = sessionInfo.fileName()
+        scenePath = subjectPath + "/" + sessionName + "/scene.mrml"
+        if not os.access(scenePath, os.F_OK):
+          continue
+
+        sessionItem = qt.QTreeWidgetItem();
+        sessionItem.setData(0, qt.Qt.UserRole, subjectName)
+        sessionItem.setData(0, qt.Qt.UserRole + 1, sessionName)
+        sessionItem.setText(1, sessionName)
+        sessionItem.setText(2, sessionInfo.lastModified().toString())
+        subjectItem.addChild(sessionItem)
+
+  def onTreeSelectionChanged(self):
+    selectedItems = self.ui.treeWidget.selectedItems()
+    sessionName = None
+    if len(selectedItems) > 0:
+      selectedItem = selectedItems[0]
+      sessionName = selectedItem.data(0, qt.Qt.UserRole + 1)
+    self.ui.loadButton.enabled = not sessionName is None
+
+  def loadSelectedSession(self):
+    selectedItems = self.ui.treeWidget.selectedItems()
+    if len(selectedItems) > 0:
+      selectedItem = selectedItems[0]
+      subjectName = selectedItem.data(0, qt.Qt.UserRole)
+      sessionName = selectedItem.data(0, qt.Qt.UserRole + 1)
+
+    if subjectName == "" or sessionName == "":
+      return
+
+    moduleLogic = slicer.modules.neurosegment.widgetRepresentation().self().logic
+    if moduleLogic.loadSession(self.ui.directoryButton.directory, subjectName, sessionName):
+      self.close()
+    else:
+      slicer.util.errorDisplay("Error loading session!")
+
+class SaveSessionDialog(qt.QDialog):
+  def __init__(self, parent):
+    qt.QDialog.__init__(self, parent)
+    self.setWindowTitle("Save session")
+
+    layout = qt.QVBoxLayout()
+    self.setLayout(layout)
+
+    moduleWidget = slicer.modules.neurosegment.widgetRepresentation().self()
+    uiWidget = slicer.util.loadUI(moduleWidget.resourcePath('UI/SaveSessionWidget.ui'))
+    layout.addWidget(uiWidget)
+    self.ui = slicer.util.childWidgetVariables(uiWidget)
+
+    settings = qt.QSettings()
+    self.ui.directoryButton.directory = settings.value(NeuroSegment.CURRENT_DIRECTORY_SETTING, slicer.app.defaultScenePath)
+
+    widget = slicer.modules.neurosegment.widgetRepresentation().self()
+    logic = widget.logic
+    parameterNode = logic.getParameterNode()
+    if parameterNode:
+      subjectName = parameterNode.GetParameter(NeuroSegment.SUBJECT_NAME_PARAMETER)
+      if subjectName is not None:
+        self.ui.subjectNameEdit.text = subjectName
+      sessionName = parameterNode.GetParameter(NeuroSegment.SESSION_NAME_PARAMETER)
+      if sessionName is not None:
+        self.ui.sessionNameEdit.text = sessionName
+
+    # Connections
+    self.ui.saveButton.clicked.connect(self.saveCurrentSession)
+    self.ui.subjectNameEdit.textChanged.connect(self.onSubjectSessionNameChanged)
+    self.onSubjectSessionNameChanged()
+
+  def onSubjectSessionNameChanged(self):
+    subjectName = self.ui.subjectNameEdit.text
+    sessionName = self.ui.sessionNameEdit.text
+    self.ui.saveButton.enabled = subjectName != "" and sessionName != ""
+
+  def progressCallback(progressDialog, progressLabel, progressValue):
+    progressDialog.labelText = progressLabel
+    slicer.app.processEvents()
+    progressDialog.setValue(progressValue)
+    slicer.app.processEvents()
+    return progressDialog.wasCanceled
+
+  def saveCurrentSession(self):
+    subjectName = self.ui.subjectNameEdit.text
+    if subjectName == "":
+      return
+    sessionName = self.ui.sessionNameEdit.text
+    if sessionName == "":
+      return
+
+    sessionDirectory = self.ui.directoryButton.directory + "/" + subjectName + "/" + sessionName + "/scene.mrml"
+    if os.access(sessionDirectory, os.F_OK) and not slicer.util.confirmOkCancelDisplay("Session already exists! Do you want to overwrite?"):
+      return
+
+    progressDialog = slicer.util.createProgressDialog(parent=self, value=0, maximum=100)
+    progressCallbackFunction = lambda progressLabel, progressValue, progressDialog=progressDialog: SaveSessionDialog.progressCallback(progressDialog, progressLabel, progressValue)
+
+    qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
+    moduleLogic = slicer.modules.neurosegment.widgetRepresentation().self().logic
+    success = moduleLogic.saveSession(self.ui.directoryButton.directory, subjectName, sessionName, progressCallbackFunction)
+    qt.QApplication.restoreOverrideCursor()
+
+    if success:
+      self.close()
+      slicer.util.infoDisplay("Saving successful!")
+    else:
+      slicer.util.errorDisplay("Error saving session!")
 
 #
 # Regular QWidget do not emit a signal when closed
@@ -55,6 +227,16 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def __init__(self, parent):
     ScriptedLoadableModuleWidget.__init__(self, parent)
     VTKObservationMixin.__init__(self)
+
+  def showLoadSessionDialog(self):
+    loadSessionDialog = LoadSessionDialog(slicer.util.mainWindow())
+    loadSessionDialog.deleteLater()
+    loadSessionDialog.exec_()
+
+  def showSaveSessionDialog(self):
+     saveSessionDialog = SaveSessionDialog(slicer.util.mainWindow())
+     saveSessionDialog.deleteLater()
+     saveSessionDialog.exec_()
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
@@ -484,6 +666,119 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
+  def loadSession(self, subjectDirectory, subjectName, sessionName):
+    sessionDirectoryPath = subjectDirectory + "/" + subjectName + "/" + sessionName
+    sessionDirectory = qt.QDir(sessionDirectoryPath)
+    sessionDirectory.setNameFilters(["*.mrml"])
+
+    mrmlFilesList = sessionDirectory.entryList()
+    loaded = False
+    if len(mrmlFilesList) > 0:
+      properties = {}
+      properties["clear"] = True
+      try:
+        slicer.util.loadScene(os.path.join(sessionDirectoryPath, mrmlFilesList[0]))
+      except:
+        return False
+
+    parameterNode = self.getParameterNode()
+    if parameterNode:
+      parameterNode.SetParameter(NeuroSegment.SUBJECT_NAME_PARAMETER, subjectName)
+      parameterNode.SetParameter(NeuroSegment.SESSION_NAME_PARAMETER, sessionName)
+    return True
+
+  def saveSession(self, subjectDirectory, subjectName, sessionName, progressCallback=None):
+    sceneSaveDirectory = subjectDirectory + "/" + subjectName + "/" + sessionName
+    return self.saveScene(sceneSaveDirectory, progressCallback)
+
+  def saveScene(self, sceneSaveDirectory, progressCallback=None):
+    logging.info("Saving scene to: {0}".format(sceneSaveDirectory))
+    slicer.app.ioManager().addDefaultStorageNodes()
+
+    fileNames = []
+
+    progress = 0.0
+    nodesSaved = 0
+    nodes = slicer.mrmlScene.GetNodes()
+    nodesToSaveCount = 0
+    for node in nodes:
+      if node and node.IsA("vtkMRMLStorableNode") and node.GetSaveWithScene():
+        nodesToSaveCount += 1
+
+    for node in nodes:
+      if node is None:
+        continue
+      if not node.IsA("vtkMRMLStorableNode"):
+        continue
+      if not node.GetSaveWithScene():
+        continue
+
+      if progressCallback is not None and progressCallback('\nSaving node: %s' % node.GetName(), progress):
+        break
+
+      # Re-check if storageNode is still None: the node is stored in the scene XML file.
+      if node.GetStorageNode() is None:
+        continue
+
+      # Disable compression of volume sequence nodes to make saving faster
+      storageNode = node.GetStorageNode()
+      storageNode.SetUseCompression(0)
+
+      # Get the default write file extension from the storage nod
+      defaultWriteFileExtension = "." + storageNode.GetDefaultWriteFileExtension()
+
+      # Save node
+      uniqueFileName = slicer.app.applicationLogic().PercentEncode(node.GetName());
+      fileRenamed = False
+      for name in fileNames:
+        if uniqueFileName == name:
+          fileRenamed = True
+          uniqueFileName = slicer.mrmlScene.GenerateUniqueName(name)
+          logging.info(
+            "Filename {0} already exists for another node in the currently saving scene, {1} filename will be used instead".format(
+            name + defaultWriteFileExtension, uniqueFileName + defaultWriteFileExtension))
+          break
+
+      # Save nodes in the Data folder
+      if node.IsA("vtkMRMLVolumeNode") or node.IsA("vtkMRMLSegmentationNode"):
+        nodeDirectory = os.path.join(sceneSaveDirectory, "anat")
+      else:
+        nodeDirectory = os.path.join(sceneSaveDirectory, "data")
+      if not os.access(nodeDirectory, os.F_OK):
+        os.makedirs(nodeDirectory)
+
+      nodeSavePath = os.path.join(nodeDirectory, uniqueFileName + defaultWriteFileExtension)
+      fileNames.append(uniqueFileName)
+      storageNode.SetFileName(nodeSavePath)
+      nodeAlreadySavedInThisDir = os.path.isfile(nodeSavePath)
+      if (not nodeAlreadySavedInThisDir) or node.GetModifiedSinceRead() or fileRenamed:
+        logging.info("Saving node {0} with ID: {1}".format(node.GetName(), node.GetID()))
+        if not storageNode.WriteData(node):
+          logging.error("Saving node ID {0} failed".format(node.GetID()))
+          logging.error("Saving failed")
+          return False
+        logging.info("Node with ID {0} successfully saved".format(node.GetID()))
+
+      nodesSaved += 1
+      progress = (100.0 * nodesSaved) / (nodesToSaveCount+1)
+
+    if progressCallback is not None and progressCallback('\nSaving scene', progress):
+      return False
+
+    # Save scene file
+    if not os.access(sceneSaveDirectory, os.F_OK):
+      os.makedirs(sceneSaveDirectory)
+
+    sceneName = "scene.mrml"
+    if slicer.mrmlScene.GetModifiedSinceRead():
+      file_path = os.path.join(sceneSaveDirectory, sceneName)
+      if not slicer.mrmlScene.Commit(file_path):
+        logging.error("Scene saving failed")
+        return False
+
+    if progressCallback is not None and progressCallback('\nSaving complete', 100.0):
+      return False
+    return True
 
 class NeuroSegmentTest(ScriptedLoadableModuleTest):
   """
