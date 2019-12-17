@@ -60,7 +60,7 @@ class LoadSessionDialog(qt.QDialog):
     moduleWidget = slicer.modules.bidsio.widgetRepresentation().self()
     uiWidget = slicer.util.loadUI(moduleWidget.resourcePath('UI/LoadSessionWidget.ui'))
     layout.addWidget(uiWidget)
-    self.ui = slicer.util.childWidgetVariables(uiWidget)   
+    self.ui = slicer.util.childWidgetVariables(uiWidget)
     self.ui.directoryButton.directory = moduleWidget.getCurrentDirectory()
 
     # Connections
@@ -125,6 +125,8 @@ class LoadSessionDialog(qt.QDialog):
 
     moduleLogic = slicer.modules.bidsio.widgetRepresentation().self().logic
     if moduleLogic.loadSession(self.ui.directoryButton.directory, subjectName, sessionName):
+      moduleLogic.setSubjectName(subjectName)
+      moduleLogic.setSessionName(sessionName)
       self.close()
     else:
       slicer.util.errorDisplay("Error loading session!")
@@ -177,7 +179,7 @@ class SaveSessionDialog(qt.QDialog):
 
     subjectName = self.logic.getSubjectName()
     sessionName = self.logic.getSessionName()
-    
+
     sessionDirectory = self.ui.directoryButton.directory + "/" + subjectName
     if sessionName != "":
       sessionDirectory += "/" + sessionName
@@ -212,6 +214,25 @@ class BIDSIOWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     ScriptedLoadableModuleWidget.__init__(self, parent)
     VTKObservationMixin.__init__(self)
 
+    self.logic = BIDSIOLogic()
+
+    # Connect observers to scene events
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onSceneEndImport)
+
+  def onSceneEndClose(self, caller, event):
+    self.updateParameterNode()
+
+  def onSceneEndImport(self, caller, event):
+    self.updateParameterNode()
+
+  def updateParameterNode(self):
+    parameterNode = self.logic.getParameterNode()
+    if self.hasObserver(parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateWidgetFromMRML):
+      return
+    self.addObserver(parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateWidgetFromMRML)
+    self.updateWidgetFromMRML()
+
   def showLoadSessionDialog(self):
     loadSessionDialog = LoadSessionDialog(slicer.util.mainWindow())
     loadSessionDialog.deleteLater()
@@ -231,10 +252,37 @@ class BIDSIOWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
 
-    uiWidget.setMRMLScene(slicer.mrmlScene)
+    # Connections
+    self.ui.subjectLineEdit.textChanged.connect(self.updateMRMLFromWidget)
+    self.ui.sessionLineEdit.textChanged.connect(self.updateMRMLFromWidget)
+    self.ui.directoryButton.directoryChanged.connect(self.updateMRMLFromWidget)
 
-  def getPath(self):
-    return os.path.dirname(slicer.modules.bidsio.path)
+    uiWidget.setMRMLScene(slicer.mrmlScene)
+    self.updateParameterNode()
+    self.updateWidgetFromMRML()
+
+  @vtk.calldata_type(vtk.VTK_OBJECT)
+  def updateWidgetFromMRML(self, caller=None, eventId=None, callData=None):
+    wasBlocking = self.ui.directoryButton.blockSignals(True)
+    self.ui.directoryButton.directory = self.getCurrentDirectory()
+    self.ui.directoryButton.blockSignals(wasBlocking)
+    wasBlocking = self.ui.subjectLineEdit.blockSignals(True)
+    self.ui.subjectLineEdit.text = self.logic.getSubjectName()
+    self.ui.subjectLineEdit.blockSignals(wasBlocking)
+    wasBlocking = self.ui.sessionLineEdit.blockSignals(True)
+    self.ui.sessionLineEdit.text = self.logic.getSessionName()
+    self.ui.sessionLineEdit.blockSignals(wasBlocking)
+
+  def updateMRMLFromWidget(self):
+    parameterNode = self.logic.getParameterNode()
+    if parameterNode is None:
+      return
+
+    wasModifying = parameterNode.StartModify()
+    self.logic.setSubjectName(self.ui.subjectLineEdit.text)
+    self.logic.setSessionName(self.ui.sessionLineEdit.text)
+    self.setCurrentDirectory(self.ui.directoryButton.directory)    
+    parameterNode.EndModify(wasModifying)
 
   def getCurrentDirectory(self):
     settings = qt.QSettings()
@@ -278,6 +326,7 @@ class BIDSIOLogic(ScriptedLoadableModuleLogic):
 
     self.setSessionName(sessionName)
     self.setSubjectName(subjectName)
+    self.getParameterNode().Modified()
     return True
 
   def setSessionName(self, sessionName):
@@ -306,15 +355,21 @@ class BIDSIOLogic(ScriptedLoadableModuleLogic):
         return subjectName
     return ""
 
-  def saveSession(self, subjectDirectory, progressCallback=None):
+  def saveSession(self, directory, progressCallback=None):
     subjectName = self.getSubjectName()
     sessionName = self.getSessionName()
 
-    sceneSaveDirectory = subjectDirectory + "/" + subjectName
+    derivedDirectory = directory + "/derived"
+    derivedSubjectDirectory = derivedDirectory + "/" + subjectName
+    derivedSessionDirectory = derivedSubjectDirectory + "/" + sessionName
+
+    rawSubjectDirectory = directory + "/" + subjectName
+    rawSessionDirectory = rawSubjectDirectory
+
     saveMessage = "Saving scene for subject {0}".format(subjectName)
     if (not sessionName is None) and sessionName != "":
       saveMessage = ", session {0}".format(sessionName)
-      sceneSaveDirectory = sceneSaveDirectory + "/" + sessionName
+      rawSessionDirectory = rawSubjectDirectory + "/" + sessionName
     logging.info(saveMessage)
     slicer.app.ioManager().addDefaultStorageNodes()
 
@@ -343,10 +398,11 @@ class BIDSIOLogic(ScriptedLoadableModuleLogic):
 
       storageNode = node.GetStorageNode()
       fileExtension = "." + storageNode.GetDefaultWriteFileExtension()
-      if node.IsA("vtkMRMLVolumeNode") or node.IsA("vtkMRMLSegmentationNode"):
-        nodeDirectory = os.path.join(sceneSaveDirectory, "anat")
-      else:
-        nodeDirectory = os.path.join(sceneSaveDirectory, "data")
+      nodeDirectory = derivedSessionDirectory
+      if node.IsA("vtkMRMLVolumeNode"):
+        nodeDirectory = os.path.join(rawSessionDirectory, "anat") # For now we assign to anat. In the future, this should be retreived from DICOM or specified by the user
+      elif node.IsA("vtkMRMLSegmentationNode"):
+        nodeDirectory = os.path.join(derivedSessionDirectory, "anat")
       if not os.access(nodeDirectory, os.F_OK):
         os.makedirs(nodeDirectory)
       if node.IsA("vtkMRMLVolumeNode"):
@@ -392,12 +448,12 @@ class BIDSIOLogic(ScriptedLoadableModuleLogic):
       return False
 
     # Save scene file
-    if not os.access(sceneSaveDirectory, os.F_OK):
-      os.makedirs(sceneSaveDirectory)
+    if not os.access(derivedSessionDirectory, os.F_OK):
+      os.makedirs(derivedSessionDirectory)
 
     sceneName = "scene.mrml"
     if slicer.mrmlScene.GetModifiedSinceRead():
-      file_path = os.path.join(sceneSaveDirectory, sceneName)
+      file_path = os.path.join(derivedSessionDirectory, sceneName)
       if not slicer.mrmlScene.Commit(file_path):
         logging.error("Scene saving failed")
         return False
