@@ -22,7 +22,7 @@ class NeuroSegment(ScriptedLoadableModule):
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "NeuroSegment"
-    self.parent.categories = ["Examples"]
+    self.parent.categories = ["Segmentation"]
     self.parent.dependencies = ["Data"]
     self.parent.contributors = ["Kyle Sunderland (Perk Lab, Queen's University)"]
     self.parent.helpText = """
@@ -38,7 +38,7 @@ This file was originally developed by Kyle Sunderland (Perk Lab, Queen's Univers
   def initializeModule(self):
     moduleWidget = slicer.modules.neurosegment.widgetRepresentation().self()
 
-    #qt.QTimer.singleShot(1, widget.showLoadSessionDialog) # Disabled for now
+    #qt.QTimer.singleShot(1, moduleWidget.showLoadSessionDialog) # Disabled for now
 
     loadSessionIcon = qt.QIcon(moduleWidget.resourcePath('Icons/LoadSession.png'))
     self.loadSessionAction = slicer.util.mainWindow().findChild("QToolBar").addAction("")
@@ -61,10 +61,8 @@ class LoadSessionDialog(qt.QDialog):
     moduleWidget = slicer.modules.neurosegment.widgetRepresentation().self()
     uiWidget = slicer.util.loadUI(moduleWidget.resourcePath('UI/LoadSessionWidget.ui'))
     layout.addWidget(uiWidget)
-    self.ui = slicer.util.childWidgetVariables(uiWidget)
-
-    settings = qt.QSettings()
-    self.ui.directoryButton.directory = settings.value(NeuroSegment.CURRENT_DIRECTORY_SETTING, slicer.mrmlScene.GetRootDirectory())
+    self.ui = slicer.util.childWidgetVariables(uiWidget)   
+    self.ui.directoryButton.directory = moduleWidget.getCurrentDirectory()
 
     # Connections
     self.ui.directoryButton.directoryChanged.connect(self.onDirectoryChanged)
@@ -74,14 +72,14 @@ class LoadSessionDialog(qt.QDialog):
     self.onDirectoryChanged()
 
   def onDirectoryChanged(self):
-    path = self.ui.directoryButton.directory
-    directory = qt.QDir(path)
+    currentDirectory = self.ui.directoryButton.directory
+    directory = qt.QDir(currentDirectory)
 
     self.ui.treeWidget.clear()
     subjectInfoList = directory.entryInfoList(qt.QDir.Dirs | qt.QDir.NoDotAndDotDot)
 
-    settings = qt.QSettings()
-    settings.setValue(NeuroSegment.CURRENT_DIRECTORY_SETTING, path)
+    moduleWidget = slicer.modules.neurosegment.widgetRepresentation().self()
+    moduleWidget.setCurrentDirectory(currentDirectory)
 
     for subjectInfo in subjectInfoList:
       subjectName = subjectInfo.fileName()
@@ -148,20 +146,18 @@ class SaveSessionDialog(qt.QDialog):
     settings = qt.QSettings()
     self.ui.directoryButton.directory = settings.value(NeuroSegment.CURRENT_DIRECTORY_SETTING, slicer.app.defaultScenePath)
 
-    widget = slicer.modules.neurosegment.widgetRepresentation().self()
-    logic = widget.logic
-    parameterNode = logic.getParameterNode()
-    if parameterNode:
-      subjectName = parameterNode.GetParameter(NeuroSegment.SUBJECT_NAME_PARAMETER)
-      if subjectName is not None:
-        self.ui.subjectNameEdit.text = subjectName
-      sessionName = parameterNode.GetParameter(NeuroSegment.SESSION_NAME_PARAMETER)
-      if sessionName is not None:
-        self.ui.sessionNameEdit.text = sessionName
+    self.moduleWidget = slicer.modules.neurosegment.widgetRepresentation().self()
+    self.logic = self.moduleWidget.logic
+    parameterNode = self.logic.getParameterNode()
+    subjectName = self.logic.getSubjectName()
+    sessionName = self.logic.getSessionName()
+    self.ui.subjectNameEdit.text = subjectName
+    self.ui.sessionNameEdit.text = sessionName
 
     # Connections
-    self.ui.saveButton.clicked.connect(self.saveCurrentSession)
+    self.ui.saveButton.clicked.connect(self.save)
     self.ui.subjectNameEdit.textChanged.connect(self.onSubjectSessionNameChanged)
+    self.ui.sessionNameEdit.textChanged.connect(self.onSubjectSessionNameChanged)
     self.onSubjectSessionNameChanged()
 
   def onSubjectSessionNameChanged(self):
@@ -176,24 +172,26 @@ class SaveSessionDialog(qt.QDialog):
     slicer.app.processEvents()
     return progressDialog.wasCanceled
 
-  def saveCurrentSession(self):
-    subjectName = self.ui.subjectNameEdit.text
-    if subjectName == "":
-      return
-    sessionName = self.ui.sessionNameEdit.text
-    if sessionName == "":
-      return
+  def save(self):
+    self.logic.setSubjectName(self.ui.subjectNameEdit.text)
+    self.logic.setSessionName(self.ui.sessionNameEdit.text)
 
-    sessionDirectory = self.ui.directoryButton.directory + "/" + subjectName + "/" + sessionName + "/scene.mrml"
-    if os.access(sessionDirectory, os.F_OK) and not slicer.util.confirmOkCancelDisplay("Session already exists! Do you want to overwrite?"):
+    subjectName = self.logic.getSubjectName()
+    sessionName = self.logic.getSessionName()
+    
+    sessionDirectory = self.ui.directoryButton.directory + "/" + subjectName
+    if sessionName != "":
+      sessionDirectory += "/" + sessionName
+    scenePath = sessionDirectory + "/scene.mrml"
+
+    if os.access(scenePath, os.F_OK) and not slicer.util.confirmOkCancelDisplay("Session already exists! Do you want to overwrite?"):
       return
 
     progressDialog = slicer.util.createProgressDialog(parent=self, value=0, maximum=100)
     progressCallbackFunction = lambda progressLabel, progressValue, progressDialog=progressDialog: SaveSessionDialog.progressCallback(progressDialog, progressLabel, progressValue)
 
     qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
-    moduleLogic = slicer.modules.neurosegment.widgetRepresentation().self().logic
-    success = moduleLogic.saveSession(self.ui.directoryButton.directory, subjectName, sessionName, progressCallbackFunction)
+    success = self.logic.saveSession(self.ui.directoryButton.directory, progressCallbackFunction)
     qt.QApplication.restoreOverrideCursor()
 
     if success:
@@ -390,6 +388,13 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     storageNode.SetFileName(self.defaultSegmentationFileName)
     storageNode.ReadData(node)
     storageNode.SetFileName(oldFileName)
+
+  def getCurrentDirectory(self):
+    settings = qt.QSettings()
+    self.ui.directoryButton.directory = settings.value(NeuroSegment.CURRENT_DIRECTORY_SETTING, slicer.mrmlScene.GetRootDirectory())
+
+  def setCurrentDirectory(self, directory):
+    settings.setValue(NeuroSegment.CURRENT_DIRECTORY_SETTING, directory)
 
   def selectSegmentEditorParameterNode(self):
     # Select parameter set node if one is found in the scene, and create one otherwise
@@ -681,18 +686,46 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
       except:
         return False
 
+    self.setSessionName(sessionName)
+    self.setSubjectName(subjectName)
+    return True
+
+  def setSessionName(self, sessionName):
+    parameterNode = self.getParameterNode()
+    if parameterNode:
+      parameterNode.SetParameter(NeuroSegment.SESSION_NAME_PARAMETER, sessionName)
+
+  def getSessionName(self):
+    parameterNode = self.getParameterNode()
+    if parameterNode:
+      sessionName = parameterNode.GetParameter(NeuroSegment.SESSION_NAME_PARAMETER)
+      if sessionName is not None:
+        return sessionName
+    return ""
+
+  def setSubjectName(self, subjectName):
     parameterNode = self.getParameterNode()
     if parameterNode:
       parameterNode.SetParameter(NeuroSegment.SUBJECT_NAME_PARAMETER, subjectName)
-      parameterNode.SetParameter(NeuroSegment.SESSION_NAME_PARAMETER, sessionName)
-    return True
 
-  def saveSession(self, subjectDirectory, subjectName, sessionName, progressCallback=None):
-    sceneSaveDirectory = subjectDirectory + "/" + subjectName + "/" + sessionName
-    return self.saveScene(sceneSaveDirectory, progressCallback)
+  def getSubjectName(self):
+    parameterNode = self.getParameterNode()
+    if parameterNode:
+      subjectName = parameterNode.GetParameter(NeuroSegment.SUBJECT_NAME_PARAMETER)
+      if subjectName is not None:
+        return subjectName
+    return ""
 
-  def saveScene(self, sceneSaveDirectory, progressCallback=None):
-    logging.info("Saving scene to: {0}".format(sceneSaveDirectory))
+  def saveSession(self, subjectDirectory, progressCallback=None):
+    subjectName = self.getSubjectName()
+    sessionName = self.getSessionName()
+
+    sceneSaveDirectory = subjectDirectory + "/" + subjectName
+    saveMessage = "Saving scene for subject {0}".format(subjectName)
+    if (not sessionName is None) and sessionName != "":
+      saveMessage = ", session {0}".format(sessionName)
+      sceneSaveDirectory = sceneSaveDirectory + "/" + sessionName
+    logging.info(saveMessage)
     slicer.app.ioManager().addDefaultStorageNodes()
 
     fileNames = []
@@ -712,43 +745,46 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
         continue
       if not node.GetSaveWithScene():
         continue
+      if node.GetStorageNode() is None:
+        continue
 
       if progressCallback is not None and progressCallback('\nSaving node: %s' % node.GetName(), progress):
         break
 
-      # Re-check if storageNode is still None: the node is stored in the scene XML file.
-      if node.GetStorageNode() is None:
-        continue
-
-      # Disable compression of volume sequence nodes to make saving faster
       storageNode = node.GetStorageNode()
-      storageNode.SetUseCompression(0)
-
-      # Get the default write file extension from the storage nod
-      defaultWriteFileExtension = "." + storageNode.GetDefaultWriteFileExtension()
-
-      # Save node
-      uniqueFileName = slicer.app.applicationLogic().PercentEncode(node.GetName());
-      fileRenamed = False
-      for name in fileNames:
-        if uniqueFileName == name:
-          fileRenamed = True
-          uniqueFileName = slicer.mrmlScene.GenerateUniqueName(name)
-          logging.info(
-            "Filename {0} already exists for another node in the currently saving scene, {1} filename will be used instead".format(
-            name + defaultWriteFileExtension, uniqueFileName + defaultWriteFileExtension))
-          break
-
-      # Save nodes in the Data folder
+      fileExtension = "." + storageNode.GetDefaultWriteFileExtension()
       if node.IsA("vtkMRMLVolumeNode") or node.IsA("vtkMRMLSegmentationNode"):
         nodeDirectory = os.path.join(sceneSaveDirectory, "anat")
       else:
         nodeDirectory = os.path.join(sceneSaveDirectory, "data")
       if not os.access(nodeDirectory, os.F_OK):
         os.makedirs(nodeDirectory)
+      if node.IsA("vtkMRMLVolumeNode"):
+        fileExtension = ".nii.gz" # BIDS specification requires that images are saved in NIFTI
+      else if node.IsA("vtkMRMLSegmentationNode")
+        pass # Segmentation nodes can only be saved as .seg.nrrd. BIDS would prefer .nii.gz
 
-      nodeSavePath = os.path.join(nodeDirectory, uniqueFileName + defaultWriteFileExtension)
-      fileNames.append(uniqueFileName)
+      # Save node
+      fileName = slicer.app.applicationLogic().PercentEncode(node.GetName())
+      if node.IsA("vtkMRMLSegmentationNode"):
+         masterVolumeNode = node.GetNodeReference("referenceImageGeometryRef")
+         masterVolumeName = slicer.app.applicationLogic().PercentEncode(masterVolumeNode.GetName())
+         # Node name is derived from the name of the master volume
+         fileName = masterVolumeName + "_space-LPS_dseg" # Discrete segmentation name from BIDS extension proposal 11
+         # https://docs.google.com/document/d/1YG2g4UkEio4t_STIBOqYOwneLEs1emHIXbGKynx7V0Y/edit#heading=h.mqkmyp254xh6
+
+      fileRenamed = False
+      for name in fileNames:
+        if fileName == name:
+          fileRenamed = True
+          fileName = slicer.mrmlScene.GenerateUniqueName(name)
+          logging.info(
+            "Filename {0} already exists for another node in the currently saving scene, {1} filename will be used instead".format(
+            name + fileExtension, fileName + fileExtension))
+          break
+
+      nodeSavePath = os.path.join(nodeDirectory, fileName + fileExtension)
+      fileNames.append(fileName)
       storageNode.SetFileName(nodeSavePath)
       nodeAlreadySavedInThisDir = os.path.isfile(nodeSavePath)
       if (not nodeAlreadySavedInThisDir) or node.GetModifiedSinceRead() or fileRenamed:
