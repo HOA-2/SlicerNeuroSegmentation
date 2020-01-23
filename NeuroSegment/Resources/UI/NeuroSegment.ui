@@ -26,23 +26,23 @@
      <item>
       <layout class="QVBoxLayout" name="segmentEditorLayout">
        <item>
-        <widget class="qMRMLSegmentEditorWidget" name="segmentEditorWidget" native="true">
+        <widget class="qMRMLSegmentEditorWidget" name="segmentEditorWidget">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <property name="masterVolumeNodeSelectorVisible" stdset="0">
+         <property name="masterVolumeNodeSelectorVisible">
           <bool>true</bool>
          </property>
-         <property name="switchToSegmentationsButtonVisible" stdset="0">
+         <property name="switchToSegmentationsButtonVisible">
           <bool>false</bool>
          </property>
-         <property name="maximumNumberOfUndoStates" stdset="0">
+         <property name="maximumNumberOfUndoStates">
           <number>10</number>
          </property>
-         <property name="unorderedEffectsVisible" stdset="0">
+         <property name="unorderedEffectsVisible">
           <bool>true</bool>
          </property>
         </widget>
@@ -54,10 +54,60 @@
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_2">
           <item>
-           <widget class="qMRMLWindowLevelWidget" name="windowLevelWidget" native="true"/>
+           <widget class="qMRMLWindowLevelWidget" name="windowLevelWidget"/>
           </item>
           <item>
-           <widget class="qMRMLVolumeThresholdWidget" name="volumeThresholdWidget" native="true"/>
+           <widget class="qMRMLVolumeThresholdWidget" name="volumeThresholdWidget"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="ctkCollapsibleGroupBox" name="versionControlGroupBox">
+         <property name="title">
+          <string>Version control</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_4">
+          <item>
+           <widget class="ctkDirectoryButton" name="versionControlDirectoryButton"/>
+          </item>
+          <item>
+           <layout class="QFormLayout" name="formLayout">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label">
+              <property name="text">
+               <string>Message:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QLineEdit" name="messageLineEdit"/>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="gitLayout">
+            <item>
+             <widget class="QPushButton" name="commitButton">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Commit</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButton">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Push</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
          </layout>
         </widget>
@@ -75,7 +125,7 @@
       <widget class="ctkExpandableWidget" name="infoExpandableWidget">
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
-         <widget class="qSlicerTerminologyNavigatorWidget" name="terminologyNavigatorWidget" native="true"/>
+         <widget class="qSlicerTerminologyNavigatorWidget" name="terminologyNavigatorWidget"/>
         </item>
        </layout>
       </widget>
@@ -85,6 +135,28 @@
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>ctkCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>ctkCollapsibleGroupBox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ctkDirectoryButton</class>
+   <extends>QWidget</extends>
+   <header>ctkDirectoryButton.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkExpandButton</class>
+   <extends>QToolButton</extends>
+   <header>ctkExpandButton.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkExpandableWidget</class>
+   <extends>QFrame</extends>
+   <header>ctkExpandableWidget.h</header>
+   <container>1</container>
+  </customwidget>
   <customwidget>
    <class>qMRMLVolumeThresholdWidget</class>
    <extends>QWidget</extends>
@@ -117,23 +189,6 @@
    <class>qSlicerTerminologyNavigatorWidget</class>
    <extends>qMRMLWidget</extends>
    <header>qSlicerTerminologyNavigatorWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>ctkCollapsibleGroupBox</class>
-   <extends>QGroupBox</extends>
-   <header>ctkCollapsibleGroupBox.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>ctkExpandButton</class>
-   <extends>QToolButton</extends>
-   <header>ctkExpandButton.h</header>
-  </customwidget>
-  <customwidget>
-   <class>ctkExpandableWidget</class>
-   <extends>QFrame</extends>
-   <header>ctkExpandableWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
