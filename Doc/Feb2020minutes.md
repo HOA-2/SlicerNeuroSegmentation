@@ -2,7 +2,7 @@
 
 Minutes from meeting PNL/Queens Collaboration Skype Call – 2:00pm
 * PNL:  Jarrett Rushmore (JR), Sylvian Bouix (SB)
-* Queens: Kyle Sunderland (KS, Andras Lasso (AL)
+* Queens: Kyle Sunderland (KS), Andras Lasso (AL)
 
 
 ## 1.	 Surface Creation
