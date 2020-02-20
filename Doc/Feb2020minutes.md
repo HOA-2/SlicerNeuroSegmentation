@@ -24,7 +24,18 @@ Minutes from meeting PNL/Queens Collaboration Skype Call – 2:00pm
   * Need to establish that WM vertices correspond in a 1:1 fashion to specific pial vertices.
   
 ## 3.  Query Language and grammar
- * It would be useful to have a grammar similar to the WMQL (see email from SB 2/19/20) to implement cutting/parcellation rules
+ * It would be useful to have a grammar similar to the WMQL (see email from SB 2/19/20, and links below) to implement cutting/parcellation rules
+ 
+ Query language for fiber tract selection:
+
+https://github.com/demianw/tract_querier
+
+CMA Parcellation protocol that will form the basis of our parcellation scheme:
+
+https://www.dropbox.com/s/go5q8p49akuj4p8/CMA-SurfaceAssistedCorticalParcellation-Manual.pdf?dl=0
+
+It introduces concepts of “regular” lines, sulci lines, planes, point landmarks, and finally parcellation units defined by these landmarks.
+ 
   -this would allow people like JR to be able to modify definitions as they evolve
   
   * SB may reach out to David Kennedy to inquire more about the Cardview file format
