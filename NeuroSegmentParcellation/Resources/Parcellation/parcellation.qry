@@ -1,0 +1,101 @@
+
+_Planes = [
+  PlaneA,
+  PlaneB,
+  PlaneC,
+  #PlaneD,
+  #PlaneE,
+  #PlaneF,
+  #PlaneG,
+  #PlaneH,
+  #PlaneI,
+  #PlaneJ,
+  #PlaneK,
+  #PlaneL,
+  #PlaneM,
+  #PlaneN,
+  #PlaneO,
+  #PlaneP,
+]
+
+_Curves = [
+  HemisphericMargin,
+  #Inferior45DegreeLine,
+  OlfactorySulcus,
+  #PrecentralSulcus,
+  #SuperiorFrontalSulcus,
+]
+
+_ClosedCurves = [
+  CircularSulcusOfTheInsula,
+]
+
+#TEST = HemisphericMargin & OlfactorySulcus
+#TEST2 = HemisphericMargin | OlfactorySulcus
+
+#TEST = PlaneA & PlaneB & PlaneC
+CSI = CircularSulcusOfTheInsula
+
+#FP_l = PlaneA & HemisphericMargin & OlfactorySulcus
+#F1_l = ~PlaneA & PrecentralSulcus & HemisphericMargin & SuperiorFrontalSulcus
+#F2 = ~PlaneA & SuperiorFrontalSulcus & InferiorFrontalSulcus & PrecentralSulcus
+#F3t = ~PlaneA & Inferior45DegreeLine & AnteriorAscendingRamusOfTheSylvian
+#F3o = 
+#FOC
+#FO
+#CO
+#PO
+#PP
+#H1
+#PT
+#INS
+#PRG_l
+#POG_l
+#SGa
+#SGp_a
+#SGp_p
+#SPL
+#AG
+#OLs
+#OLi
+#OP
+#TP
+#T1a
+#T1p
+#T2a
+#T2p
+#TO2
+#T3a
+#T3p
+#TO3
+#FP_m
+#F1_m
+#FMC
+#PAC_a
+#PAC_p
+#SC
+#CGa_a
+#CGa_p
+#CGp
+#SMC
+#PRG_m
+#POG_m
+#PCN
+#CN
+#CALC
+#SCLC
+#PHa
+#PHp
+#LG
+#TFa
+#TFp
+#TOF
+#OF
+#BFsbcmp
+
+# Additional Parcellation Units
+#AGa
+#AGp
+#OLsProper
+#SPLa
+#SPLp
