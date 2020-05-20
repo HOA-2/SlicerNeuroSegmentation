@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MeshParseRule</class>
- <widget class="qMRMLWidget" name="MeshParseRule">
+ <class>NeuroSegmentParcellation</class>
+ <widget class="qMRMLWidget" name="NeuroSegmentParcellation">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -32,7 +32,7 @@
       <bool>true</bool>
      </property>
      <property name="baseName">
-      <string>MeshParseRule</string>
+      <string>NeuroSegmentParcellation</string>
      </property>
      <property name="renameEnabled">
       <bool>true</bool>
@@ -257,7 +257,7 @@
  <resources/>
  <connections>
   <connection>
-   <sender>MeshParseRule</sender>
+   <sender>NeuroSegmentParcellation</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>querySelector</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
@@ -273,7 +273,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>MeshParseRule</sender>
+   <sender>NeuroSegmentParcellation</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>parameterNodeSelector</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
@@ -289,7 +289,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>MeshParseRule</sender>
+   <sender>NeuroSegmentParcellation</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>inputModelSelector</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
@@ -305,7 +305,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>MeshParseRule</sender>
+   <sender>NeuroSegmentParcellation</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>innerSurfaceSelector</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
@@ -321,7 +321,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>MeshParseRule</sender>
+   <sender>NeuroSegmentParcellation</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>outerSurfaceSelector</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
@@ -337,7 +337,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>MeshParseRule</sender>
+   <sender>NeuroSegmentParcellation</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>exportSegmentationSelector</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>

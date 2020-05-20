@@ -42,17 +42,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
 
-    ruleTextNode = slicer.mrmlScene.GetFirstNodeByClass("RuleTextNode")
-    if ruleTextNode is None:
-      ruleTextNode = slicer.vtkMRMLTextNode()
-      ruleTextNode.SetName("RuleTextNode")
-      slicer.mrmlScene.AddNode(ruleTextNode)
-
-      storageNode = slicer.vtkMRMLTextStorageNode()
-      storageNode.SetFileName(self.resourcePath('Parcellation/parcellation.qry'))
-      storageNode.ReadData(ruleTextNode)
-      slicer.mrmlScene.RemoveNode(storageNode)
-
     # Load widget from .ui file (created by Qt Designer)
     uiWidget = slicer.util.loadUI(self.resourcePath('UI/NeuroSegmentParcellation.ui'))
     self.layout.addWidget(uiWidget)
@@ -117,6 +106,19 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if inputParameterNode is not None:
       self.addObserver(inputParameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
     self._parameterNode = inputParameterNode
+
+    parcellationQueryNode = slicer.util.getFirstNodeByClassByName("vtkMRMLTextNode", "ParcellationQuery")
+    if parcellationQueryNode is None:
+      parcellationQueryNode = slicer.vtkMRMLTextNode()
+      parcellationQueryNode.SetName("ParcellationQuery")
+      slicer.mrmlScene.AddNode(parcellationQueryNode)
+
+      storageNode = slicer.vtkMRMLTextStorageNode()
+      storageNode.SetFileName(self.resourcePath('Parcellation/parcellation.qry'))
+      storageNode.ReadData(parcellationQueryNode)
+      slicer.mrmlScene.RemoveNode(storageNode)
+    if self._parameterNode is not None:
+      self._parameterNode.SetNodeReferenceID(INPUT_QUERY_REFERENCE, parcellationQueryNode.GetID())
 
     # Initial GUI update
     self.updateGUIFromParameterNode()
@@ -251,11 +253,13 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if self._parameterNode is None:
       return
 
+    wasModifying = self._parameterNode.StartModify()
     self._parameterNode.SetNodeReferenceID(INPUT_QUERY_REFERENCE, self.ui.querySelector.currentNodeID)
     self._parameterNode.SetNodeReferenceID(INPUT_MODEL_REFERENCE, self.ui.inputModelSelector.currentNodeID)
     self._parameterNode.SetNodeReferenceID(INNER_SURFACE_REFERENCE, self.ui.innerSurfaceSelector.currentNodeID)
     self._parameterNode.SetNodeReferenceID(OUTER_SURFACE_REFERENCE, self.ui.outerSurfaceSelector.currentNodeID)
     self._parameterNode.SetNodeReferenceID(EXPORT_SEGMENTATION_REFERENCE, self.ui.exportSegmentationSelector.currentNodeID)
+    self._parameterNode.EndModify(wasModifying)
 
   def onExportButton(self):
     """
@@ -272,6 +276,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     """
     Setup nodes
     """
+    if self._parameterNode is None:
+      return
     self._parameterNode.RemoveNodeReferenceIDs(INPUT_MARKUPS_REFERENCE)
     self._parameterNode.RemoveNodeReferenceIDs(OUTPUT_MODEL_REFERENCE)
     self.logic.parseParcellationString(self._parameterNode)
@@ -437,6 +443,10 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       inputNode = slicer.util.getFirstNodeByClassByName(className, name)
       if not inputNode:
         inputNode = slicer.mrmlScene.AddNewNodeByClass(className, name)
+        inputNode.CreateDefaultDisplayNodes()
+        displayNode = inputNode.GetDisplayNode()
+        if className == "vtkMRMLMarkupsPlaneNode":
+          displayNode.HandlesInteractiveOn()
         inputNodes.append(inputNode)
       self._parameterNode.AddNodeReferenceID(INPUT_MARKUPS_REFERENCE, inputNode.GetID())
     return inputNodes
@@ -489,7 +499,7 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
 
     return outputModelNode.GetName()
 
-  def process_Rule(self, mrmlNode, inputModelNode=None):
+  def process_Rule(self, mrmlNode, inputModelNode=None, invert=False):
     if not mrmlNode:
       return None
     if mrmlNode.IsA("vtkMRMLModelNode"):
@@ -523,7 +533,12 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     return outputModelNode
 
   def visit_UnaryOp(self, node):
-    print("Unary: " + node.id)
+    pass
+    if not isinstance(node.op, ast.Invert) and not isinstance(node.op, ast.Not):
+      return
+    leftMRMLNode = slicer.util.getNode(leftName)
+    leftOutputModelNode = self.process_Rule(leftMRMLNode, None, True)
+      
 
 _TEST_STRING_1 = """
 left = input
@@ -571,18 +586,18 @@ class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
 
     logic = NeuroSegmentParcellationLogic()
 
-    ruleTextNode = slicer.vtkMRMLTextNode()
-    ruleTextNode.SetName("RuleTextNode")
-    slicer.mrmlScene.AddNode(ruleTextNode)
+    parcellationQueryNode = slicer.vtkMRMLTextNode()
+    parcellationQueryNode.SetName("ParcellationQuery")
+    slicer.mrmlScene.AddNode(parcellationQueryNode)
 
     storageNode = slicer.vtkMRMLTextStorageNode()
-    storageNode.SetFileName(self.resourcePath('Parcellation/parcellation.qry'))
-    storageNode.ReadData(ruleTextNode)
+    storageNode.SetFileName("E:/d/s/NeuroSegmentation/NeuroSegmentParcellation/Resources/Parcellation/parcellation.qry")
+    storageNode.ReadData(parcellationQueryNode)
     slicer.mrmlScene.RemoveNode(storageNode)
 
     parameterNode = logic.getParameterNode()
     parameterNode.SetNodeReferenceID(INPUT_MODEL_REFERENCE, inputModelNode.GetID())
-    parameterNode.SetNodeReferenceID(INPUT_QUERY_REFERENCE, ruleTextNode.GetID())
+    parameterNode.SetNodeReferenceID(INPUT_QUERY_REFERENCE, parcellationQueryNode.GetID())
     parameterNode.SetAttribute("TEST", inputModelNode.GetID())
 
     logic.parseParcellationString(parameterNode)
