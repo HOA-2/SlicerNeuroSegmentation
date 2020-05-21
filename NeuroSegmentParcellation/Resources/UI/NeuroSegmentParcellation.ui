@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>208</width>
-    <height>485</height>
+    <height>514</height>
    </rect>
   </property>
   <layout class="QFormLayout" name="formLayout">
@@ -132,20 +132,7 @@
      <layout class="QFormLayout" name="formLayout_4"/>
     </widget>
    </item>
-   <item row="11" column="0">
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>40</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item row="10" column="0" colspan="2">
+   <item row="11" column="0" colspan="2">
     <widget class="qMRMLCollapsibleButton" name="exportSegmentationCollapsibleButton">
      <property name="text">
       <string>Export to segmentation</string>
@@ -227,6 +214,41 @@
      </layout>
     </widget>
    </item>
+   <item row="12" column="0">
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="10" column="1">
+    <widget class="ctkCheckablePushButton" name="applyButton">
+     <property name="text">
+      <string>Apply</string>
+     </property>
+     <property name="checkable">
+      <bool>false</bool>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+     <property name="checkState">
+      <enum>Qt::Unchecked</enum>
+     </property>
+     <property name="checkBoxControlsButton">
+      <bool>true</bool>
+     </property>
+     <property name="checkBoxControlsButtonToggleState">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <customwidgets>
@@ -248,10 +270,20 @@
    <container>1</container>
   </customwidget>
   <customwidget>
+   <class>ctkCheckablePushButton</class>
+   <extends>ctkPushButton</extends>
+   <header>ctkCheckablePushButton.h</header>
+  </customwidget>
+  <customwidget>
    <class>ctkCollapsibleButton</class>
    <extends>QWidget</extends>
    <header>ctkCollapsibleButton.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ctkPushButton</class>
+   <extends>QPushButton</extends>
+   <header>ctkPushButton.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

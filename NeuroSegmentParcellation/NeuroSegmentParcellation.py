@@ -15,6 +15,7 @@ INPUT_QUERY_REFERENCE = "InputQuery"
 OUTPUT_MODEL_REFERENCE = "OutputModel"
 INNER_SURFACE_REFERENCE = "InnerSurface"
 OUTER_SURFACE_REFERENCE = "OuterSurface"
+RULE_NODE_REFERENCE = "RuleNode"
 EXPORT_SEGMENTATION_REFERENCE = "ExportSegmentation"
 
 class NeuroSegmentParcellation(ScriptedLoadableModule):
@@ -62,6 +63,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     # Connections
     self.ui.parameterNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.setParameterNode)
     self.ui.loadQueryButton.connect('clicked(bool)', self.onLoadQuery)
+    self.ui.applyButton.connect('clicked(bool)', self.onApplyButton)
     self.ui.exportButton.connect('clicked(bool)', self.onExportButton)
 
     # These connections ensure that whenever user changes some settings on the GUI, that is saved in the MRML scene
@@ -71,6 +73,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.innerSurfaceSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.outerSurfaceSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.exportSegmentationSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
+    self.ui.applyButton.connect('checkBoxToggled(bool)', self.updateParameterNodeFromGUI)
 
     # Initial GUI update
     self.updateGUIFromParameterNode()
@@ -190,6 +193,12 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self._inputMarkupsWidget.setLayout(inputMarkupsLayout)
     self.ui.inputMarkupsCollapsibleButton.layout().addWidget(self._inputMarkupsWidget)
 
+    ruleNode = self._parameterNode.GetNodeReference(RULE_NODE_REFERENCE)
+    if ruleNode:
+      wasBlocking = self.ui.applyButton.blockSignals(True)
+      self.ui.applyButton.setChecked(ruleNode.GetContinuousUpdate())
+      self.ui.applyButton.blockSignals(wasBlocking)
+
     #
     outputModelsLayout = qt.QFormLayout()
     for i in range(self._parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)):
@@ -259,7 +268,23 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self._parameterNode.SetNodeReferenceID(INNER_SURFACE_REFERENCE, self.ui.innerSurfaceSelector.currentNodeID)
     self._parameterNode.SetNodeReferenceID(OUTER_SURFACE_REFERENCE, self.ui.outerSurfaceSelector.currentNodeID)
     self._parameterNode.SetNodeReferenceID(EXPORT_SEGMENTATION_REFERENCE, self.ui.exportSegmentationSelector.currentNodeID)
+    numberOfRuleNodes = self._parameterNode.GetNumberOfNodeReferences(RULE_NODE_REFERENCE)
+    for i in range(numberOfRuleNodes):
+      ruleNode = self._parameterNode.GetNthNodeReference(RULE_NODE_REFERENCE, i)
+      ruleNode.SetContinuousUpdate(self.ui.applyButton.checked)
     self._parameterNode.EndModify(wasModifying)
+
+  def onApplyButton(self):
+    """
+    Apply all of the parcellation rules
+    """
+    if self._parameterNode is None:
+      return
+    numberOfRuleNodes = self._parameterNode.GetNumberOfNodeReferences(RULE_NODE_REFERENCE)
+    dynamicModelerLogic = slicer.modules.dynamicmodeler.logic()
+    for i in range(numberOfRuleNodes):
+      ruleNode = self._parameterNode.GetNthNodeReference(RULE_NODE_REFERENCE, i)
+      dynamicModelerLogic.RunDynamicModelerRule(ruleNode)
 
   def onExportButton(self):
     """
@@ -395,6 +420,10 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     if 'targets' in node._fields:
       target = node.targets[0]
 
+    if not isinstance(target, ast.Name):
+      logging.error("Invalid assignment in line %d" % node.lineno)
+      return
+
     if target.id == "_Planes":
       self.process_InputNodes(node.value, "vtkMRMLMarkupsPlaneNode")
       return
@@ -413,25 +442,24 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
         curveNode.SetAndObserveShortestDistanceSurfaceNode(inputModel)
       return
 
-    if isinstance(target, ast.Name):
-      #assignments[target.id] = node.value
-      pass
-    else:
-      logging.error("Invalid assignment in line %d" % node.lineno)
-      return
+    nodes = self.visit(node.value)
 
-    value = self.visit(node.value)
-    if value is not None:
-      assignModel = slicer.util.getFirstNodeByClassByName("vtkMRMLModelNode", value)
-      assignMarkup = slicer.util.getFirstNodeByClassByName("vtkMRMLMarkupsNode", value)
-      if assignModel is None and not assignMarkup is None:
-        assignModel  = self.process_Rule(assignMarkup)
+    inputModelNode = self.getInputModelNode()
 
-      if assignModel is not None:
-        assignModel.SetName(target.id)
-      else:
-        assignModel = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", target.id)
-      self._parameterNode.AddNodeReferenceID(OUTPUT_MODEL_REFERENCE, assignModel.GetID())
+    outputModel = slicer.util.getFirstNodeByClassByName("vtkMRMLModelNode", target.id)
+    if outputModel is None:
+      outputModel = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", target.id)       
+    self._parameterNode.AddNodeReferenceID(OUTPUT_MODEL_REFERENCE, outputModel.GetID())
+
+    ruleNode = slicer.vtkMRMLDynamicModelerNode()
+    slicer.mrmlScene.AddNode(ruleNode)
+    ruleNode.SetRuleName(slicer.vtkSlicerDynamicModelerBoundaryCutRule().GetName())
+    ruleNode.SetNodeReferenceID("BoundaryCut.OutputModel", outputModel.GetID())
+    ruleNode.SetNodeReferenceID("BoundaryCut.InputModel", inputModelNode.GetID())
+    for inputNode in nodes:
+      ruleNode.AddNodeReferenceID("BoundaryCut.InputBorder", inputNode.GetID())
+    ruleNode.ContinuousUpdateOff()
+    self._parameterNode.AddNodeReferenceID(RULE_NODE_REFERENCE, ruleNode.GetID())
 
   def process_InputNodes(self, node, className):
     if not isinstance(node, ast.List):
@@ -452,7 +480,8 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     return inputNodes
 
   def visit_Name(self, node):
-    return node.id
+    slicerNode = slicer.util.getNode(node.id)
+    return [slicerNode]
 
   def visit_Call(self, node):
     pass
@@ -464,40 +493,9 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       logging.error("Invalid binary operator arguments!")
       return
     
-    if isinstance(leftValue, ast.Name):
-      leftName = leftValue.id
-    else:
-      leftName = self.visit(leftValue)
-
-    if isinstance(rightValue, ast.Name):
-      rightName = rightValue.id
-    else:
-      rightName = self.visit(rightValue)
-
-    leftMRMLNode = slicer.util.getNode(leftName)
-    leftOutputModelNode = self.process_Rule(leftMRMLNode)
-
-    rightMRMLNode = slicer.util.getNode(rightName)
-    if isinstance(node.op, ast.And) or isinstance(node.op, ast.BitAnd):
-      rightOutputModelNode = self.process_Rule(rightMRMLNode, leftOutputModelNode)
-      return rightOutputModelNode.GetName()
-
-    rightOutputModelNode = self.process_Rule(rightMRMLNode)
-
-    outputModelNode = slicer.vtkMRMLModelNode()
-    outputModelNode.SetName(slicer.mrmlScene.GetUniqueNameByString("TempNode"))
-    slicer.mrmlScene.AddNode(outputModelNode)
-
-    ruleNode = slicer.vtkMRMLDynamicModelerNode()
-    ruleNode.SetRuleName(slicer.vtkSlicerDynamicModelerAppendRule().GetName())
-    ruleNode.ContinuousUpdateOn()
-    slicer.mrmlScene.AddNode(ruleNode)
-
-    ruleNode.AddNodeReferenceID("Append.InputModel", leftOutputModelNode.GetID())
-    ruleNode.AddNodeReferenceID("Append.InputModel", rightOutputModelNode.GetID())
-    ruleNode.AddNodeReferenceID("Append.OutputModel", outputModelNode.GetID())
-
-    return outputModelNode.GetName()
+    leftNodes = self.visit(leftValue)
+    rightNodes = self.visit(rightValue)
+    return leftNodes + rightNodes
 
   def process_Rule(self, mrmlNode, inputModelNode=None, invert=False):
     if not mrmlNode:
@@ -533,12 +531,7 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     return outputModelNode
 
   def visit_UnaryOp(self, node):
-    pass
-    if not isinstance(node.op, ast.Invert) and not isinstance(node.op, ast.Not):
-      return
-    leftMRMLNode = slicer.util.getNode(leftName)
-    leftOutputModelNode = self.process_Rule(leftMRMLNode, None, True)
-      
+    logging.error("Unary operator not supported!")
 
 _TEST_STRING_1 = """
 left = input

@@ -1,3 +1,4 @@
+# Parcellation description file
 
 _Planes = [
   PlaneA,
@@ -30,16 +31,10 @@ _ClosedCurves = [
   CircularSulcusOfTheInsula,
 ]
 
-#TEST = HemisphericMargin & OlfactorySulcus
-#TEST2 = HemisphericMargin | OlfactorySulcus
-
-#TEST = PlaneA & PlaneB & PlaneC
-CSI = CircularSulcusOfTheInsula
-
-#FP_l = PlaneA & HemisphericMargin & OlfactorySulcus
-#F1_l = ~PlaneA & PrecentralSulcus & HemisphericMargin & SuperiorFrontalSulcus
-#F2 = ~PlaneA & SuperiorFrontalSulcus & InferiorFrontalSulcus & PrecentralSulcus
-#F3t = ~PlaneA & Inferior45DegreeLine & AnteriorAscendingRamusOfTheSylvian
+FP_l = PlaneA & HemisphericMargin & OlfactorySulcus
+#F1_l = PlaneA & PrecentralSulcus & HemisphericMargin & SuperiorFrontalSulcus
+#F2 = PlaneA & SuperiorFrontalSulcus & InferiorFrontalSulcus & PrecentralSulcus
+#F3t = PlaneA & Inferior45DegreeLine & AnteriorAscendingRamusOfTheSylvian
 #F3o = 
 #FOC
 #FO
