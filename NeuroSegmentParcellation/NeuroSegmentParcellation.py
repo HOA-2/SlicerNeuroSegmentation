@@ -15,7 +15,7 @@ INPUT_QUERY_REFERENCE = "InputQuery"
 OUTPUT_MODEL_REFERENCE = "OutputModel"
 INNER_SURFACE_REFERENCE = "InnerSurface"
 OUTER_SURFACE_REFERENCE = "OuterSurface"
-RULE_NODE_REFERENCE = "RuleNode"
+TOOL_NODE_REFERENCE = "ToolNode"
 EXPORT_SEGMENTATION_REFERENCE = "ExportSegmentation"
 
 class NeuroSegmentParcellation(ScriptedLoadableModule):
@@ -193,10 +193,10 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self._inputMarkupsWidget.setLayout(inputMarkupsLayout)
     self.ui.inputMarkupsCollapsibleButton.layout().addWidget(self._inputMarkupsWidget)
 
-    ruleNode = self._parameterNode.GetNodeReference(RULE_NODE_REFERENCE)
-    if ruleNode:
+    toolNode = self._parameterNode.GetNodeReference(TOOL_NODE_REFERENCE)
+    if toolNode:
       wasBlocking = self.ui.applyButton.blockSignals(True)
-      self.ui.applyButton.setChecked(ruleNode.GetContinuousUpdate())
+      self.ui.applyButton.setChecked(toolNode.GetContinuousUpdate())
       self.ui.applyButton.blockSignals(wasBlocking)
 
     #
@@ -268,23 +268,23 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self._parameterNode.SetNodeReferenceID(INNER_SURFACE_REFERENCE, self.ui.innerSurfaceSelector.currentNodeID)
     self._parameterNode.SetNodeReferenceID(OUTER_SURFACE_REFERENCE, self.ui.outerSurfaceSelector.currentNodeID)
     self._parameterNode.SetNodeReferenceID(EXPORT_SEGMENTATION_REFERENCE, self.ui.exportSegmentationSelector.currentNodeID)
-    numberOfRuleNodes = self._parameterNode.GetNumberOfNodeReferences(RULE_NODE_REFERENCE)
-    for i in range(numberOfRuleNodes):
-      ruleNode = self._parameterNode.GetNthNodeReference(RULE_NODE_REFERENCE, i)
-      ruleNode.SetContinuousUpdate(self.ui.applyButton.checked)
+    numberOfToolNodes = self._parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
+    for i in range(numberOfToolNodes):
+      toolNode = self._parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
+      toolNode.SetContinuousUpdate(self.ui.applyButton.checked)
     self._parameterNode.EndModify(wasModifying)
 
   def onApplyButton(self):
     """
-    Apply all of the parcellation rules
+    Apply all of the parcellation tools
     """
     if self._parameterNode is None:
       return
-    numberOfRuleNodes = self._parameterNode.GetNumberOfNodeReferences(RULE_NODE_REFERENCE)
+    numberOfToolNodes = self._parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
     dynamicModelerLogic = slicer.modules.dynamicmodeler.logic()
-    for i in range(numberOfRuleNodes):
-      ruleNode = self._parameterNode.GetNthNodeReference(RULE_NODE_REFERENCE, i)
-      dynamicModelerLogic.RunDynamicModelerRule(ruleNode)
+    for i in range(numberOfToolNodes):
+      toolNode = self._parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
+      dynamicModelerLogic.RunDynamicModelerTool(toolNode)
 
   def onExportButton(self):
     """
@@ -335,7 +335,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic):
       eq.setParameterNode(parameterNode)
       eq.visit(astNode)
     except SyntaxError as e:
-      logging.error("Error parsing mesh rule string!")
+      logging.error("Error parsing mesh tool string!")
       logging.error(e)
     #slicer.mrmlScene.EndState(slicer.mrmlScene.BatchProcessState)
 
@@ -356,14 +356,14 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic):
     
     outputModelNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode")
 
-    ruleNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLDynamicModelerNode")
-    ruleNode.SetRuleName(slicer.vtkSlicerFreeSurferExtrudeRule().GetName())
-    ruleNode.SetNodeReferenceID("FreeSurferExtrude.InputPatch", surfacePatchNode.GetID())
-    ruleNode.SetNodeReferenceID("FreeSurferExtrude.InputOrigModel", innerSurfaceNode.GetID())
-    ruleNode.SetNodeReferenceID("FreeSurferExtrude.InputPialModel", outerSurfaceNode.GetID())
-    ruleNode.SetNodeReferenceID("FreeSurferExtrude.OutputModel", outputModelNode.GetID())
-    slicer.modules.dynamicmodeler.logic().RunDynamicModelerRule(ruleNode)
-    slicer.mrmlScene.RemoveNode(ruleNode)
+    toolNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLDynamicModelerNode")
+    toolNode.SetToolName(slicer.vtkSlicerFreeSurferExtrudeTool().GetName())
+    toolNode.SetNodeReferenceID("FreeSurferExtrude.InputPatch", surfacePatchNode.GetID())
+    toolNode.SetNodeReferenceID("FreeSurferExtrude.InputOrigModel", innerSurfaceNode.GetID())
+    toolNode.SetNodeReferenceID("FreeSurferExtrude.InputPialModel", outerSurfaceNode.GetID())
+    toolNode.SetNodeReferenceID("FreeSurferExtrude.OutputModel", outputModelNode.GetID())
+    slicer.modules.dynamicmodeler.logic().RunDynamicModelerTool(toolNode)
+    slicer.mrmlScene.RemoveNode(toolNode)
 
     segmentName = surfacePatchNode.GetName()
     segmentColor = surfacePatchNode.GetDisplayNode().GetColor()
@@ -451,15 +451,15 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       outputModel = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", target.id)       
     self._parameterNode.AddNodeReferenceID(OUTPUT_MODEL_REFERENCE, outputModel.GetID())
 
-    ruleNode = slicer.vtkMRMLDynamicModelerNode()
-    slicer.mrmlScene.AddNode(ruleNode)
-    ruleNode.SetRuleName(slicer.vtkSlicerDynamicModelerBoundaryCutRule().GetName())
-    ruleNode.SetNodeReferenceID("BoundaryCut.OutputModel", outputModel.GetID())
-    ruleNode.SetNodeReferenceID("BoundaryCut.InputModel", inputModelNode.GetID())
+    toolNode = slicer.vtkMRMLDynamicModelerNode()
+    slicer.mrmlScene.AddNode(toolNode)
+    toolNode.SetToolName(slicer.vtkSlicerDynamicModelerBoundaryCutTool().GetName())
+    toolNode.SetNodeReferenceID("BoundaryCut.OutputModel", outputModel.GetID())
+    toolNode.SetNodeReferenceID("BoundaryCut.InputModel", inputModelNode.GetID())
     for inputNode in nodes:
-      ruleNode.AddNodeReferenceID("BoundaryCut.InputBorder", inputNode.GetID())
-    ruleNode.ContinuousUpdateOff()
-    self._parameterNode.AddNodeReferenceID(RULE_NODE_REFERENCE, ruleNode.GetID())
+      toolNode.AddNodeReferenceID("BoundaryCut.InputBorder", inputNode.GetID())
+    toolNode.ContinuousUpdateOff()
+    self._parameterNode.AddNodeReferenceID(TOOL_NODE_REFERENCE, toolNode.GetID())
 
   def process_InputNodes(self, node, className):
     if not isinstance(node, ast.List):
@@ -497,15 +497,15 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     rightNodes = self.visit(rightValue)
     return leftNodes + rightNodes
 
-  def process_Rule(self, mrmlNode, inputModelNode=None, invert=False):
+  def process_Tool(self, mrmlNode, inputModelNode=None, invert=False):
     if not mrmlNode:
       return None
     if mrmlNode.IsA("vtkMRMLModelNode"):
       return mrmlNode
 
-    ruleNode = slicer.vtkMRMLDynamicModelerNode()
-    ruleNode.ContinuousUpdateOn()
-    slicer.mrmlScene.AddNode(ruleNode)
+    toolNode = slicer.vtkMRMLDynamicModelerNode()
+    toolNode.ContinuousUpdateOn()
+    slicer.mrmlScene.AddNode(toolNode)
 
     if inputModelNode is None:
       inputModelNode = self.getInputModelNode()
@@ -515,18 +515,18 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     slicer.mrmlScene.AddNode(outputModelNode)
 
     if mrmlNode.IsA("vtkMRMLMarkupsCurveNode"):
-      ruleNode.SetRuleName(slicer.vtkSlicerDynamicModelerCurveCutRule().GetName())
+      toolNode.SetToolName(slicer.vtkSlicerDynamicModelerCurveCutTool().GetName())
       if inputModelNode is not None:
-        ruleNode.SetNodeReferenceID("CurveCut.InputModel", inputModelNode.GetID())
-      ruleNode.SetNodeReferenceID("CurveCut.InputCurve", mrmlNode.GetID())
-      ruleNode.SetNodeReferenceID("CurveCut.OutputModel", outputModelNode.GetID())
+        toolNode.SetNodeReferenceID("CurveCut.InputModel", inputModelNode.GetID())
+      toolNode.SetNodeReferenceID("CurveCut.InputCurve", mrmlNode.GetID())
+      toolNode.SetNodeReferenceID("CurveCut.OutputModel", outputModelNode.GetID())
     elif mrmlNode.IsA("vtkMRMLMarkupsPlaneNode"):
-      ruleNode.SetRuleName(slicer.vtkSlicerDynamicModelerPlaneCutRule().GetName())
+      toolNode.SetToolName(slicer.vtkSlicerDynamicModelerPlaneCutTool().GetName())
       if inputModelNode is not None:
-        ruleNode.SetNodeReferenceID("PlaneCut.InputModel", inputModelNode.GetID())
-      ruleNode.SetAttribute("CapSurface", str(0))
-      ruleNode.SetNodeReferenceID("PlaneCut.InputPlane", mrmlNode.GetID())
-      ruleNode.SetNodeReferenceID("PlaneCut.OutputPositiveModel", outputModelNode.GetID())
+        toolNode.SetNodeReferenceID("PlaneCut.InputModel", inputModelNode.GetID())
+      toolNode.SetAttribute("CapSurface", str(0))
+      toolNode.SetNodeReferenceID("PlaneCut.InputPlane", mrmlNode.GetID())
+      toolNode.SetNodeReferenceID("PlaneCut.OutputPositiveModel", outputModelNode.GetID())
 
     return outputModelNode
 
@@ -556,7 +556,7 @@ class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
     """
     self.setUp()
 
-    self.meshParseRule1()
+    self.meshParseTool1()
 
   def setupSphere(self):
 
@@ -571,7 +571,7 @@ class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
     modelNode.CreateDefaultDisplayNodes()
     return modelNode
 
-  def meshParseRule1(self):
+  def meshParseTool1(self):
     import time
     startTime = time.time()
 
