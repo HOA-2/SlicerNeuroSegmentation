@@ -453,6 +453,7 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
 
     toolNode = slicer.vtkMRMLDynamicModelerNode()
     slicer.mrmlScene.AddNode(toolNode)
+    toolNode.SetName(outputModel.GetName() + "_BoundaryCut")
     toolNode.SetToolName(slicer.vtkSlicerDynamicModelerBoundaryCutTool().GetName())
     toolNode.SetNodeReferenceID("BoundaryCut.OutputModel", outputModel.GetID())
     toolNode.SetNodeReferenceID("BoundaryCut.InputModel", inputModelNode.GetID())

@@ -1,30 +1,59 @@
 # Parcellation description file
 
 _Planes = [
+  BASFRBRN,
   PlaneA,
   PlaneB,
   PlaneC,
-  #PlaneD,
-  #PlaneE,
-  #PlaneF,
-  #PlaneG,
-  #PlaneH,
-  #PlaneI,
-  #PlaneJ,
-  #PlaneK,
-  #PlaneL,
-  #PlaneM,
-  #PlaneN,
-  #PlaneO,
-  #PlaneP,
+  PlaneD,
+  PlaneE,
+  PlaneF,
+  PlaneG,
+  PlaneH,
+  PlaneI,
+  PlaneJ,
+  PlaneK,
+  PlaneL,
+  PlaneM,
+  PlaneN,
+  PlaneO,
+  PlaneP,
+  Seuptum,
 ]
 
 _Curves = [
   HemisphericMargin,
-  #Inferior45DegreeLine,
+  Inferior45DegreeLine,
   OlfactorySulcus,
-  #PrecentralSulcus,
-  #SuperiorFrontalSulcus,
+  PrecentralSulcus,
+  InferiorFrontalSulcus,
+  SuperiorFrontalSulcus,
+  AnteriorAscendingRamusOfTheSylvian,
+  Superior45DegreeLine,
+  FirstTransverseSulcus,
+  HeschlsSulcus,
+  CentralSulcus,
+  PostcentralSulcus,
+  IntraparietalSulcus,
+  SuperiorTemporalSulcus,
+  IntermediateSulcusOfJensen,
+  LateralOccipitalSulcus,
+  OccipitotemporalSulcus,
+  InferiorTemporalSulcus,
+  ParacingulateSulcus,
+  CingulateSulcus,
+  CallosalSulcus,
+  SubparietalSulcus,
+  CingulateSulcus,
+  CalcarineSulcus,
+  ParietooccipitalSulcus,
+  CunPo,
+  CunealSulcus,
+  CunPnt,
+  CalcarineSuperiorLine,
+  HippocampalFissue,
+  CollateralSulcus,
+  Bf_line,
 ]
 
 _ClosedCurves = [
@@ -32,61 +61,61 @@ _ClosedCurves = [
 ]
 
 FP_l = PlaneA & HemisphericMargin & OlfactorySulcus
-#F1_l = PlaneA & PrecentralSulcus & HemisphericMargin & SuperiorFrontalSulcus
-#F2 = PlaneA & SuperiorFrontalSulcus & InferiorFrontalSulcus & PrecentralSulcus
-#F3t = PlaneA & Inferior45DegreeLine & AnteriorAscendingRamusOfTheSylvian
-#F3o = 
-#FOC
-#FO
-#CO
-#PO
-#PP
-#H1
-#PT
-#INS
-#PRG_l
-#POG_l
-#SGa
-#SGp_a
-#SGp_p
-#SPL
-#AG
-#OLs
-#OLi
-#OP
-#TP
-#T1a
-#T1p
-#T2a
-#T2p
-#TO2
-#T3a
-#T3p
-#TO3
-#FP_m
-#F1_m
-#FMC
-#PAC_a
-#PAC_p
-#SC
-#CGa_a
-#CGa_p
-#CGp
-#SMC
-#PRG_m
-#POG_m
-#PCN
-#CN
-#CALC
-#SCLC
-#PHa
-#PHp
-#LG
-#TFa
-#TFp
-#TOF
-#OF
-#BFsbcmp
+F1_l = PlaneA & PrecentralSulcus & HemisphericMargin & SuperiorFrontalSulcus
+F2 = PlaneA & SuperiorFrontalSulcus & InferiorFrontalSulcus & PrecentralSulcus
+F3t = PlaneA & Inferior45DegreeLine & AnteriorAscendingRamusOfTheSylvian & InferiorFrontalSulcus
+F3o = PlaneA & Inferior45DegreeLine & AnteriorAscendingRamusOfTheSylvian & InferiorFrontalSulcus & PrecentralSulcus
+FOC = PlaneA & BASFRBRN & AnteriorAscendingRamusOfTheSylvian & OlfactorySulcus & CircularSulcusOfTheInsula
+FO = PlaneO & Superior45DegreeLine & CircularSulcusOfTheInsula
+CO = PlaneO & PlaneP & Superior45DegreeLine & CircularSulcusOfTheInsula
+PO = PlaneP & PlaneD & Superior45DegreeLine & CircularSulcusOfTheInsula
+PP = PlaneB & FirstTransverseSulcus & Inferior45DegreeLine & CircularSulcusOfTheInsula
+H1 = FirstTransverseSulcus & HeschlsSulcus & Inferior45DegreeLine & CircularSulcusOfTheInsula
+PT = PlaneD & HeschlsSulcus & Inferior45DegreeLine & CircularSulcusOfTheInsula
+INS = CircularSulcusOfTheInsula
+PRG_l = HemisphericMargin & PrecentralSulcus & CentralSulcus & Superior45DegreeLine
+POG_l = HemisphericMargin & CentralSulcus & PostcentralSulcus & Superior45DegreeLine
+SGa = PlaneD & PostcentralSulcus & IntraparietalSulcus & Inferior45DegreeLine
+SGp_a = PlaneD & PlaneE & IntraparietalSulcus & SuperiorTemporalSulcus
+SGp_p = PlaneE & IntraparietalSulcus & IntermediateSulcusOfJensen
+SPL = PlaneF & PostcentralSulcus & IntraparietalSulcus & HemisphericMargin
+AG = PlaneE & PlaneF & SuperiorTemporalSulcus & IntraparietalSulcus & LateralOccipitalSulcus & IntermediateSulcusOfJensen
+OLs = PlaneF & PlaneG & LateralOccipitalSulcus & HemisphericMargin & PostcentralSulcus
+OLi = PlaneF & PlaneG & LateralOccipitalSulcus & OccipitotemporalSulcus
+OP = PlaneG
+TP = PlaneB
+T1a = PlaneB & PlaneC & SuperiorTemporalSulcus & Inferior45DegreeLine
+T1p = PlaneC & PlaneD & SuperiorTemporalSulcus & Inferior45DegreeLine
+T2a = PlaneB & PlaneC & InferiorTemporalSulcus & SuperiorTemporalSulcus
+T2p = PlaneC & PlaneD & InferiorTemporalSulcus & SuperiorTemporalSulcus
+TO2 = PlaneD & PlaneF & InferiorTemporalSulcus & SuperiorTemporalSulcus & LateralOccipitalSulcus
+T3a = PlaneB & PlaneC & InferiorTemporalSulcus & OccipitotemporalSulcus
+T3p = PlaneC & PlaneD & InferiorTemporalSulcus & OccipitotemporalSulcus
+TO3 = PlaneD & PlaneF & InferiorTemporalSulcus & OccipitotemporalSulcus
+FP_m = PlaneH & HemisphericMargin
+F1_m = PlaneH & PlaneJ & ParacingulateSulcus & HemisphericMargin
+FMC = PlaneH & PlaneI & OlfactorySulcus & ParacingulateSulcus
+PAC_a = PlaneI & ParacingulateSulcus & CingulateSulcus
+PAC_p = PlaneI & PlaneJ & ParacingulateSulcus & CingulateSulcus
+SC = PlaneI & Seuptum & OlfactorySulcus & CallosalSulcus
+CGa_a = PlaneI & CingulateSulcus
+CGa_p = PlaneI & PlaneK & CingulateSulcus & CallosalSulcus
+CGp = PlaneK & CallosalSulcus & CalcarineSulcus & SubparietalSulcus
+SMC = PlaneJ & PlaneK & CingulateSulcus & HemisphericMargin
+PRG_m = PlaneK & PlaneL & CingulateSulcus & HemisphericMargin
+POG_m = PlaneL & HemisphericMargin & CingulateSulcus
+PCN = PlaneG & CingulateSulcus & SubparietalSulcus & CalcarineSulcus & ParietooccipitalSulcus & HemisphericMargin
+CN = CunPo & PlaneG & ParietooccipitalSulcus & CunealSulcus & HemisphericMargin
+CALC = CunPnt & PlaneG & CalcarineSulcus & CalcarineSuperiorLine & ParietooccipitalSulcus
+SCLC = CunPnt & PlaneG & CalcarineSuperiorLine & ParietooccipitalSulcus & CunealSulcus
+PHa = PlaneB & PlaneM & HippocampalFissue & CollateralSulcus
+PHp = PlaneM & PlaneN & HippocampalFissue & CollateralSulcus & CalcarineSulcus
+LG =  PlaneN & PlaneG & CollateralSulcus & CalcarineSulcus
+TFa = PlaneB & PlaneC & OccipitotemporalSulcus & CollateralSulcus
+TFp = PlaneC & PlaneD & OccipitotemporalSulcus & CollateralSulcus
+TOF = PlaneD & PlaneF & OccipitotemporalSulcus & CollateralSulcus
+OF = PlaneF & PlaneG & OccipitotemporalSulcus & CollateralSulcus
+BFsbcmp = BASFRBRN & OlfactorySulcus & Bf_line & CircularSulcusOfTheInsula
 
 # Additional Parcellation Units
 #AGa
