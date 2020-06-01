@@ -37,7 +37,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     VTKObservationMixin.__init__(self)
     self.logic = None
     self._parameterNode = None
-    self._inputMarkupsWidget = None
+    self._inputPlanesWidget = None
+    self._inputCurvesWidget = None
     self._outputModelsWidget = None
 
   def setup(self):
@@ -133,16 +134,21 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     """
     # Disable all sections if no parameter node is selected
     self.ui.inputQueryCollapsibleButton .enabled = self._parameterNode is not None
-    self.ui.inputMarkupsCollapsibleButton.enabled = self._parameterNode is not None
+    self.ui.inputPlanesCollapsibleButton.enabled = self._parameterNode is not None
+    self.ui.inputCurvesCollapsibleButton.enabled = self._parameterNode is not None
     self.ui.inputModelCollapsibleButton.enabled = self._parameterNode is not None
     self.ui.outputModelsCollapsibleButton.enabled = self._parameterNode is not None
     self.ui.exportSegmentationCollapsibleButton.enabled = self._parameterNode is not None
 
-    if not self._inputMarkupsWidget is None:
-      self.ui.inputMarkupsCollapsibleButton.layout().removeWidget(self._inputMarkupsWidget)
-      self._inputMarkupsWidget.setParent(None)
+    if self._inputPlanesWidget is not None:
+      self.ui.inputPlanesCollapsibleButton.layout().removeWidget(self._inputPlanesWidget)
+      self._inputPlanesWidget.setParent(None)
 
-    if not self._outputModelsWidget is None:
+    if self._inputCurvesWidget is not None:
+      self.ui.inputCurvesCollapsibleButton.layout().removeWidget(self._inputCurvesWidget)
+      self._inputCurvesWidget.setParent(None)
+
+    if self._outputModelsWidget is not None:
       self.ui.outputModelsCollapsibleButton.layout().removeWidget(self._outputModelsWidget)
       self._outputModelsWidget.setParent(None)
 
@@ -180,18 +186,33 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     else:
       self.ui.exportButton.enabled = False
 
-    #
-    inputMarkupsLayout = qt.QFormLayout()
+    # Curve widgets
+    inputCurvesLayout = qt.QFormLayout()
     for i in range(self._parameterNode.GetNumberOfNodeReferences(INPUT_MARKUPS_REFERENCE)):
-      inputMarkupNode = self._parameterNode.GetNthNodeReference(INPUT_MARKUPS_REFERENCE, i)
-      placeWidget = slicer.qSlicerMarkupsPlaceWidget()
-      placeWidget.setMRMLScene(slicer.mrmlScene)
-      placeWidget.setCurrentNode(inputMarkupNode)
-      inputMarkupsLayout.addRow(qt.QLabel(inputMarkupNode.GetName()), placeWidget)
+      inputCurveNode = self._parameterNode.GetNthNodeReference(INPUT_MARKUPS_REFERENCE, i)
+      if inputCurveNode.IsA("vtkMRMLMarkupsCurveNode"):
+        placeWidget = slicer.qSlicerMarkupsPlaceWidget()
+        placeWidget.setMRMLScene(slicer.mrmlScene)
+        placeWidget.setCurrentNode(inputCurveNode)
+        inputCurvesLayout.addRow(qt.QLabel(inputCurveNode.GetName()), placeWidget)
 
-    self._inputMarkupsWidget = qt.QWidget()
-    self._inputMarkupsWidget.setLayout(inputMarkupsLayout)
-    self.ui.inputMarkupsCollapsibleButton.layout().addWidget(self._inputMarkupsWidget)
+    self._inputCurvesWidget = qt.QWidget()
+    self._inputCurvesWidget.setLayout(inputCurvesLayout)
+    self.ui.inputCurvesCollapsibleButton.layout().addWidget(self._inputCurvesWidget)
+
+    # Plane widgets
+    inputPlanesLayout = qt.QFormLayout()
+    for i in range(self._parameterNode.GetNumberOfNodeReferences(INPUT_MARKUPS_REFERENCE)):
+      inputPlaneNode = self._parameterNode.GetNthNodeReference(INPUT_MARKUPS_REFERENCE, i)
+      if inputPlaneNode.IsA("vtkMRMLMarkupsPlaneNode"):
+        placeWidget = slicer.qSlicerMarkupsPlaceWidget()
+        placeWidget.setMRMLScene(slicer.mrmlScene)
+        placeWidget.setCurrentNode(inputPlaneNode)
+        inputPlanesLayout.addRow(qt.QLabel(inputPlaneNode.GetName()), placeWidget)
+
+    self._inputPlanesWidget = qt.QWidget()
+    self._inputPlanesWidget.setLayout(inputPlanesLayout)
+    self.ui.inputPlanesCollapsibleButton.layout().addWidget(self._inputPlanesWidget)
 
     toolNode = self._parameterNode.GetNodeReference(TOOL_NODE_REFERENCE)
     if toolNode:
