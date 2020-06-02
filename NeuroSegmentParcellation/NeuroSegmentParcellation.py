@@ -83,6 +83,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     """
     Called when the application closes and the module widget is destroyed.
     """
+    self.logic.removeObservers()
     self.removeObservers()
 
   def setParameterNode(self, inputParameterNode):
@@ -244,7 +245,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       outputModelLayout = qt.QHBoxLayout()
       outputModelLayout.setContentsMargins(6, 0, 0, 0)
       outputModelLayout.addWidget(colorPicker)
-      outputModelLayout.addWidget(visibilityButton)      
+      outputModelLayout.addWidget(visibilityButton)
 
       outputModelWidget = qt.QWidget()
       outputModelWidget.setLayout(outputModelLayout)
@@ -324,18 +325,56 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     """
     if self._parameterNode is None:
       return
+    self.ui.loadQueryButton.setIcon(qt.QIcon())
+    self.ui.loadQueryButton.setToolTip("")
+
     self._parameterNode.RemoveNodeReferenceIDs(INPUT_MARKUPS_REFERENCE)
     self._parameterNode.RemoveNodeReferenceIDs(OUTPUT_MODEL_REFERENCE)
-    self.logic.parseParcellationString(self._parameterNode)
+    success, message = self.logic.parseParcellationString(self._parameterNode)
+    if not success:
+      icon = self.ui.loadQueryButton.style().standardIcon(qt.QStyle.SP_MessageBoxCritical)
+      self.ui.loadQueryButton.setIcon(icon)
+      self.ui.loadQueryButton.setToolTip(message)
 
-
-class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic):
+class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   """Perform filtering
   """
 
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
+    VTKObservationMixin.__init__(self)
     self.isSingletonParameterNode = False
+
+    self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
+
+  @vtk.calldata_type(vtk.VTK_OBJECT)
+  def onNodeAdded(self, caller, eventId, node):
+    if node is None:
+      return
+    if not node.IsA("vtkMRMLScriptedModuleNode"):
+      return
+    if not node.GetAttribute( "ModuleName") == self.moduleName:
+      return
+    self.addObserver(node, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified)
+
+  def onParameterNodeModified(self, parameterNode , eventId):
+    if parameterNode is None:
+      return
+
+    inputModelNode = parameterNode.GetNodeReference(INPUT_MODEL_REFERENCE)
+    if inputModelNode is not None:
+
+      numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
+      for i in range(numberOfToolNodes):
+        toolNode = parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
+        if toolNode.GetNodeReference("BoundaryCut.InputModel") != inputModelNode:
+          toolNode.SetNodeReferenceID("BoundaryCut.InputModel", inputModelNode.GetID())
+
+      numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(INPUT_MARKUPS_REFERENCE)
+      for i in range(numberOfMarkupNodes):
+        inputCurveNode = parameterNode.GetNthNodeReference(INPUT_MARKUPS_REFERENCE, i)
+        if inputCurveNode.IsA("vtkMRMLMarkupsCurveNode"):
+          inputCurveNode.SetAndObserveShortestDistanceSurfaceNode(inputModelNode)
 
   def setDefaultParameters(self, parameterNode):
     """
@@ -349,16 +388,23 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic):
       logging.error("Invalid query!")
       return
 
-    #slicer.mrmlScene.StartState(slicer.mrmlScene.BatchProcessState)
+    success = False
+    errorMessage = ""
+    wasModifying = parameterNode.StartModify()
+    slicer.mrmlScene.StartState(slicer.mrmlScene.BatchProcessState)
     try:
-      astNode = ast.parse(queryString )
+      astNode = ast.parse(queryString)
       eq = NeuroSegmentParcellationVisitor()
       eq.setParameterNode(parameterNode)
       eq.visit(astNode)
+      success = True
     except SyntaxError as e:
       logging.error("Error parsing mesh tool string!")
-      logging.error(e)
-    #slicer.mrmlScene.EndState(slicer.mrmlScene.BatchProcessState)
+      errorMessage = str(e)
+      logging.error(errorMessage)
+    slicer.mrmlScene.EndState(slicer.mrmlScene.BatchProcessState)
+    parameterNode.EndModify(wasModifying)
+    return [success, errorMessage]
 
   def exportOutputToSegmentation(self, parameterNode):
     if parameterNode is None:
@@ -374,7 +420,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic):
     exportSegmentationNode.CreateDefaultDisplayNodes()
 
   def exportMeshToSegmentation(self, surfacePatchNode, innerSurfaceNode, outerSurfaceNode, exportSegmentationNode):
-    
+
     outputModelNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode")
 
     toolNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLDynamicModelerNode")
@@ -412,7 +458,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic):
     if queryTextNode is None:
       return None
     return queryTextNode.GetText()
-    
+
 
 class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
   """TODO
@@ -425,11 +471,6 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
 
   def setParameterNode(self, parameterNode):
     self._parameterNode = parameterNode
-  
-  def getInputModelNode(self):
-    if self._parameterNode is None:
-      return None
-    return self._parameterNode.GetNodeReference(INPUT_MODEL_REFERENCE)
 
   def visit_Assign(self, node):
     if len(node.targets) > 1:
@@ -450,26 +491,20 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       return
     elif target.id == "_Curves":
       curveNodes = self.process_InputNodes(node.value, "vtkMRMLMarkupsCurveNode")
-      inputModel = self.getInputModelNode()
       for curveNode in curveNodes:
         curveNode.SetCurveTypeToShortestDistanceOnSurface()
-        curveNode.SetAndObserveShortestDistanceSurfaceNode(inputModel)
       return
     elif target.id == "_ClosedCurves":
       curveNodes = self.process_InputNodes(node.value, "vtkMRMLMarkupsClosedCurveNode")
-      inputModel = self.getInputModelNode()
       for curveNode in curveNodes:
         curveNode.SetCurveTypeToShortestDistanceOnSurface()
-        curveNode.SetAndObserveShortestDistanceSurfaceNode(inputModel)
       return
 
     nodes = self.visit(node.value)
 
-    inputModelNode = self.getInputModelNode()
-
     outputModel = slicer.util.getFirstNodeByClassByName("vtkMRMLModelNode", target.id)
     if outputModel is None:
-      outputModel = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", target.id)       
+      outputModel = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", target.id)
     self._parameterNode.AddNodeReferenceID(OUTPUT_MODEL_REFERENCE, outputModel.GetID())
 
     toolNode = slicer.vtkMRMLDynamicModelerNode()
@@ -477,7 +512,6 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     toolNode.SetName(outputModel.GetName() + "_BoundaryCut")
     toolNode.SetToolName(slicer.vtkSlicerDynamicModelerBoundaryCutTool().GetName())
     toolNode.SetNodeReferenceID("BoundaryCut.OutputModel", outputModel.GetID())
-    toolNode.SetNodeReferenceID("BoundaryCut.InputModel", inputModelNode.GetID())
     for inputNode in nodes:
       toolNode.AddNodeReferenceID("BoundaryCut.InputBorder", inputNode.GetID())
     toolNode.ContinuousUpdateOff()
@@ -514,43 +548,10 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     if leftValue == None or rightValue == None:
       logging.error("Invalid binary operator arguments!")
       return
-    
+
     leftNodes = self.visit(leftValue)
     rightNodes = self.visit(rightValue)
     return leftNodes + rightNodes
-
-  def process_Tool(self, mrmlNode, inputModelNode=None, invert=False):
-    if not mrmlNode:
-      return None
-    if mrmlNode.IsA("vtkMRMLModelNode"):
-      return mrmlNode
-
-    toolNode = slicer.vtkMRMLDynamicModelerNode()
-    toolNode.ContinuousUpdateOn()
-    slicer.mrmlScene.AddNode(toolNode)
-
-    if inputModelNode is None:
-      inputModelNode = self.getInputModelNode()
-
-    outputModelNode = slicer.vtkMRMLModelNode()
-    outputModelNode.SetName(slicer.mrmlScene.GetUniqueNameByString("TempNode"))
-    slicer.mrmlScene.AddNode(outputModelNode)
-
-    if mrmlNode.IsA("vtkMRMLMarkupsCurveNode"):
-      toolNode.SetToolName(slicer.vtkSlicerDynamicModelerCurveCutTool().GetName())
-      if inputModelNode is not None:
-        toolNode.SetNodeReferenceID("CurveCut.InputModel", inputModelNode.GetID())
-      toolNode.SetNodeReferenceID("CurveCut.InputCurve", mrmlNode.GetID())
-      toolNode.SetNodeReferenceID("CurveCut.OutputModel", outputModelNode.GetID())
-    elif mrmlNode.IsA("vtkMRMLMarkupsPlaneNode"):
-      toolNode.SetToolName(slicer.vtkSlicerDynamicModelerPlaneCutTool().GetName())
-      if inputModelNode is not None:
-        toolNode.SetNodeReferenceID("PlaneCut.InputModel", inputModelNode.GetID())
-      toolNode.SetAttribute("CapSurface", str(0))
-      toolNode.SetNodeReferenceID("PlaneCut.InputPlane", mrmlNode.GetID())
-      toolNode.SetNodeReferenceID("PlaneCut.OutputPositiveModel", outputModelNode.GetID())
-
-    return outputModelNode
 
   def visit_UnaryOp(self, node):
     logging.error("Unary operator not supported!")
