@@ -66,10 +66,12 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.undockSliceViewButton.connect('clicked()', self.toggleSliceViews)
     self.ui.infoExpandableWidget.setVisible(False)
 
-    self.ui.versionControlDirectoryButton.connect("directoryChanged(QString)", self.onVersionControlDirectoryChanged)
-    self.ui.commitButton.connect('clicked()', self.commitSegmentation)
-    self.ui.pushButton.connect('clicked()', self.pushSegmentation)
-    self.ui.versionControlDirectoryButton.directory = "C:\D\pnlbwh\derived"
+    self.ui.vcDirectoryButton.connect("directoryChanged(QString)", self.updateMRMLFromWidget)
+    self.ui.vcSaveButton.connect('clicked()', self.onSaveButton)
+    self.ui.vcUploadButton.connect('clicked()', self.onUploadButton)
+    directory = self.logic.getOutputDirectory()
+    self.ui.vcDirectoryButton.directory = directory
+    self.ui.vcMessageEdit.setMRMLTextNode(self.logic.getMessageTextNode())
 
     self.segmentationNodeComboBox = self.ui.segmentEditorWidget.findChild(
       slicer.qMRMLNodeComboBox, "SegmentationNodeComboBox")
@@ -473,63 +475,20 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     if singleModule:
       slicer.util.setPythonConsoleVisible(False)
 
-  def isGitRepo(self, path):
-    import git
-    try:
-        _ = git.Repo(path).git_dir
-        return True
-    except git.exc.InvalidGitRepositoryError:
-        return False
+  def updateMRMLFromWidget(self):
+    parameterNode = self.logic.getParameterNode()
+    wasModifying = parameterNode.StartModify()
 
-  def onVersionControlDirectoryChanged(self, directory):
-    import git
-    if self.isGitRepo(directory):
-      self.ui.commitButton.setEnabled(True)
-      self.ui.pushButton.setEnabled(True)
-    else:
-      self.ui.commitButton.setEnabled(False)
-      self.ui.pushButton.setEnabled(False)
+    directory = self.ui.vcDirectoryButton.directory
+    self.logic.setOutputDirectory(directory)
 
-  def commitSegmentation(self):
-    segmentationNode = self.ui.segmentEditorWidget.segmentationNode()
-    if segmentationNode is None:
-      logging.error("commitSegmentation: Invalid segmentation node")
-      return
-    
-    segmentationNode.AddDefaultStorageNode()
-    storageNode = segmentationNode.GetStorageNode()
-    if storageNode is None:
-      logging.error("commitSegmentation: Invalid segmentation storage node")
-      return
+    parameterNode.EndModify(wasModifying)
+  
+  def onSaveButton(self):
+    self.logic.commit()
 
-    commitMessage = self.ui.messageLineEdit.text
-    if commitMessage == "":
-      logging.error("commitSegmentation: Invalid commit message")
-      return
-
-    fileName = segmentationNode.GetName() + ".seg.nrrd"
-    storageNode.SetFileName(self.ui.versionControlDirectoryButton.directory + "/" + fileName)
-    storageNode.WriteData(segmentationNode)
-
-    import git
-    repo = git.Repo(self.ui.versionControlDirectoryButton.directory)
-    repo.git.add(update=True)
-    repo.git.commit("-m " + commitMessage)
-
-  def pushSegmentation(self):
-    branchName = "testSubject" # TODO: Branch name
-    if branchName == "master" or branchName == "":
-      logging.error("commitSegmentation: Invalid branch name")
-      return
-
-    import git
-    repo = git.Repo(self.ui.versionControlDirectoryButton.directory)
-    origin = repo.remotes.origin
-    try:
-      repo.heads[branchName]
-    except IndexError:
-      repo.create_head(branchName)
-    origin.push(branchName)
+  def onUploadButton(self):
+    self.logic.push()
 
 #
 # NeuroSegmentLogic
@@ -545,6 +504,71 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
+  def getMessageTextNode(self):
+    parameterNode = self.getParameterNode()
+    messageNode = parameterNode.GetNodeReference("MessageNode")
+    if messageNode is None:
+      messageNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTextNode", "Message")
+      parameterNode.SetNodeReferenceID("MessageNode", messageNode.GetID()) 
+    return messageNode
+
+  def setOutputDirectory(self, outputDirectory):
+    parameterNode = self.getParameterNode()
+    outputDirectory = parameterNode.SetAttribute("OutputDirectory", outputDirectory)
+
+  def getOutputDirectory(self):
+    parameterNode = self.getParameterNode()
+    outputDirectory = parameterNode.GetAttribute("OutputDirectory")
+    return outputDirectory
+
+  def commit(self):
+    messageNode = self.getMessageTextNode()
+    commitMessage  = messageNode.GetText()
+    if commitMessage == "":
+      logging.error("commitSegmentation: Invalid commit message")
+      return
+    return
+
+    for node in slicer.util.getNodes().values():
+      node.AddDefaultStorageNode()
+      storageNode = node.GetStorageNode()
+      if storageNode is None:
+        logging.error("commit: Invalid storage node")
+        return
+
+      fileName = node.GetName() + "." + storageNode.GetDefaultWriteFileExtension()
+      outputDirectory = self.getOutputDirectory()
+      #storageNode.SetFileName(self.ui.vcDirectoryButton.directory + "/" + fileName)
+      storageNode.WriteData(node)
+
+    import git
+    repo = git.Repo(self.ui.vcDirectoryButton.directory)
+    repo.git.add(update=True)
+    repo.git.add(update=True)
+    repo.git.commit("-m " + commitMessage)
+
+  def isGitRepo(self, path):
+    import git
+    try:
+        _ = git.Repo(path).git_dir
+        return True
+    except git.exc.InvalidGitRepositoryError:
+        return False
+
+  def push(self):
+    branchName = "testSubject" # TODO: Branch name
+    if branchName == "master" or branchName == "":
+      logging.error("commitSegmentation: Invalid branch name")
+      return
+
+    import git
+    repo = git.Repo(self.ui.vcDirectoryButton.directory)
+    origin = repo.remotes.origin
+    try:
+      repo.heads[branchName]
+    except IndexError:
+      repo.create_head(branchName)
+    origin.push(branchName)
 
 class NeuroSegmentTest(ScriptedLoadableModuleTest):
   """
