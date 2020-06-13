@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>loadSessionWidget</class>
+ <widget class="qSlicerWidget" name="loadSessionWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>655</width>
+    <height>432</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="layoutDirection">
+   <enum>Qt::LeftToRight</enum>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QWidget" name="widget" native="true">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <property name="sizeConstraint">
+       <enum>QLayout::SetNoConstraint</enum>
+      </property>
+      <item row="1" column="1">
+       <widget class="QTreeWidget" name="treeWidget">
+        <property name="columnCount">
+         <number>3</number>
+        </property>
+        <column>
+         <property name="text">
+          <string>Subject</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Session</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Date modified</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="ctkDirectoryButton" name="directoryButton"/>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>Directory:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QPushButton" name="loadButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Load</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>qSlicerWidget</class>
+   <extends>QWidget</extends>
+   <header>qSlicerWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ctkDirectoryButton</class>
+   <extends>QWidget</extends>
+   <header>ctkDirectoryButton.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>
