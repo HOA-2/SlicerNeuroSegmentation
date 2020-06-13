@@ -63,15 +63,17 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
     self.ui.segmentEditorWidget.connect("masterVolumeNodeChanged (vtkMRMLVolumeNode *)", self.onMasterVolumeNodeChanged)
+    self.ui.segmentEditorWidget.connect('segmentationNodeChanged(vtkMRMLSegmentationNode *)', self.onSegmentationNodeChanged)
     self.ui.undockSliceViewButton.connect('clicked()', self.toggleSliceViews)
     self.ui.infoExpandableWidget.setVisible(False)
+
+    self.ui.reviewSubmitButton.connect('clicked()', self.onReviewSubmitClicked)
 
     self.ui.vcDirectoryButton.connect("directoryChanged(QString)", self.updateMRMLFromWidget)
     self.ui.vcSaveButton.connect('clicked()', self.onSaveButton)
     self.ui.vcUploadButton.connect('clicked()', self.onUploadButton)
     directory = self.logic.getOutputDirectory()
     self.ui.vcDirectoryButton.directory = directory
-    self.ui.vcMessageEdit.setMRMLTextNode(self.logic.getMessageTextNode())
 
     self.segmentationNodeComboBox = self.ui.segmentEditorWidget.findChild(
       slicer.qMRMLNodeComboBox, "SegmentationNodeComboBox")
@@ -446,6 +448,10 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       sliceWidget = layoutManager.sliceWidget(sliceWidgetName)
       sliceWidget.mrmlSliceCompositeNode().SetBackgroundVolumeID(volumeNodeID)
 
+  def onSegmentationNodeChanged(self, segmentationNode):
+    tableNode = self.logic.getReviewTableNode(segmentationNode)
+    self.ui.reviewTable.setMRMLTableNode(tableNode)
+
   def showSingleModule(self, singleModule=True, toggle=False):
 
     if toggle:
@@ -474,6 +480,29 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     if singleModule:
       slicer.util.setPythonConsoleVisible(False)
+
+  def onReviewSubmitClicked(self):
+    masterVolume = self.ui.segmentEditorWidget.masterVolumeNode()
+    if masterVolume is None:
+      logging.error("onReviewSubmitClicked: Invalid master volume!")
+      return
+
+    tableNode = self.ui.reviewTable.mrmlTableNode()
+    row = tableNode.AddEmptyRow()
+    table = tableNode.GetTable()
+
+    rasToIJK = vtk.vtkMatrix4x4()
+    masterVolume.GetIJKToRASMatrix(rasToIJK)
+    rasToIJK.Invert()
+
+    sliceColumn = table.GetColumnByName("Slice")
+    sliceColumn.SetTuple1(row , row)
+
+    reviewCommentsColumn = table.GetColumnByName("Review comments")
+    reviewCommentsColumn.SetValue(row, self.ui.reviewTextEdit.plainText)
+    self.ui.reviewTextEdit.setText("")
+
+    table.Modified()
 
   def updateMRMLFromWidget(self):
     parameterNode = self.logic.getParameterNode()
@@ -504,13 +533,34 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
-  def getMessageTextNode(self):
-    parameterNode = self.getParameterNode()
-    messageNode = parameterNode.GetNodeReference("MessageNode")
-    if messageNode is None:
-      messageNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTextNode", "Message")
-      parameterNode.SetNodeReferenceID("MessageNode", messageNode.GetID()) 
-    return messageNode
+  def getReviewTableNode(self, segmentationNode):
+    if segmentationNode is None:
+      logging.error("getReviewTableNode: Invalid segmentation node!")
+
+    reviewTableNode = segmentationNode.GetNodeReference("ReviewTable")
+    if reviewTableNode is None:
+      tableName = segmentation.GetName() + "_ReviewTable"
+      reviewTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", tableName)
+
+      sliceArray = vtk.vtkIntArray()
+      sliceArray.SetName("Slice")
+      sliceArray.SetNumberOfComponents(1)
+      reviewTableNode.AddColumn(sliceArray)
+
+      reviewComments = vtk.vtkStringArray()
+      reviewComments.SetName("Review comments")
+      reviewTableNode.AddColumn(reviewComments)
+
+      authorComments = vtk.vtkStringArray()
+      authorComments.SetName("Author comments")
+      reviewTableNode.AddColumn(authorComments)
+
+      statusArray = vtk.vtkBitArray()
+      statusArray.SetName("Status")
+      reviewTableNode.AddColumn(statusArray)
+
+      segmentationNode.SetNodeReferenceID("ReviewTable", reviewTableNode.GetID())
+    return reviewTableNode
 
   def setOutputDirectory(self, outputDirectory):
     parameterNode = self.getParameterNode()
@@ -543,7 +593,6 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
 
     import git
     repo = git.Repo(self.ui.vcDirectoryButton.directory)
-    repo.git.add(update=True)
     repo.git.add(update=True)
     repo.git.commit("-m " + commitMessage)
 
