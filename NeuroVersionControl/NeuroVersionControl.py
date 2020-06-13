@@ -6,9 +6,9 @@ import logging
 from slicer.util import VTKObservationMixin
 
 #
-# BIDSIO
+# NeuroVersionControl
 #
-class BIDSIO(ScriptedLoadableModule):
+class NeuroVersionControl(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
@@ -20,7 +20,7 @@ class BIDSIO(ScriptedLoadableModule):
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "BIDSIO"
+    self.parent.title = "Neuro version control"
     self.parent.categories = ["Utilities"]
     self.parent.dependencies = ["Data"]
     self.parent.contributors = ["Kyle Sunderland (Perk Lab, Queen's University)"]
@@ -35,7 +35,7 @@ This file was originally developed by Kyle Sunderland (Perk Lab, Queen's Univers
       slicer.app.connect("startupCompleted()", self.initializeModule)
 
   def initializeModule(self):
-    moduleWidget = slicer.modules.bidsio.widgetRepresentation().self()
+    moduleWidget = slicer.modules.neuroversioncontrol.widgetRepresentation().self()
 
     #qt.QTimer.singleShot(1, moduleWidget.showLoadSessionDialog) # Disabled for now
 
@@ -57,7 +57,7 @@ class LoadSessionDialog(qt.QDialog):
     layout = qt.QVBoxLayout()
     self.setLayout(layout)
 
-    moduleWidget = slicer.modules.bidsio.widgetRepresentation().self()
+    moduleWidget = slicer.modules.neuroversioncontrol.widgetRepresentation().self()
     uiWidget = slicer.util.loadUI(moduleWidget.resourcePath('UI/LoadSessionWidget.ui'))
     layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
@@ -77,12 +77,12 @@ class LoadSessionDialog(qt.QDialog):
     self.ui.treeWidget.clear()
     subjectInfoList = directory.entryInfoList(qt.QDir.Dirs | qt.QDir.NoDotAndDotDot)
 
-    moduleWidget = slicer.modules.bidsio.widgetRepresentation().self()
+    moduleWidget = slicer.modules.neuroversioncontrol.widgetRepresentation().self()
     moduleWidget.setCurrentDirectory(currentDirectory)
 
     for subjectInfo in subjectInfoList:
       subjectName = subjectInfo.fileName()
-      subjectItem = qt.QTreeWidgetItem();
+      subjectItem = qt.QTreeWidgetItem()
       subjectItem.setData(0, qt.Qt.UserRole, subjectName)
       subjectItem.setData(0, qt.Qt.UserRole, subjectName)
       subjectItem.setText(0, subjectName)
@@ -98,7 +98,7 @@ class LoadSessionDialog(qt.QDialog):
         if not os.access(scenePath, os.F_OK):
           continue
 
-        sessionItem = qt.QTreeWidgetItem();
+        sessionItem = qt.QTreeWidgetItem()
         sessionItem.setData(0, qt.Qt.UserRole, subjectName)
         sessionItem.setData(0, qt.Qt.UserRole + 1, sessionName)
         sessionItem.setText(1, sessionName)
@@ -123,7 +123,7 @@ class LoadSessionDialog(qt.QDialog):
     if subjectName == "" or sessionName == "":
       return
 
-    moduleLogic = slicer.modules.bidsio.widgetRepresentation().self().logic
+    moduleLogic = slicer.modules.neuroversioncontrol.widgetRepresentation().self().logic
     if moduleLogic.loadSession(self.ui.directoryButton.directory, subjectName, sessionName):
       moduleLogic.setSubjectName(subjectName)
       moduleLogic.setSessionName(sessionName)
@@ -139,15 +139,15 @@ class SaveSessionDialog(qt.QDialog):
     layout = qt.QVBoxLayout()
     self.setLayout(layout)
 
-    moduleWidget = slicer.modules.bidsio.widgetRepresentation().self()
+    moduleWidget = slicer.modules.neuroversioncontrol.widgetRepresentation().self()
     uiWidget = slicer.util.loadUI(moduleWidget.resourcePath('UI/SaveSessionWidget.ui'))
     layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
 
     settings = qt.QSettings()
-    self.ui.directoryButton.directory = settings.value(BIDSIO.CURRENT_DIRECTORY_SETTING, slicer.app.defaultScenePath)
+    self.ui.directoryButton.directory = settings.value(NeuroVersionControl.CURRENT_DIRECTORY_SETTING, slicer.app.defaultScenePath)
 
-    self.moduleWidget = slicer.modules.bidsio.widgetRepresentation().self()
+    self.moduleWidget = slicer.modules.neuroversioncontrol.widgetRepresentation().self()
     self.logic = self.moduleWidget.logic
     parameterNode = self.logic.getParameterNode()
     subjectName = self.logic.getSubjectName()
@@ -202,10 +202,10 @@ class SaveSessionDialog(qt.QDialog):
       slicer.util.errorDisplay("Error saving session!")
 
 #
-# BIDSIOWidget
+# NeuroVersionControlWidget
 #
 
-class BIDSIOWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
+class NeuroVersionControlWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
@@ -214,7 +214,7 @@ class BIDSIOWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     ScriptedLoadableModuleWidget.__init__(self, parent)
     VTKObservationMixin.__init__(self)
 
-    self.logic = BIDSIOLogic()
+    self.logic = NeuroVersionControlLogic()
 
     # Connect observers to scene events
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
@@ -246,9 +246,9 @@ class BIDSIOWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
 
-    self.logic = BIDSIOLogic()
+    self.logic = NeuroVersionControlLogic()
 
-    uiWidget = slicer.util.loadUI(self.resourcePath('UI/BIDSIO.ui'))
+    uiWidget = slicer.util.loadUI(self.resourcePath('UI/NeuroVersionControl.ui'))
     self.layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
 
@@ -286,20 +286,20 @@ class BIDSIOWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
   def getCurrentDirectory(self):
     settings = qt.QSettings()
-    return settings.value(BIDSIO.CURRENT_DIRECTORY_SETTING, slicer.mrmlScene.GetRootDirectory())
+    return settings.value(NeuroVersionControl.CURRENT_DIRECTORY_SETTING, slicer.mrmlScene.GetRootDirectory())
 
   def setCurrentDirectory(self, directory):
     settings = qt.QSettings()
-    settings.setValue(BIDSIO.CURRENT_DIRECTORY_SETTING, directory)
+    settings.setValue(NeuroVersionControl.CURRENT_DIRECTORY_SETTING, directory)
 
   def cleanup(self):
     self.removeObservers()
 
 #
-# BIDSIOLogic
+# NeuroVersionControlLogic
 #
 
-class BIDSIOLogic(ScriptedLoadableModuleLogic):
+class NeuroVersionControlLogic(ScriptedLoadableModuleLogic):
   """This class should implement all the actual
   computation done by your module.  The interface
   should be such that other python code can import
@@ -332,12 +332,12 @@ class BIDSIOLogic(ScriptedLoadableModuleLogic):
   def setSessionName(self, sessionName):
     parameterNode = self.getParameterNode()
     if parameterNode:
-      parameterNode.SetParameter(BIDSIO.SESSION_NAME_PARAMETER, sessionName)
+      parameterNode.SetParameter(NeuroVersionControl.SESSION_NAME_PARAMETER, sessionName)
 
   def getSessionName(self):
     parameterNode = self.getParameterNode()
     if parameterNode:
-      sessionName = parameterNode.GetParameter(BIDSIO.SESSION_NAME_PARAMETER)
+      sessionName = parameterNode.GetParameter(NeuroVersionControl.SESSION_NAME_PARAMETER)
       if sessionName is not None:
         return sessionName
     return ""
@@ -345,12 +345,12 @@ class BIDSIOLogic(ScriptedLoadableModuleLogic):
   def setSubjectName(self, subjectName):
     parameterNode = self.getParameterNode()
     if parameterNode:
-      parameterNode.SetParameter(BIDSIO.SUBJECT_NAME_PARAMETER, subjectName)
+      parameterNode.SetParameter(NeuroVersionControl.SUBJECT_NAME_PARAMETER, subjectName)
 
   def getSubjectName(self):
     parameterNode = self.getParameterNode()
     if parameterNode:
-      subjectName = parameterNode.GetParameter(BIDSIO.SUBJECT_NAME_PARAMETER)
+      subjectName = parameterNode.GetParameter(NeuroVersionControl.SUBJECT_NAME_PARAMETER)
       if subjectName is not None:
         return subjectName
     return ""
@@ -462,7 +462,7 @@ class BIDSIOLogic(ScriptedLoadableModuleLogic):
       return False
     return True
 
-class BIDSIOTest(ScriptedLoadableModuleTest):
+class NeuroVersionControlTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
   Uses ScriptedLoadableModuleTest base class, available at:
@@ -478,9 +478,9 @@ class BIDSIOTest(ScriptedLoadableModuleTest):
     """Run as few or as many tests as needed here.
     """
     self.setUp()
-    self.test_BIDSIO1()
+    self.test_NeuroVersionControl1()
 
-  def test_BIDSIO1(self):
+  def test_NeuroVersionControl1(self):
     """ Ideally you should have several levels of tests.  At the lowest level
     tests should exercise the functionality of the logic with different inputs
     (both valid and invalid).  At higher levels your tests should emulate the
