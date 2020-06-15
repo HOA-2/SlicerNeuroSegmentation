@@ -84,6 +84,7 @@ class LoadSessionDialog(qt.QDialog):
     for subjectInfo in subjectInfoList:
       subjectName = subjectInfo.fileName()
       subjectItem = qt.QTreeWidgetItem()
+      subjectItem.setExpanded(True)
       subjectItem.setData(0, qt.Qt.UserRole, subjectName)
       subjectItem.setData(0, qt.Qt.UserRole, subjectName)
       subjectItem.setText(0, subjectName)
@@ -100,6 +101,7 @@ class LoadSessionDialog(qt.QDialog):
           continue
 
         sessionItem = qt.QTreeWidgetItem()
+        sessionItem.setExpanded(True)
         sessionItem.setData(0, qt.Qt.UserRole, subjectName)
         sessionItem.setData(0, qt.Qt.UserRole + 1, sessionName)
         sessionItem.setText(1, sessionName)
@@ -308,6 +310,13 @@ class NeuroVersionControlWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     subjectInfoList = directory.entryInfoList(qt.QDir.Dirs | qt.QDir.NoDotAndDotDot)
 
     for subjectInfo in subjectInfoList:
+      subjectPath = currentDirectory + "/" + subjectInfo.fileName()
+      subjectDir = qt.QDir(subjectPath)
+      sessionInfoList = subjectDir.entryInfoList(qt.QDir.Dirs | qt.QDir.NoDotAndDotDot)
+
+      if len(sessionInfoList) < 1 and not os.access(subjectPath + "/scene.mrml", os.F_OK):
+        continue
+
       subjectName = subjectInfo.fileName()
       subjectItem = qt.QTreeWidgetItem()
       subjectItem.setData(0, qt.Qt.UserRole, subjectName)
@@ -315,9 +324,6 @@ class NeuroVersionControlWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
       subjectItem.setText(2, subjectInfo.lastModified().toString())
       self.ui.treeWidget.addTopLevelItem(subjectItem)
 
-      subjectPath = currentDirectory + "/" + subjectInfo.fileName()
-      subjectDir = qt.QDir(subjectPath)
-      sessionInfoList = subjectDir.entryInfoList(qt.QDir.Dirs | qt.QDir.NoDotAndDotDot)
       for sessionInfo in sessionInfoList:
         sessionName = sessionInfo.fileName()
         scenePath = subjectPath + "/"
@@ -334,6 +340,8 @@ class NeuroVersionControlWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         sessionItem.setText(1, sessionName)
         sessionItem.setText(2, sessionInfo.lastModified().toString())
         subjectItem.addChild(sessionItem)
+
+      subjectItem.setExpanded(True)
 
   def onTreeSelectionChanged(self):
     selectedItems = self.ui.treeWidget.selectedItems()
@@ -367,6 +375,7 @@ class NeuroVersionControlWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         moduleLogic.setSessionName(sessionName)
     else:
       slicer.util.errorDisplay("Error loading session!")
+    self.updateWidgetFromMRML()
 
   def updateMRMLFromWidget(self):
     parameterNode = self.logic.getParameterNode()
@@ -596,7 +605,7 @@ class NeuroVersionControlLogic(ScriptedLoadableModuleLogic):
       import git
       repo = git.Repo(directory)
       for remote in repo.remotes:
-        remote.fetch(progress=MyProgressPrinter())
+        remote.fetch()
     except git.GitCommandError as e:
       logging.error("commit: Error committtng files!")
       logging.error(str(e))
