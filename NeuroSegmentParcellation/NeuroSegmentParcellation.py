@@ -29,6 +29,47 @@ class NeuroSegmentParcellation(ScriptedLoadableModule):
     self.parent.helpText = """"""
     self.parent.helpText += self.getDefaultModuleDocumentationLink()
     self.parent.acknowledgementText = """"""
+    if not slicer.app.commandOptions().noMainWindow:
+      slicer.app.connect("startupCompleted()", self.initializeModule)
+
+  def initializeModule(self):
+    slicer.mrmlScene.SetUndoOn()
+    defaultNodes = [
+      slicer.vtkMRMLMarkupsFiducialNode(),
+      slicer.vtkMRMLMarkupsCurveNode(),
+      slicer.vtkMRMLMarkupsLineNode(),
+      slicer.vtkMRMLMarkupsAngleNode(),
+      slicer.vtkMRMLMarkupsClosedCurveNode(),
+      slicer.vtkMRMLLinearTransformNode(),
+      ]
+
+    for node in defaultNodes:
+      node.UndoEnabledOn()
+      slicer.mrmlScene.AddDefaultNode(node)
+
+    # Setup shortcuts
+    # TODO: When shortcuts are renabled in Slicer, the following section should be removed.
+    def onRedo():
+      slicer.mrmlScene.Redo()
+
+    def onUndo():
+      slicer.mrmlScene.Undo()
+
+    redoShortcuts = []
+    redoKeyBindings = qt.QKeySequence.keyBindings(qt.QKeySequence.Redo)
+    for redoBinding in redoKeyBindings:
+      redoShortcut = qt.QShortcut(slicer.util.mainWindow())
+      redoShortcut.setKey(redoBinding)
+      redoShortcut.connect("activated()", onRedo)
+      redoShortcuts.append(redoShortcut)
+
+    undoShortcuts = []
+    undoKeyBindings = qt.QKeySequence.keyBindings(qt.QKeySequence.Undo)
+    for undoBinding in undoKeyBindings:
+      undoShortcut = qt.QShortcut(slicer.util.mainWindow())
+      undoShortcut.setKey(undoBinding)
+      undoShortcut.connect("activated()", onUndo)
+      undoShortcuts.append(undoShortcut)
 
 class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
@@ -588,13 +629,6 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
   def visit_UnaryOp(self, node):
     logging.error("Unary operator not supported!")
 
-_TEST_STRING_1 = """
-left = input
-#b = test.plane_cut(a, b)
-#for i in range(5):
-#  c = test()
-"""
-
 class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
@@ -639,7 +673,7 @@ class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
     slicer.mrmlScene.AddNode(parcellationQueryNode)
 
     storageNode = slicer.vtkMRMLTextStorageNode()
-    storageNode.SetFileName("E:/d/s/NeuroSegmentation/NeuroSegmentParcellation/Resources/Parcellation/parcellation.qry")
+    #storageNode.SetFileName(self.resourcePath('Parcellation/parcellation.qry'))
     storageNode.ReadData(parcellationQueryNode)
     slicer.mrmlScene.RemoveNode(storageNode)
 
