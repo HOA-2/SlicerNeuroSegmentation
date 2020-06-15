@@ -642,7 +642,8 @@ class NeuroVersionControlLogic(ScriptedLoadableModuleLogic):
       import git
       repo = git.Repo(directory)
       origin = repo.remotes.origin
-      origin.push()
+      branchName = repo.active_branch.name
+      origin.push(branchName + ":" + branchName)
     except IndexError:
       logging.error("commit: Error committtng files!")
       logging.error(str(e))

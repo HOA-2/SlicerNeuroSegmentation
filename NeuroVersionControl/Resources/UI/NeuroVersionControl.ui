@@ -26,60 +26,6 @@
     </layout>
    </item>
    <item>
-    <widget class="ctkCollapsibleButton" name="loadSessionCollapsibleButton">
-     <property name="text">
-      <string>Load session</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_2">
-      <item row="1" column="0">
-       <spacer name="horizontalSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item row="1" column="1">
-       <widget class="QPushButton" name="loadButton">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="text">
-         <string>Load</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0" colspan="2">
-       <widget class="QTreeWidget" name="treeWidget">
-        <property name="columnCount">
-         <number>3</number>
-        </property>
-        <column>
-         <property name="text">
-          <string>Subject</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Session</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Date modified</string>
-         </property>
-        </column>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
     <widget class="ctkCollapsibleButton" name="CollapsibleButton">
      <property name="text">
       <string>Review</string>
@@ -179,6 +125,79 @@
        </layout>
       </item>
       <item>
+       <widget class="QLabel" name="vcErrorMessageLabel">
+        <property name="text">
+         <string>TextLabel</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="ctkCollapsibleButton" name="loadSessionCollapsibleButton">
+     <property name="text">
+      <string>Load session</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0" colspan="2">
+       <widget class="QTreeWidget" name="treeWidget">
+        <property name="columnCount">
+         <number>3</number>
+        </property>
+        <column>
+         <property name="text">
+          <string>Subject</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Session</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Date modified</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item row="1" column="1">
+       <widget class="QPushButton" name="loadButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Load</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="qMRMLCollapsibleButton" name="MRMLCollapsibleButton">
+     <property name="autoFillBackground">
+      <bool>false</bool>
+     </property>
+     <property name="text">
+      <string>Save session</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
        <layout class="QFormLayout" name="formLayout_2">
         <item row="2" column="0">
          <widget class="QLabel" name="label_9">
@@ -214,45 +233,38 @@
         <item row="1" column="1">
          <widget class="QLineEdit" name="sessionLineEdit"/>
         </item>
+        <item row="3" column="1">
+         <layout class="QHBoxLayout" name="gitLayout">
+          <item>
+           <widget class="QPushButton" name="vcSaveButton">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="text">
+             <string>Save</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="vcUploadButton">
+            <property name="text">
+             <string>Upload</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="vcSubmitButton">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="text">
+             <string>Submit</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
        </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="gitLayout">
-        <item>
-         <widget class="QPushButton" name="vcSaveButton">
-          <property name="enabled">
-           <bool>true</bool>
-          </property>
-          <property name="text">
-           <string>Save</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="vcUploadButton">
-          <property name="text">
-           <string>Upload</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="vcSubmitButton">
-          <property name="enabled">
-           <bool>true</bool>
-          </property>
-          <property name="text">
-           <string>Submit</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <widget class="QLabel" name="vcErrorMessageLabel">
-        <property name="text">
-         <string>TextLabel</string>
-        </property>
-       </widget>
       </item>
      </layout>
     </widget>
@@ -273,6 +285,12 @@
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>qMRMLCollapsibleButton</class>
+   <extends>ctkCollapsibleButton</extends>
+   <header>qMRMLCollapsibleButton.h</header>
+   <container>1</container>
+  </customwidget>
   <customwidget>
    <class>qSlicerWidget</class>
    <extends>QWidget</extends>
