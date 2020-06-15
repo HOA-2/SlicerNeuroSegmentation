@@ -276,12 +276,16 @@ class NeuroVersionControlWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.ui.vcSaveButton.connect('clicked()', self.onSaveButton)
     self.ui.vcUploadButton.connect('clicked()', self.onUploadButton)
 
+    self.ui.vcLoadButton.connect('clicked()', self.onLoadBranchButton)
+    self.ui.vcNewButton.connect('clicked()', self.onNewBranchButton)
+
     self.ui.treeWidget.itemSelectionChanged.connect(self.onTreeSelectionChanged)
     self.ui.loadButton.clicked.connect(self.loadSelectedSession)
 
     uiWidget.setMRMLScene(slicer.mrmlScene)
     self.updateParameterNode()
     self.updateWidgetFromMRML()
+    self.updateBranchTable()
 
   def updateButtons(self):
     subjectName = self.logic.getSubjectName()
@@ -402,6 +406,26 @@ class NeuroVersionControlWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
   def onUpdateButton(self):
     self.logic.fetch()
+    self.updateBranchTable()
+
+  def updateBranchTable(self):
+    self.ui.vcTable.clearContents()
+    directory = self.getCurrentDirectory()
+    try:
+      import git
+      repo = git.Repo(directory)
+      self.ui.vcTable.setRowCount(len(repo.branches))
+      row = 0
+      for branch in repo.branches:
+        item = qt.QTableWidgetItem()
+        item.setText(branch)
+        item.setFlags(item.flags() & ~qt.Qt.ItemIsEditable)
+        self.ui.vcTable.setItem(row, 0, item)
+        row += 1
+    except git.GitCommandError as e:
+      logging.error("commit: Error committtng files!")
+      logging.error(str(e))
+      return False
 
   def onSaveButton(self):
     message = self.ui.messageTextEdit.toPlainText()
@@ -410,6 +434,20 @@ class NeuroVersionControlWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
   def onUploadButton(self):
     self.logic.push()
+
+  def onLoadBranchButton(self):
+    items = self.ui.vcTable.selectedItems()
+    if len(items) < 1:
+      return   
+    self.logic.checkout(items[0].text())
+    self.updateTable()
+
+  def onNewBranchButton(self):
+    branchName = qt.QInputDialog.getText(None, "New review", "Enter review name:")
+    if branchName == "":
+      return
+    self.logic.createBranch(branchName)
+    self.updateBranchTable()
 
 #
 # NeuroVersionControlLogic
@@ -653,6 +691,34 @@ class NeuroVersionControlLogic(ScriptedLoadableModuleLogic):
       origin = repo.remotes.origin
       branchName = repo.active_branch.name
       origin.push(branchName + ":" + branchName)
+    except IndexError:
+      logging.error("commit: Error committtng files!")
+      logging.error(str(e))
+      return False
+    return True
+
+  def checkout(self, branchName):
+    settings = qt.QSettings()
+    directory = settings.value(NeuroVersionControl.CURRENT_DIRECTORY_SETTING, slicer.mrmlScene.GetRootDirectory())
+    try:
+      import git
+      repo = git.Repo(directory)
+      repo.git.checkout(branchName)
+    except IndexError:
+      logging.error("commit: Error committtng files!")
+      logging.error(str(e))
+      return False
+    return True
+
+  def createBranch(self, branchName, checkout=True):
+    settings = qt.QSettings()
+    directory = settings.value(NeuroVersionControl.CURRENT_DIRECTORY_SETTING, slicer.mrmlScene.GetRootDirectory())
+    try:
+      import git
+      repo = git.Repo(directory)
+      repo.create_head(branchName)
+      if checkout:
+        repo.git.checkout(branchName)
     except IndexError:
       logging.error("commit: Error committtng files!")
       logging.error(str(e))
