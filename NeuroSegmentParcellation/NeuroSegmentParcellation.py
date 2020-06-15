@@ -78,6 +78,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     # Initial GUI update
     self.updateGUIFromParameterNode()
+    self.updateOutputStructures()
 
   def cleanup(self):
     """
@@ -257,6 +258,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self._outputModelsWidget.setLayout(outputModelsLayout)
     self.ui.outputModelsCollapsibleButton.layout().addWidget(self._outputModelsWidget)
 
+    self.updateOutputStructures()
+
   def onColorChanged(self, color, id):
     modelNode = slicer.mrmlScene.GetNodeByID(id)
     if modelNode is None:
@@ -312,8 +315,13 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     """
     Export the mesh connecting the inner and outer surfaces when the export button is clicked
     """
+    surfacesToExport = []
+    checkedIndexes = self.ui.structureSelector.checkedIndexes()
+    for index in checkedIndexes:
+      surfacesToExport.append(self.ui.structureSelector.itemText(index.row()))
+
     try:
-      self.logic.exportOutputToSegmentation(self._parameterNode)
+      self.logic.exportOutputToSegmentation(self._parameterNode, surfacesToExport)
     except Exception as e:
       slicer.util.errorDisplay("Failed to compute results: "+str(e))
       import traceback
@@ -335,6 +343,25 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       icon = self.ui.loadQueryButton.style().standardIcon(qt.QStyle.SP_MessageBoxCritical)
       self.ui.loadQueryButton.setIcon(icon)
       self.ui.loadQueryButton.setToolTip(message)
+    self.updateOutputStructures()
+
+  def  updateOutputStructures(self):
+    """
+    """
+    checkedItems = []
+    checkedIndexes = self.ui.structureSelector.checkedIndexes()
+    for index in checkedIndexes:
+      checkedItems.append(self.ui.structureSelector.itemText(index.row()))
+
+    self.ui.structureSelector.clear()
+    numOutputModels = self._parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
+    for i in range(numOutputModels):
+      outputModel = self._parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
+      self.ui.structureSelector.addItem(outputModel.GetName())
+      if outputModel.GetName() in checkedItems:
+        row = self.ui.structureSelector.findText(outputModel.GetName())
+        index = self.ui.structureSelector.model().index(row, 0)
+        self.ui.structureSelector.setCheckState(index, qt.Qt.Checked)
 
 class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   """Perform filtering
@@ -406,7 +433,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     parameterNode.EndModify(wasModifying)
     return [success, errorMessage]
 
-  def exportOutputToSegmentation(self, parameterNode):
+  def exportOutputToSegmentation(self, parameterNode, surfacesToExport=[]):
     if parameterNode is None:
       return
 
@@ -416,6 +443,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     outerSurfaceNode = parameterNode.GetNodeReference(OUTER_SURFACE_REFERENCE)
     for i in range(numberOfOutputModels):
       outputSurfaceNode = parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
+      if len(surfacesToExport) > 0 and not outputSurfaceNode.GetName() in surfacesToExport:
+        continue
       self.exportMeshToSegmentation(outputSurfaceNode, innerSurfaceNode, outerSurfaceNode, exportSegmentationNode)
     exportSegmentationNode.CreateDefaultDisplayNodes()
 
@@ -435,6 +464,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     segmentName = surfacePatchNode.GetName()
     segmentColor = surfacePatchNode.GetDisplayNode().GetColor()
     segmentation = exportSegmentationNode.GetSegmentation()
+    segmentation.SetMasterRepresentationName(slicer.vtkSegmentationConverter.GetClosedSurfaceRepresentationName())
     segmentId = segmentation.GetSegmentIdBySegmentName(segmentName)
     segment = segmentation.GetSegment(segmentId)
     segmentIndex = segmentation.GetSegmentIndex(segmentId)
