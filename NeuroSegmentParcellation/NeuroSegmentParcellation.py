@@ -559,8 +559,10 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
         inputNode = slicer.mrmlScene.AddNewNodeByClass(className, name)
         inputNode.CreateDefaultDisplayNodes()
         displayNode = inputNode.GetDisplayNode()
-        if className == "vtkMRMLMarkupsPlaneNode":
-          displayNode.HandlesInteractiveOn()
+        if displayNode:
+          displayNode.SetGlyphScale(4.0)
+          if className == "vtkMRMLMarkupsPlaneNode":
+            displayNode.HandlesInteractiveOn()
         inputNodes.append(inputNode)
       self._parameterNode.AddNodeReferenceID(INPUT_MARKUPS_REFERENCE, inputNode.GetID())
     return inputNodes
