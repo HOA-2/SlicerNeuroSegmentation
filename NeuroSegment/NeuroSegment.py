@@ -69,12 +69,6 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.ui.reviewSubmitButton.connect('clicked()', self.onReviewSubmitClicked)
 
-    self.ui.vcDirectoryButton.connect("directoryChanged(QString)", self.updateMRMLFromWidget)
-    self.ui.vcSaveButton.connect('clicked()', self.onSaveButton)
-    self.ui.vcUploadButton.connect('clicked()', self.onUploadButton)
-    directory = self.logic.getOutputDirectory()
-    self.ui.vcDirectoryButton.directory = directory
-
     self.segmentationNodeComboBox = self.ui.segmentEditorWidget.findChild(
       slicer.qMRMLNodeComboBox, "SegmentationNodeComboBox")
     self.segmentationNodeComboBox.nodeAddedByUser.connect(self.onNodeAddedByUser)
@@ -507,17 +501,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def updateMRMLFromWidget(self):
     parameterNode = self.logic.getParameterNode()
     wasModifying = parameterNode.StartModify()
-
-    directory = self.ui.vcDirectoryButton.directory
-    self.logic.setOutputDirectory(directory)
-
     parameterNode.EndModify(wasModifying)
-  
-  def onSaveButton(self):
-    self.logic.commit()
-
-  def onUploadButton(self):
-    self.logic.push()
 
 #
 # NeuroSegmentLogic
@@ -539,7 +523,7 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
 
     reviewTableNode = segmentationNode.GetNodeReference("ReviewTable")
     if reviewTableNode is None:
-      tableName = segmentation.GetName() + "_ReviewTable"
+      tableName = segmentationNode.GetName() + "_ReviewTable"
       reviewTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", tableName)
 
       sliceArray = vtk.vtkIntArray()
@@ -570,54 +554,6 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
     parameterNode = self.getParameterNode()
     outputDirectory = parameterNode.GetAttribute("OutputDirectory")
     return outputDirectory
-
-  def commit(self):
-    messageNode = self.getMessageTextNode()
-    commitMessage  = messageNode.GetText()
-    if commitMessage == "":
-      logging.error("commitSegmentation: Invalid commit message")
-      return
-    return
-
-    for node in slicer.util.getNodes().values():
-      node.AddDefaultStorageNode()
-      storageNode = node.GetStorageNode()
-      if storageNode is None:
-        logging.error("commit: Invalid storage node")
-        return
-
-      fileName = node.GetName() + "." + storageNode.GetDefaultWriteFileExtension()
-      outputDirectory = self.getOutputDirectory()
-      #storageNode.SetFileName(self.ui.vcDirectoryButton.directory + "/" + fileName)
-      storageNode.WriteData(node)
-
-    import git
-    repo = git.Repo(self.ui.vcDirectoryButton.directory)
-    repo.git.add(update=True)
-    repo.git.commit("-m " + commitMessage)
-
-  def isGitRepo(self, path):
-    import git
-    try:
-        _ = git.Repo(path).git_dir
-        return True
-    except git.exc.InvalidGitRepositoryError:
-        return False
-
-  def push(self):
-    branchName = "testSubject" # TODO: Branch name
-    if branchName == "master" or branchName == "":
-      logging.error("commitSegmentation: Invalid branch name")
-      return
-
-    import git
-    repo = git.Repo(self.ui.vcDirectoryButton.directory)
-    origin = repo.remotes.origin
-    try:
-      repo.heads[branchName]
-    except IndexError:
-      repo.create_head(branchName)
-    origin.push(branchName)
 
 class NeuroSegmentTest(ScriptedLoadableModuleTest):
   """

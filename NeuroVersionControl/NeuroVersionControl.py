@@ -17,10 +17,11 @@ class NeuroVersionControl(ScriptedLoadableModule):
   CURRENT_DIRECTORY_SETTING = "NeuroSeg/CurrentDirectory"
   SUBJECT_NAME_PARAMETER = "SubjectName"
   SESSION_NAME_PARAMETER = "SessionName"
+  COMMIT_MESSAGE_PARAMETER = "CommitMessage"
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "Neuro version control"
+    self.parent.title = "NeuroSegment Version Control"
     self.parent.categories = ["Utilities"]
     self.parent.dependencies = ["Data"]
     self.parent.contributors = ["Kyle Sunderland (Perk Lab, Queen's University)"]
@@ -164,7 +165,21 @@ class SaveSessionDialog(qt.QDialog):
   def onSubjectSessionNameChanged(self):
     subjectName = self.ui.subjectNameEdit.text
     sessionName = self.ui.sessionNameEdit.text
-    self.ui.saveButton.enabled = subjectName != "" and sessionName != ""
+    self.logic.setSubjectName(subjectName)
+    self.logic.setSessionName(sessionName)
+    self.updateButtons()
+
+  def onCommitMessageChanged(self):
+    message = self.ui.messageTextEdit.toPlainText()
+    self.logic.setCommitMessage(message)
+    if message == "":
+      self.ui.saveButton.enabled = False
+    self.updateButtons()
+
+  def updateButtons(self):
+    subjectName = self.logic.getSubjectName()
+    message = self.logic.getCommitMessage()
+    self.ui.vcSaveButton.enabled = subjectName != "" and message != ""
 
   def progressCallback(progressDialog, progressLabel, progressValue):
     progressDialog.labelText = progressLabel
@@ -174,9 +189,6 @@ class SaveSessionDialog(qt.QDialog):
     return progressDialog.wasCanceled
 
   def save(self):
-    self.logic.setSubjectName(self.ui.subjectNameEdit.text)
-    self.logic.setSessionName(self.ui.sessionNameEdit.text)
-
     subjectName = self.logic.getSubjectName()
     sessionName = self.logic.getSessionName()
 
@@ -256,10 +268,23 @@ class NeuroVersionControlWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.ui.subjectLineEdit.textChanged.connect(self.updateMRMLFromWidget)
     self.ui.sessionLineEdit.textChanged.connect(self.updateMRMLFromWidget)
     self.ui.directoryButton.directoryChanged.connect(self.updateMRMLFromWidget)
+    self.ui.messageTextEdit.textChanged.connect(self.updateMRMLFromWidget)
+
+    self.ui.vcUpdateButton.connect('clicked()', self.onUpdateButton)
+    self.ui.vcSaveButton.connect('clicked()', self.onSaveButton)
+    self.ui.vcUploadButton.connect('clicked()', self.onUploadButton)
+
+    self.ui.treeWidget.itemSelectionChanged.connect(self.onTreeSelectionChanged)
+    self.ui.loadButton.clicked.connect(self.loadSelectedSession)
 
     uiWidget.setMRMLScene(slicer.mrmlScene)
     self.updateParameterNode()
     self.updateWidgetFromMRML()
+
+  def updateButtons(self):
+    subjectName = self.logic.getSubjectName()
+    message = self.logic.getCommitMessage()
+    self.ui.vcSaveButton.enabled = subjectName != "" and message != ""
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def updateWidgetFromMRML(self, caller=None, eventId=None, callData=None):
@@ -272,6 +297,76 @@ class NeuroVersionControlWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     wasBlocking = self.ui.sessionLineEdit.blockSignals(True)
     self.ui.sessionLineEdit.text = self.logic.getSessionName()
     self.ui.sessionLineEdit.blockSignals(wasBlocking)
+    self.updateButtons()
+    self.updateTable()
+
+  def updateTable(self):
+    currentDirectory = self.ui.directoryButton.directory
+    directory = qt.QDir(currentDirectory)
+
+    self.ui.treeWidget.clear()
+    subjectInfoList = directory.entryInfoList(qt.QDir.Dirs | qt.QDir.NoDotAndDotDot)
+
+    for subjectInfo in subjectInfoList:
+      subjectName = subjectInfo.fileName()
+      subjectItem = qt.QTreeWidgetItem()
+      subjectItem.setData(0, qt.Qt.UserRole, subjectName)
+      subjectItem.setText(0, subjectName)
+      subjectItem.setText(2, subjectInfo.lastModified().toString())
+      self.ui.treeWidget.addTopLevelItem(subjectItem)
+
+      subjectPath = currentDirectory + "/" + subjectInfo.fileName()
+      subjectDir = qt.QDir(subjectPath)
+      sessionInfoList = subjectDir.entryInfoList(qt.QDir.Dirs | qt.QDir.NoDotAndDotDot)
+      for sessionInfo in sessionInfoList:
+        sessionName = sessionInfo.fileName()
+        scenePath = subjectPath + "/"
+        if sessionName != "":
+          scenePath += sessionName
+        scenePath += "/scene.mrml"
+
+        if not os.access(scenePath, os.F_OK):
+          continue
+
+        sessionItem = qt.QTreeWidgetItem()
+        sessionItem.setData(0, qt.Qt.UserRole, subjectName)
+        sessionItem.setData(0, qt.Qt.UserRole + 1, sessionName)
+        sessionItem.setText(1, sessionName)
+        sessionItem.setText(2, sessionInfo.lastModified().toString())
+        subjectItem.addChild(sessionItem)
+
+  def onTreeSelectionChanged(self):
+    selectedItems = self.ui.treeWidget.selectedItems()
+    if len(selectedItems) < 1:
+      self.ui.loadButton.enabled = False
+      return
+
+    selectedItem = selectedItems[0]
+    subjectName = selectedItem.data(0, qt.Qt.UserRole)
+    if subjectName == "":
+      return
+
+    sessionName = selectedItem.data(0, qt.Qt.UserRole + 1)
+    directory = self.getCurrentDirectory() + "/" + subjectName
+    if not sessionName is None and sessionName != "":
+      directory += "/" + sessionName
+    directory += "/scene.mrml"
+    self.ui.loadButton.enabled = os.access(directory, os.F_OK)
+
+  def loadSelectedSession(self):
+    selectedItems = self.ui.treeWidget.selectedItems()
+    if len(selectedItems) > 0:
+      selectedItem = selectedItems[0]
+      subjectName = selectedItem.data(0, qt.Qt.UserRole)
+      sessionName = selectedItem.data(0, qt.Qt.UserRole + 1)
+
+    moduleLogic = slicer.modules.neuroversioncontrol.widgetRepresentation().self().logic
+    if moduleLogic.loadSession(self.ui.directoryButton.directory, subjectName, sessionName):
+      moduleLogic.setSubjectName(subjectName)
+      if not sessionName is None:
+        moduleLogic.setSessionName(sessionName)
+    else:
+      slicer.util.errorDisplay("Error loading session!")
 
   def updateMRMLFromWidget(self):
     parameterNode = self.logic.getParameterNode()
@@ -281,7 +376,8 @@ class NeuroVersionControlWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     wasModifying = parameterNode.StartModify()
     self.logic.setSubjectName(self.ui.subjectLineEdit.text)
     self.logic.setSessionName(self.ui.sessionLineEdit.text)
-    self.setCurrentDirectory(self.ui.directoryButton.directory)    
+    self.logic.setCommitMessage(self.ui.messageTextEdit.toPlainText())
+    self.setCurrentDirectory(self.ui.directoryButton.directory)
     parameterNode.EndModify(wasModifying)
 
   def getCurrentDirectory(self):
@@ -294,6 +390,17 @@ class NeuroVersionControlWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
   def cleanup(self):
     self.removeObservers()
+
+  def onUpdateButton(self):
+    self.logic.fetch()
+
+  def onSaveButton(self):
+    message = self.ui.messageTextEdit.toPlainText()
+    if self.logic.commit(message):
+      self.ui.messageTextEdit.setText("")
+
+  def onUploadButton(self):
+    self.logic.push()
 
 #
 # NeuroVersionControlLogic
@@ -310,7 +417,13 @@ class NeuroVersionControlLogic(ScriptedLoadableModuleLogic):
   """
 
   def loadSession(self, subjectDirectory, subjectName, sessionName):
-    sessionDirectoryPath = subjectDirectory + "/" + subjectName + "/" + sessionName
+
+    slicer.mrmlScene.Clear()
+
+    sessionDirectoryPath = subjectDirectory + "/" + subjectName
+    if not sessionName is None and sessionName != "":
+      sessionDirectoryPath += "/" + sessionName
+
     sessionDirectory = qt.QDir(sessionDirectoryPath)
     sessionDirectory.setNameFilters(["*.mrml"])
 
@@ -324,8 +437,9 @@ class NeuroVersionControlLogic(ScriptedLoadableModuleLogic):
       except:
         return False
 
-    self.setSessionName(sessionName)
     self.setSubjectName(subjectName)
+    if not sessionName is None:
+      self.setSessionName(sessionName)
     self.getParameterNode().Modified()
     return True
 
@@ -355,23 +469,32 @@ class NeuroVersionControlLogic(ScriptedLoadableModuleLogic):
         return subjectName
     return ""
 
-  def saveSession(self, directory, progressCallback=None):
+  def getCommitMessage(self):
+    parameterNode = self.getParameterNode()
+    if parameterNode:
+      message = parameterNode.GetParameter(NeuroVersionControl.COMMIT_MESSAGE_PARAMETER)
+      if message is not None:
+        return message
+    return ""
+
+  def setCommitMessage(self, message):
+    parameterNode = self.getParameterNode()
+    if parameterNode:
+      parameterNode.SetParameter(NeuroVersionControl.COMMIT_MESSAGE_PARAMETER, message)
+
+  def saveSession(self, derivedDirectory, progressCallback=None):
     subjectName = self.getSubjectName()
     sessionName = self.getSessionName()
 
-    derivedDirectory = directory + "/derived"
     derivedSubjectDirectory = derivedDirectory + "/" + subjectName
-    derivedSessionDirectory = derivedSubjectDirectory + "/" + sessionName
-
-    rawSubjectDirectory = directory + "/" + subjectName
-    rawSessionDirectory = rawSubjectDirectory
+    derivedSessionDirectory = derivedSubjectDirectory
+    if (not sessionName is None) and sessionName != "":
+      derivedSessionDirectory = derivedSubjectDirectory + "/" + sessionName
 
     saveMessage = "Saving scene for subject {0}".format(subjectName)
     if (not sessionName is None) and sessionName != "":
-      saveMessage = ", session {0}".format(sessionName)
-      rawSessionDirectory = rawSubjectDirectory + "/" + sessionName
+      saveMessage += ", session {0}".format(sessionName)
     logging.info(saveMessage)
-    slicer.app.ioManager().addDefaultStorageNodes()
 
     fileNames = []
 
@@ -391,18 +514,18 @@ class NeuroVersionControlLogic(ScriptedLoadableModuleLogic):
       if not node.GetSaveWithScene():
         continue
       if node.GetStorageNode() is None:
-        continue
+        node.AddDefaultStorageNode()
+        print(node.GetName() + "  " + str(node.GetStorageNode()))
 
       if progressCallback is not None and progressCallback('\nSaving node: %s' % node.GetName(), progress):
         break
 
       storageNode = node.GetStorageNode()
+      if storageNode is None:
+        continue
+
       fileExtension = "." + storageNode.GetDefaultWriteFileExtension()
       nodeDirectory = derivedSessionDirectory
-      if node.IsA("vtkMRMLVolumeNode"):
-        nodeDirectory = os.path.join(rawSessionDirectory, "anat") # For now we assign to anat. In the future, this should be retreived from DICOM or specified by the user
-      elif node.IsA("vtkMRMLSegmentationNode"):
-        nodeDirectory = os.path.join(derivedSessionDirectory, "anat")
       if not os.access(nodeDirectory, os.F_OK):
         os.makedirs(nodeDirectory)
       if node.IsA("vtkMRMLVolumeNode"):
@@ -431,7 +554,10 @@ class NeuroVersionControlLogic(ScriptedLoadableModuleLogic):
 
       nodeSavePath = os.path.join(nodeDirectory, fileName + fileExtension)
       fileNames.append(fileName)
-      storageNode.SetFileName(nodeSavePath)
+      if storageNode.GetFileName() == None or storageNode.GetFileName() == "":
+        storageNode.SetFileName(nodeSavePath)
+      nodeSavePath = storageNode.GetFileName()
+
       nodeAlreadySavedInThisDir = os.path.isfile(nodeSavePath)
       if (not nodeAlreadySavedInThisDir) or node.GetModifiedSinceRead() or fileRenamed:
         logging.info("Saving node {0} with ID: {1}".format(node.GetName(), node.GetID()))
@@ -459,6 +585,67 @@ class NeuroVersionControlLogic(ScriptedLoadableModuleLogic):
         return False
 
     if progressCallback is not None and progressCallback('\nSaving complete', 100.0):
+      return False
+    return True
+
+  def fetch(self):
+    settings = qt.QSettings()
+    directory = settings.value(NeuroVersionControl.CURRENT_DIRECTORY_SETTING, slicer.mrmlScene.GetRootDirectory())
+
+    try:
+      import git
+      repo = git.Repo(directory)
+      for remote in repo.remotes:
+        remote.fetch(progress=MyProgressPrinter())
+    except git.GitCommandError as e:
+      logging.error("commit: Error committtng files!")
+      logging.error(str(e))
+      return False
+
+    return True
+
+  def commit(self, commitMessage):
+    if commitMessage == "":
+      logging.error("commit: Error, no commit message!")
+      return False
+
+    settings = qt.QSettings()
+    directory = settings.value(NeuroVersionControl.CURRENT_DIRECTORY_SETTING, slicer.mrmlScene.GetRootDirectory())
+
+    if not self.saveSession(directory):
+      return
+
+    try:
+      import git
+      repo = git.Repo(directory)
+      repo.git.add(".")
+      repo.git.commit("-m" + commitMessage)
+    except git.GitCommandError as e:
+      logging.error("commit: Error committtng files!")
+      logging.error(str(e))
+      return False
+
+    return True
+
+  def isGitRepo(self, path):
+    import git
+    try:
+        _ = git.Repo(path).git_dir
+        return True
+    except git.exc.InvalidGitRepositoryError:
+        return False
+
+  def push(self):
+    settings = qt.QSettings()
+    directory = settings.value(NeuroVersionControl.CURRENT_DIRECTORY_SETTING, slicer.mrmlScene.GetRootDirectory())
+    try:
+      import git
+      repo = git.Repo(directory)
+      origin = repo.remotes.origin
+      origin.push()
+    except IndexError:
+      logging.error("commit: Error committtng files!")
+      logging.error(str(e))
       return False
     return True
 
