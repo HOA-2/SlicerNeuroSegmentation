@@ -67,7 +67,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.undockSliceViewButton.connect('clicked()', self.toggleSliceViews)
     self.ui.infoExpandableWidget.setVisible(False)
 
-    self.ui.reviewSubmitButton.connect('clicked()', self.onReviewSubmitClicked)
+    self.ui.addReviewButton.connect('clicked()', self.onAddReviewClicked)
 
     self.segmentationNodeComboBox = self.ui.segmentEditorWidget.findChild(
       slicer.qMRMLNodeComboBox, "SegmentationNodeComboBox")
@@ -475,26 +475,20 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     if singleModule:
       slicer.util.setPythonConsoleVisible(False)
 
-  def onReviewSubmitClicked(self):
-    masterVolume = self.ui.segmentEditorWidget.masterVolumeNode()
-    if masterVolume is None:
-      logging.error("onReviewSubmitClicked: Invalid master volume!")
+  def onAddReviewClicked(self):
+    tableNode = self.ui.reviewTable.mrmlTableNode()
+    if tableNode is None:
       return
 
-    tableNode = self.ui.reviewTable.mrmlTableNode()
     row = tableNode.AddEmptyRow()
     table = tableNode.GetTable()
 
-    rasToIJK = vtk.vtkMatrix4x4()
-    masterVolume.GetIJKToRASMatrix(rasToIJK)
-    rasToIJK.Invert()
+    #sliceNode = slicer.util.getFirstNodeByClassByName("vtkMRMLSliceNode", "Red")
+    #if self.ui.undockSliceViewButton.checked:
+    #  sliceNode = slicer.util.getFirstNodeByClassByName("vtkMRMLSliceNode", "Main")
 
     sliceColumn = table.GetColumnByName("Slice")
     sliceColumn.SetTuple1(row , row)
-
-    reviewCommentsColumn = table.GetColumnByName("Review comments")
-    reviewCommentsColumn.SetValue(row, self.ui.reviewTextEdit.plainText)
-    self.ui.reviewTextEdit.setText("")
 
     table.Modified()
 
