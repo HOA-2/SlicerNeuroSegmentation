@@ -18,10 +18,11 @@ OUTER_SURFACE_REFERENCE = "OuterSurface"
 TOOL_NODE_REFERENCE = "ToolNode"
 EXPORT_SEGMENTATION_REFERENCE = "ExportSegmentation"
 
-class NeuroSegmentParcellation(ScriptedLoadableModule):
+class NeuroSegmentParcellation(ScriptedLoadableModule, VTKObservationMixin):
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
+    VTKObservationMixin.__init__(self)
     self.parent.title = "NeuroSegment Parcellation"
     self.parent.categories = ["Surface Models"]
     self.parent.dependencies = []
@@ -41,11 +42,17 @@ class NeuroSegmentParcellation(ScriptedLoadableModule):
       slicer.vtkMRMLMarkupsAngleNode(),
       slicer.vtkMRMLMarkupsClosedCurveNode(),
       slicer.vtkMRMLLinearTransformNode(),
+      slicer.vtkMRMLCameraNode(),
+      slicer.vtkMRMLViewNode(),
+      slicer.vtkMRMLSliceNode(),
       ]
 
     for node in defaultNodes:
       node.UndoEnabledOn()
       slicer.mrmlScene.AddDefaultNode(node)
+    self.setUndoOnExistingNodes()
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.setUndoOnExistingNodes)
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.setUndoOnExistingNodes)
 
     # Setup shortcuts
     # TODO: When shortcuts are renabled in Slicer, the following section should be removed.
@@ -70,6 +77,13 @@ class NeuroSegmentParcellation(ScriptedLoadableModule):
       undoShortcut.setKey(undoBinding)
       undoShortcut.connect("activated()", onUndo)
       undoShortcuts.append(undoShortcut)
+
+  @vtk.calldata_type(vtk.VTK_OBJECT)
+  def setUndoOnExistingNodes(self, caller=None, eventId=None, node=None):
+    # Camera nodes are not created using default
+    cameraNodes = slicer.util.getNodesByClass("vtkMRMLCameraNode")
+    for cameraNode in cameraNodes:
+      cameraNode.UndoEnabledOn()
 
 class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
