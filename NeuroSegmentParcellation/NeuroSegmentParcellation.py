@@ -193,6 +193,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.updateOutputStructures()
 
   def enter(self):
+    return
     slicer.app.layoutManager().setLayout(NeuroSegmentParcellation.NEURO_PARCELLATION_LAYOUT_ID)
     slicer.util.getNode("ViewO").LinkedControlOn()
 
@@ -403,22 +404,22 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if self._parameterNode is None:
       return
 
-    sliceViewIDs = ["vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
-    origModel = self.ui.origModelSelector.currentNode()
-    if not origModel is None:
-      origViews = sliceViewIDs[:]
-      origViews.append("vtkMRMLViewNodeO")
-      origModel.GetDisplayNode().SetViewNodeIDs(origViews)
-    pialModel = self.ui.pialModelSelector.currentNode()
-    if not pialModel is None:
-      pialViews = sliceViewIDs[:]
-      pialViews.append("vtkMRMLViewNodeP")
-      pialModel.GetDisplayNode().SetViewNodeIDs(pialViews)
-    inflatedModel = self.ui.inflatedModelSelector.currentNode()
-    if not inflatedModel is None:
-      inflatedViews = sliceViewIDs[:]
-      inflatedViews.append("vtkMRMLViewNodeI")
-      inflatedModel.GetDisplayNode().SetViewNodeIDs(inflatedViews)
+    #sliceViewIDs = ["vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
+    #origModel = self.ui.origModelSelector.currentNode()
+    #if not origModel is None:
+    #  origViews = sliceViewIDs[:]
+    #  origViews.append("vtkMRMLViewNodeO")
+    #  origModel.GetDisplayNode().SetViewNodeIDs(origViews)
+    #pialModel = self.ui.pialModelSelector.currentNode()
+    #if not pialModel is None:
+    #  pialViews = sliceViewIDs[:]
+    #  pialViews.append("vtkMRMLViewNodeP")
+    #  pialModel.GetDisplayNode().SetViewNodeIDs(pialViews)
+    #inflatedModel = self.ui.inflatedModelSelector.currentNode()
+    #if not inflatedModel is None:
+    #  inflatedViews = sliceViewIDs[:]
+    #  inflatedViews.append("vtkMRMLViewNodeI")
+    #  inflatedModel.GetDisplayNode().SetViewNodeIDs(inflatedViews)
 
     wasModifying = self._parameterNode.StartModify()
     self._parameterNode.SetNodeReferenceID(INPUT_QUERY_REFERENCE, self.ui.querySelector.currentNodeID)
