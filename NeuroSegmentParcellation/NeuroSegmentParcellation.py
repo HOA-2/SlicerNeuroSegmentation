@@ -10,15 +10,18 @@ import logging
 import ast
 
 INPUT_MARKUPS_REFERENCE = "InputMarkups"
-INPUT_MODEL_REFERENCE = "InputModel"
+ORIG_MODEL_REFERENCE = "OrigModel"
+PIAL_MODEL_REFERENCE = "PialModel"
+INFLATED_MODEL_REFERENCE = "InflatedModel"
+
 INPUT_QUERY_REFERENCE = "InputQuery"
 OUTPUT_MODEL_REFERENCE = "OutputModel"
-INNER_SURFACE_REFERENCE = "InnerSurface"
-OUTER_SURFACE_REFERENCE = "OuterSurface"
 TOOL_NODE_REFERENCE = "ToolNode"
 EXPORT_SEGMENTATION_REFERENCE = "ExportSegmentation"
 
 class NeuroSegmentParcellation(ScriptedLoadableModule, VTKObservationMixin):
+
+  NEURO_PARCELLATION_LAYOUT_ID = 5613
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
@@ -78,12 +81,66 @@ class NeuroSegmentParcellation(ScriptedLoadableModule, VTKObservationMixin):
       undoShortcut.connect("activated()", onUndo)
       undoShortcuts.append(undoShortcut)
 
+    self.setupLayout()
+
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def setUndoOnExistingNodes(self, caller=None, eventId=None, node=None):
     # Camera nodes are not created using default
     cameraNodes = slicer.util.getNodesByClass("vtkMRMLCameraNode")
     for cameraNode in cameraNodes:
       cameraNode.UndoEnabledOn()
+
+  def setupLayout(self):
+    layout = ('''
+<layout type="vertical">
+  <item>
+    <layout type="horizontal">
+      <item>
+        <view class="vtkMRMLViewNode" singletontag="O">
+          <property name="viewlabel" action="default">O</property>
+        </view>
+      </item>
+      <item>
+        <view class="vtkMRMLViewNode" singletontag="P">
+          <property name="viewlabel" action="default">P</property>
+        </view>
+      </item>
+     <item>
+        <view class="vtkMRMLViewNode" singletontag="I">
+          <property name="viewlabel" action="default">I</property>
+        </view>
+      </item>
+    </layout>
+  </item>
+  <item>
+    <layout type="horizontal">
+      <item>
+        <view class="vtkMRMLSliceNode" singletontag="Red">
+          <property name="orientation" action="default">Axial</property>
+          <property name="viewlabel" action="default">R</property>
+          <property name="viewcolor" action="default">#F34A33</property>
+        </view>
+      </item>
+      <item>
+        <view class="vtkMRMLSliceNode" singletontag="Green">
+          <property name="orientation" action="default">Sagittal</property>
+          <property name="viewlabel" action="default">G</property>
+          <property name="viewcolor" action="default">#6EB04B</property>
+        </view>
+      </item>
+      <item>
+        <view class="vtkMRMLSliceNode" singletontag="Yellow">
+          <property name="orientation" action="default">Coronal</property>
+          <property name="viewlabel" action="default">Y</property>
+          <property name="viewcolor" action="default">#EDD54C</property>
+        </view>
+      </item>
+    </layout>
+  </item>
+</layout>''')
+    layoutManager = slicer.app.layoutManager()
+    layoutManager.layoutLogic().GetLayoutNode().AddLayoutDescription(
+      NeuroSegmentParcellation.NEURO_PARCELLATION_LAYOUT_ID, layout)
 
 class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
@@ -125,15 +182,19 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     # These connections ensure that whenever user changes some settings on the GUI, that is saved in the MRML scene
     # (in the selected parameter node).
     self.ui.querySelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
-    self.ui.inputModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
-    self.ui.innerSurfaceSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
-    self.ui.outerSurfaceSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
+    self.ui.origModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
+    self.ui.pialModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
+    self.ui.inflatedModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.exportSegmentationSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.applyButton.connect('checkBoxToggled(bool)', self.updateParameterNodeFromGUI)
 
     # Initial GUI update
     self.updateGUIFromParameterNode()
     self.updateOutputStructures()
+
+  def enter(self):
+    slicer.app.layoutManager().setLayout(NeuroSegmentParcellation.NEURO_PARCELLATION_LAYOUT_ID)
+    slicer.util.getNode("ViewO").LinkedControlOn()
 
   def cleanup(self):
     """
@@ -220,17 +281,17 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.querySelector.setCurrentNode(self._parameterNode.GetNodeReference(INPUT_QUERY_REFERENCE))
     self.ui.querySelector.blockSignals(wasBlocked)
 
-    wasBlocked = self.ui.inputModelSelector.blockSignals(True)
-    self.ui.inputModelSelector.setCurrentNode(self._parameterNode.GetNodeReference(INPUT_MODEL_REFERENCE))
-    self.ui.inputModelSelector.blockSignals(wasBlocked)
+    wasBlocked = self.ui.origModelSelector.blockSignals(True)
+    self.ui.origModelSelector.setCurrentNode(self._parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE))
+    self.ui.origModelSelector.blockSignals(wasBlocked)
 
-    wasBlocked = self.ui.innerSurfaceSelector.blockSignals(True)
-    self.ui.innerSurfaceSelector.setCurrentNode(self._parameterNode.GetNodeReference(INNER_SURFACE_REFERENCE))
-    self.ui.innerSurfaceSelector.blockSignals(wasBlocked)
+    wasBlocked = self.ui.pialModelSelector.blockSignals(True)
+    self.ui.pialModelSelector.setCurrentNode(self._parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE))
+    self.ui.pialModelSelector.blockSignals(wasBlocked)
 
-    wasBlocked = self.ui.outerSurfaceSelector.blockSignals(True)
-    self.ui.outerSurfaceSelector.setCurrentNode(self._parameterNode.GetNodeReference(OUTER_SURFACE_REFERENCE))
-    self.ui.outerSurfaceSelector.blockSignals(wasBlocked)
+    wasBlocked = self.ui.inflatedModelSelector.blockSignals(True)
+    self.ui.inflatedModelSelector.setCurrentNode(self._parameterNode.GetNodeReference(INFLATED_MODEL_REFERENCE))
+    self.ui.inflatedModelSelector.blockSignals(wasBlocked)
 
     wasBlocked = self.ui.exportSegmentationSelector.blockSignals(True)
     self.ui.exportSegmentationSelector.setCurrentNode(self._parameterNode.GetNodeReference(EXPORT_SEGMENTATION_REFERENCE))
@@ -238,7 +299,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     # Update buttons states and tooltips
     if (self._parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE) > 0 and self._parameterNode.GetNodeReference(EXPORT_SEGMENTATION_REFERENCE) and
-      self._parameterNode.GetNodeReference(INNER_SURFACE_REFERENCE) and self._parameterNode.GetNodeReference(OUTER_SURFACE_REFERENCE)):
+      self._parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE) and self._parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)):
       self.ui.exportButton.enabled = True
     else:
       self.ui.exportButton.enabled = False
@@ -342,11 +403,28 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if self._parameterNode is None:
       return
 
+    sliceViewIDs = ["vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
+    origModel = self.ui.origModelSelector.currentNode()
+    if not origModel is None:
+      origViews = sliceViewIDs[:]
+      origViews.append("vtkMRMLViewNodeO")
+      origModel.GetDisplayNode().SetViewNodeIDs(origViews)
+    pialModel = self.ui.pialModelSelector.currentNode()
+    if not pialModel is None:
+      pialViews = sliceViewIDs[:]
+      pialViews.append("vtkMRMLViewNodeP")
+      pialModel.GetDisplayNode().SetViewNodeIDs(pialViews)
+    inflatedModel = self.ui.inflatedModelSelector.currentNode()
+    if not inflatedModel is None:
+      inflatedViews = sliceViewIDs[:]
+      inflatedViews.append("vtkMRMLViewNodeI")
+      inflatedModel.GetDisplayNode().SetViewNodeIDs(inflatedViews)
+
     wasModifying = self._parameterNode.StartModify()
     self._parameterNode.SetNodeReferenceID(INPUT_QUERY_REFERENCE, self.ui.querySelector.currentNodeID)
-    self._parameterNode.SetNodeReferenceID(INPUT_MODEL_REFERENCE, self.ui.inputModelSelector.currentNodeID)
-    self._parameterNode.SetNodeReferenceID(INNER_SURFACE_REFERENCE, self.ui.innerSurfaceSelector.currentNodeID)
-    self._parameterNode.SetNodeReferenceID(OUTER_SURFACE_REFERENCE, self.ui.outerSurfaceSelector.currentNodeID)
+    self._parameterNode.SetNodeReferenceID(ORIG_MODEL_REFERENCE, self.ui.origModelSelector.currentNodeID)
+    self._parameterNode.SetNodeReferenceID(PIAL_MODEL_REFERENCE, self.ui.pialModelSelector.currentNodeID)
+    self._parameterNode.SetNodeReferenceID(INFLATED_MODEL_REFERENCE, self.ui.inflatedModelSelector.currentNodeID)
     self._parameterNode.SetNodeReferenceID(EXPORT_SEGMENTATION_REFERENCE, self.ui.exportSegmentationSelector.currentNodeID)
     numberOfToolNodes = self._parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
     for i in range(numberOfToolNodes):
@@ -443,7 +521,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if parameterNode is None:
       return
 
-    inputModelNode = parameterNode.GetNodeReference(INPUT_MODEL_REFERENCE)
+    inputModelNode = parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
     if inputModelNode is not None:
 
       numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
@@ -494,8 +572,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     numberOfOutputModels = parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
     exportSegmentationNode = parameterNode.GetNodeReference(EXPORT_SEGMENTATION_REFERENCE)
-    innerSurfaceNode = parameterNode.GetNodeReference(INNER_SURFACE_REFERENCE)
-    outerSurfaceNode = parameterNode.GetNodeReference(OUTER_SURFACE_REFERENCE)
+    innerSurfaceNode = parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
+    outerSurfaceNode = parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
     for i in range(numberOfOutputModels):
       outputSurfaceNode = parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
       if len(surfacesToExport) > 0 and not outputSurfaceNode.GetName() in surfacesToExport:
@@ -692,7 +770,7 @@ class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
     slicer.mrmlScene.RemoveNode(storageNode)
 
     parameterNode = logic.getParameterNode()
-    parameterNode.SetNodeReferenceID(INPUT_MODEL_REFERENCE, inputModelNode.GetID())
+    parameterNode.SetNodeReferenceID(ORIG_MODEL_REFERENCE, inputModelNode.GetID())
     parameterNode.SetNodeReferenceID(INPUT_QUERY_REFERENCE, parcellationQueryNode.GetID())
     parameterNode.SetAttribute("TEST", inputModelNode.GetID())
 
