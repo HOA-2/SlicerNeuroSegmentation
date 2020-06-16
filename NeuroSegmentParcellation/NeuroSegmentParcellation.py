@@ -37,7 +37,7 @@ class NeuroSegmentParcellation(ScriptedLoadableModule, VTKObservationMixin):
       slicer.app.connect("startupCompleted()", self.initializeModule)
 
   def initializeModule(self):
-    slicer.mrmlScene.SetUndoOn()
+    #slicer.mrmlScene.SetUndoOn()
     defaultNodes = [
       slicer.vtkMRMLMarkupsFiducialNode(),
       slicer.vtkMRMLMarkupsCurveNode(),
@@ -193,7 +193,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.updateOutputStructures()
 
   def enter(self):
-    return
     slicer.app.layoutManager().setLayout(NeuroSegmentParcellation.NEURO_PARCELLATION_LAYOUT_ID)
     slicer.util.getNode("ViewO").LinkedControlOn()
 
@@ -209,8 +208,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     Adds observers to the selected parameter node. Observation is needed because when the
     parameter node is changed then the GUI must be updated immediately.
     """
-    if inputParameterNode:
-      self.logic.setDefaultParameters(inputParameterNode)
+    self.logic.setParameterNode(inputParameterNode)
 
     # Set parameter node in the parameter node selector widget
     wasBlocked = self.ui.parameterNodeSelector.blockSignals(True)
@@ -404,22 +402,22 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if self._parameterNode is None:
       return
 
-    #sliceViewIDs = ["vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
-    #origModel = self.ui.origModelSelector.currentNode()
-    #if not origModel is None:
-    #  origViews = sliceViewIDs[:]
-    #  origViews.append("vtkMRMLViewNodeO")
-    #  origModel.GetDisplayNode().SetViewNodeIDs(origViews)
-    #pialModel = self.ui.pialModelSelector.currentNode()
-    #if not pialModel is None:
-    #  pialViews = sliceViewIDs[:]
-    #  pialViews.append("vtkMRMLViewNodeP")
-    #  pialModel.GetDisplayNode().SetViewNodeIDs(pialViews)
-    #inflatedModel = self.ui.inflatedModelSelector.currentNode()
-    #if not inflatedModel is None:
-    #  inflatedViews = sliceViewIDs[:]
-    #  inflatedViews.append("vtkMRMLViewNodeI")
-    #  inflatedModel.GetDisplayNode().SetViewNodeIDs(inflatedViews)
+    sliceViewIDs = ["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
+    origModel = self.ui.origModelSelector.currentNode()
+    if not origModel is None:
+      origViews = sliceViewIDs[:]
+      origViews.append("vtkMRMLViewNodeO")
+      origModel.GetDisplayNode().SetViewNodeIDs(origViews)
+    pialModel = self.ui.pialModelSelector.currentNode()
+    if not pialModel is None:
+      pialViews = sliceViewIDs[:]
+      pialViews.append("vtkMRMLViewNodeP")
+      pialModel.GetDisplayNode().SetViewNodeIDs(pialViews)
+    inflatedModel = self.ui.inflatedModelSelector.currentNode()
+    if not inflatedModel is None:
+      inflatedViews = sliceViewIDs[:]
+      inflatedViews.append("vtkMRMLViewNodeI")
+      inflatedModel.GetDisplayNode().SetViewNodeIDs(inflatedViews)
 
     wasModifying = self._parameterNode.StartModify()
     self._parameterNode.SetNodeReferenceID(INPUT_QUERY_REFERENCE, self.ui.querySelector.currentNodeID)
@@ -500,13 +498,38 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   """Perform filtering
   """
-
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
     VTKObservationMixin.__init__(self)
     self.isSingletonParameterNode = False
 
+    self.origPointLocator = vtk.vtkPointLocator()
+    self.inputMarkupObservers = []
+    self.parameterNode = None
+
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.updateParameterNodeObservers)
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
+    self.updateParameterNodeObservers()
+
+  def setParameterNode(self, parameterNode):
+    """Set the current parameter node and initialize all unset parameters to their default values"""
+    if self.parameterNode==parameterNode:
+      return
+    self.parameterNode = parameterNode
+
+  def getParameterNode(self):
+    """Returns the current parameter node and creates one if it doesn't exist yet"""
+    if not self.parameterNode:
+      self.setParameterNode(ScriptedLoadableModuleLogic.getParameterNode(self) )
+    return self.parameterNode
+
+  @vtk.calldata_type(vtk.VTK_OBJECT)
+  def updateParameterNodeObservers(self, caller=None, eventId=None, callData=None):
+    scriptedModuleNodes = slicer.util.getNodesByClass("vtkMRMLScriptedModuleNode")
+    for node in scriptedModuleNodes:
+      if node.GetAttribute("ModuleName") == self.moduleName:
+        self.addObserver(node, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified)
+        self.onParameterNodeModified(node)
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeAdded(self, caller, eventId, node):
@@ -514,16 +537,20 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       return
     if not node.IsA("vtkMRMLScriptedModuleNode"):
       return
-    if not node.GetAttribute( "ModuleName") == self.moduleName:
+    if not node.GetAttribute("ModuleName") == self.moduleName:
       return
     self.addObserver(node, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified)
 
-  def onParameterNodeModified(self, parameterNode , eventId):
+  def onParameterNodeModified(self, parameterNode, eventId=None):
     if parameterNode is None:
       return
+    self.updateInputMarkupObservers(parameterNode)
 
     inputModelNode = parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
     if inputModelNode is not None:
+      if self.origPointLocator.GetDataSet() != inputModelNode.GetPolyData():
+        self.origPointLocator.SetDataSet(inputModelNode.GetPolyData())
+        self.origPointLocator.BuildLocator()
 
       numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
       for i in range(numberOfToolNodes):
@@ -536,6 +563,94 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         inputCurveNode = parameterNode.GetNthNodeReference(INPUT_MARKUPS_REFERENCE, i)
         if inputCurveNode.IsA("vtkMRMLMarkupsCurveNode"):
           inputCurveNode.SetAndObserveShortestDistanceSurfaceNode(inputModelNode)
+
+  def removeInputMarkupObservers(self):
+    for obj, tag in self.inputMarkupObservers:
+      obj.RemoveObserver(tag)
+    self.inputMarkupObservers = []
+
+  def updateInputMarkupObservers(self, parameterNode):
+    if parameterNode is None:
+      return
+    numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(INPUT_MARKUPS_REFERENCE)
+    for i in range(numberOfMarkupNodes):
+      inputMarkupNode = parameterNode.GetNthNodeReference(INPUT_MARKUPS_REFERENCE, i)
+      if not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
+        continue
+      tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointEndInteractionEvent, self.onMasterMarkupModified)
+      self.inputMarkupObservers.append((inputMarkupNode, tag))
+      tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointAddedEvent, self.onMasterMarkupModified)
+      self.inputMarkupObservers.append((inputMarkupNode, tag))
+      inputMarkupNode.GetDisplayNode().SetViewNodeIDs(["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow", "vtkMRMLViewNodeO"])
+
+  @vtk.calldata_type(vtk.VTK_INT)
+  def onMasterMarkupModified(self, inputMarkupNode, eventId=None, node=None):
+    origModel = self.parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
+    curvePoints = inputMarkupNode.GetCurve().GetPoints()
+    if self.origPointLocator.GetDataSet() is None or curvePoints is None:
+      return
+
+    pointIds = []
+    for i in range(curvePoints.GetNumberOfPoints()):
+      origPoint = list(curvePoints.GetPoint(i))
+      origModel.TransformPointFromWorld(origPoint, origPoint)
+      pointIds.append(self.origPointLocator.FindClosestPoint(origPoint))
+
+    pialMarkup = self.getDerivedMarkupNode(inputMarkupNode, "PialMarkup")
+    if pialMarkup is None:
+      logging.error("Could not find pial markup!")
+    else:
+      curvePoints = inputMarkupNode.GetCurve().GetPoints()
+      wasModifying = pialMarkup.StartModify()
+      pialMarkup.RemoveAllControlPoints()
+      pialModel = self.parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
+      if pialModel and pialModel.GetPolyData() and pialModel.GetPolyData().GetPoints():
+        for pointId in pointIds:
+          pialPoint = list(pialModel.GetPolyData().GetPoints().GetPoint(pointId))
+          pialModel.TransformPointToWorld(pialPoint, pialPoint )
+          controlPointID = pialMarkup.AddControlPointWorld(vtk.vtkVector3d(pialPoint))
+          pialMarkup.SetNthControlPointVisibility(controlPointID, False)
+      pialMarkup.EndModify(wasModifying)
+
+    inflatedMarkup = self.getDerivedMarkupNode(inputMarkupNode, "InflatedMarkup")
+    if inflatedMarkup is None:
+      logging.error("Could not find inflated markup!")
+    else:
+      curvePoints = inputMarkupNode.GetCurve().GetPoints()
+      wasModifying = inflatedMarkup.StartModify()
+      inflatedMarkup.RemoveAllControlPoints()
+      inflatedModel = self.parameterNode.GetNodeReference(INFLATED_MODEL_REFERENCE)
+      if inflatedModel and inflatedModel.GetPolyData() and inflatedModel.GetPolyData().GetPoints():
+        for pointId in pointIds:
+          inflatedPoint = list(inflatedModel.GetPolyData().GetPoints().GetPoint(pointId))
+          inflatedModel.TransformPointToWorld(inflatedPoint, inflatedPoint )
+          controlPointID = inflatedMarkup.AddControlPointWorld(vtk.vtkVector3d(inflatedPoint))
+          inflatedMarkup.SetNthControlPointVisibility(controlPointID, False)
+      inflatedMarkup.EndModify(wasModifying)
+
+  def getDerivedMarkupNode(self, origMarkupNode, nodeType):
+    if origMarkupNode is None:
+      return None
+    derivedMarkup = origMarkupNode.GetNodeReference(nodeType)
+    if not derivedMarkup is None:
+      return derivedMarkup
+
+    derivedMarkup = slicer.mrmlScene.AddNewNodeByClass(origMarkupNode.GetClassName())
+    derivedMarkup.SetCurveTypeToLinear()
+    derivedMarkup.CreateDefaultDisplayNodes()
+    derivedMarkup.GetDisplayNode().CopyContent(origMarkupNode.GetDisplayNode())
+    derivedMarkup.SetName(origMarkupNode.GetName() + "_" + nodeType)
+    origMarkupNode.SetNodeReferenceID(nodeType, derivedMarkup.GetID())
+
+    sliceViewIDs = ["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
+    viewIDs = sliceViewIDs[:]
+    if nodeType == "PialMarkup":
+      viewIDs.append("vtkMRMLViewNodeP")
+    if nodeType == "InflatedMarkup":
+      viewIDs.append("vtkMRMLViewNodeI")
+    derivedMarkup.GetDisplayNode().SetViewNodeIDs(viewIDs)
+
+    return derivedMarkup
 
   def setDefaultParameters(self, parameterNode):
     """
