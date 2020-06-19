@@ -37,7 +37,7 @@ class NeuroSegmentParcellation(ScriptedLoadableModule, VTKObservationMixin):
       slicer.app.connect("startupCompleted()", self.initializeModule)
 
   def initializeModule(self):
-    #slicer.mrmlScene.SetUndoOn()
+    slicer.mrmlScene.SetUndoOn()
     defaultNodes = [
       slicer.vtkMRMLMarkupsFiducialNode(),
       slicer.vtkMRMLMarkupsCurveNode(),
