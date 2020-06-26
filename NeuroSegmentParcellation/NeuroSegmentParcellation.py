@@ -37,7 +37,7 @@ class NeuroSegmentParcellation(ScriptedLoadableModule, VTKObservationMixin):
       slicer.app.connect("startupCompleted()", self.initializeModule)
 
   def initializeModule(self):
-    slicer.mrmlScene.SetUndoOn()
+    #slicer.mrmlScene.SetUndoOn()
     defaultNodes = [
       slicer.vtkMRMLMarkupsFiducialNode(),
       slicer.vtkMRMLMarkupsCurveNode(),
@@ -1068,11 +1068,17 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       curveNodes = self.process_InputNodes(node.value, "vtkMRMLMarkupsCurveNode")
       for curveNode in curveNodes:
         curveNode.SetCurveTypeToShortestDistanceOnSurface()
+        costFunctionType = curveNode.GetSurfaceCostFunctionTypeFromString('inverseSquared')
+        curveNode.SetSurfaceCostFunctionType(costFunctionType)
+        curveNode.SetSurfaceDistanceWeightingFunction(self.distanceWeightingFunction)
       return
     elif target.id == "_ClosedCurves":
       curveNodes = self.process_InputNodes(node.value, "vtkMRMLMarkupsClosedCurveNode")
       for curveNode in curveNodes:
         curveNode.SetCurveTypeToShortestDistanceOnSurface()
+      return
+    elif target.id == "_DistanceWeightingFunction":
+      self.distanceWeightingFunction = node.value.s
       return
 
     nodes = self.visit(node.value)
