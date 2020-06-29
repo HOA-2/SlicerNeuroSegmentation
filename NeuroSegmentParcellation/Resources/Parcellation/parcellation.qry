@@ -1,7 +1,7 @@
 # Parcellation description file
 
 # Distance weighting function is applied using this formula: cost = distance / _DistanceWeightingFunction
-_DistanceWeightingFunction = "-1.0 / (sulc - sulcMax + curv - curvMax - 0.001)"
+_DistanceWeightingFunction = "(sulc - sulcMin) + (curv - curvMin)"
 
 _Planes = [
   BASFRBRN,
