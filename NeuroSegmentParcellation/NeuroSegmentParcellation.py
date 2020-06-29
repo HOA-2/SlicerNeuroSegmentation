@@ -720,6 +720,27 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       if inputCurveNode.IsA("vtkMRMLMarkupsCurveNode"):
         inputCurveNode.SetAndObserveShortestDistanceSurfaceNode(origModelNode)
 
+        sulcArray = None
+        curvArray = None
+        if origModelNode and origModelNode.GetPolyData() and origModelNode.GetPolyData().GetPointData():
+          sulcArray = origModelNode.GetPolyData().GetPointData().GetArray("sulc")
+          curvArray = origModelNode.GetPolyData().GetPointData().GetArray("curv")
+
+        distanceWeightingFunction = parameterNode.GetParameter("DistanceWeightingFunction")
+        if distanceWeightingFunction and distanceWeightingFunction != "" and sulcArray and curvArray:
+          sulcRange = sulcArray.GetRange()
+          curvRange = curvArray.GetRange()
+          distanceWeightingFunction = distanceWeightingFunction.replace("sulcMin", str(sulcRange[0]))
+          distanceWeightingFunction = distanceWeightingFunction.replace("curvMin", str(curvRange[0]))
+          distanceWeightingFunction = distanceWeightingFunction.replace("sulcMax", str(sulcRange[1]))
+          distanceWeightingFunction = distanceWeightingFunction.replace("curvMax", str(curvRange[1]))
+          inverseSquaredType = inputCurveNode.GetSurfaceCostFunctionTypeFromString('inverseSquared')
+          inputCurveNode.SetSurfaceCostFunctionType(inverseSquaredType)
+          inputCurveNode.SetSurfaceDistanceWeightingFunction(distanceWeightingFunction)
+        else:
+          distanceType = inputCurveNode.GetSurfaceCostFunctionTypeFromString('distance')
+          inputCurveNode.SetSurfaceCostFunctionType(distanceType)
+
   def removeObservers(self):
     VTKObservationMixin.removeObservers(self)
     self.removeInputMarkupObservers()
@@ -1070,9 +1091,6 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       curveNodes = self.process_InputNodes(node.value, "vtkMRMLMarkupsCurveNode")
       for curveNode in curveNodes:
         curveNode.SetCurveTypeToShortestDistanceOnSurface()
-        costFunctionType = curveNode.GetSurfaceCostFunctionTypeFromString('inverseSquared')
-        curveNode.SetSurfaceCostFunctionType(costFunctionType)
-        curveNode.SetSurfaceDistanceWeightingFunction(self.distanceWeightingFunction)
       return
     elif target.id == "_ClosedCurves":
       curveNodes = self.process_InputNodes(node.value, "vtkMRMLMarkupsClosedCurveNode")
@@ -1081,6 +1099,7 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       return
     elif target.id == "_DistanceWeightingFunction":
       self.distanceWeightingFunction = node.value.s
+      self._parameterNode.SetParameter("DistanceWeightingFunction", self.distanceWeightingFunction)
       return
 
     nodes = self.visit(node.value)
