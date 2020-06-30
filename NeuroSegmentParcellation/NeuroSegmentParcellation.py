@@ -178,6 +178,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.loadQueryButton.connect('clicked(bool)', self.onLoadQuery)
     self.ui.applyButton.connect('clicked(bool)', self.onApplyButton)
     self.ui.exportButton.connect('clicked(bool)', self.onExportButton)
+    self.ui.exportLabelButton.connect('clicked(bool)', self.onExportLabelButton)
 
     # These connections ensure that whenever user changes some settings on the GUI, that is saved in the MRML scene
     # (in the selected parameter node).
@@ -579,6 +580,14 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       slicer.util.errorDisplay("Failed to compute results: "+str(e))
       import traceback
       traceback.print_exc()
+
+  def onExportLabelButton(self):
+    surfacesToExport = []
+    checkedIndexes = self.ui.structureSelector.checkedIndexes()
+    for index in checkedIndexes:
+      surfacesToExport.append(self.ui.structureSelector.itemText(index.row()))
+
+    self.logic.exportOutputToSurfaceLabel(self._parameterNode, surfacesToExport)
 
   def onLoadQuery(self):
     """
@@ -1048,6 +1057,65 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if segmentIndex >= 0:
       segmentation.SetSegmentIndex(segmentId, segmentIndex)
     slicer.mrmlScene.RemoveNode(outputModelNode)
+
+  def exportOutputToSurfaceLabel(self, parameterNode, surfacesToExport=[]):
+    origSurfaceNode = parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
+    pialSurfaceNode = parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
+    inflatedSurfaceNode = parameterNode.GetNodeReference(INFLATED_MODEL_REFERENCE)
+    if origSurfaceNode is None or (origSurfaceNode is None and pialSurfaceNode is None and inflatedSurfaceNode is None):
+      logging.error("exportOutputToSurfaceLabel: Invalid surface node")
+      return
+
+    cellCount = origSurfaceNode.GetPolyData().GetNumberOfCells()
+    labelArray = origSurfaceNode.GetPolyData().GetCellData().GetArray("label")
+    if labelArray is None:
+      labelArray = vtk.vtkIntArray()
+      labelArray.SetName("label")
+      labelArray.SetNumberOfComponents(1)
+      labelArray.SetNumberOfTuples(cellCount)
+    labelArray.Fill(0)
+
+    cellLocator = vtk.vtkCellLocator()
+    cellLocator.SetDataSet(origSurfaceNode.GetPolyData())
+    cellLocator.BuildLocator()
+
+    numberOfOutputModels = parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
+    lookupTable = vtk.vtkLookupTable()
+    lookupTable.SetNumberOfColors(numberOfOutputModels + 1)
+    lookupTable.SetTableValue(0, 0.0, 0.0, 0.0)
+    
+    labelValue = 1
+    for i in range(numberOfOutputModels):
+      outputSurfaceNode = parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
+      color = outputSurfaceNode.GetDisplayNode().GetColor()
+      lookupTable.SetTableValue(labelValue, color[0], color[1], color[2])
+      if outputSurfaceNode.GetName() in surfacesToExport or len(surfacesToExport) == 0:
+        cellCenters = vtk.vtkCellCenters()
+        cellCenters.SetInputData(outputSurfaceNode.GetPolyData())
+        cellCenters.Update()
+        centers = cellCenters.GetOutput()
+        for pointId in range(centers.GetNumberOfPoints()):
+          point = centers.GetPoint(pointId)
+          closestPoint = [0,0,0]
+          cellId = vtk.reference(0)
+          subId = vtk.reference(0)
+          d2 = vtk.reference(0.0)
+          cellLocator.FindClosestPoint(point, closestPoint, cellId, subId, d2)
+          if cellId >= 0:
+            labelArray.SetValue(cellId, labelValue)
+      labelValue += 1
+
+    origSurfaceNode.GetPolyData().GetCellData().AddArray(labelArray)
+    if pialSurfaceNode:
+      pialSurfaceNode.GetPolyData().GetCellData().AddArray(labelArray)
+    if inflatedSurfaceNode:
+      inflatedSurfaceNode.GetPolyData().GetCellData().AddArray(labelArray)
+
+    parcellationColorNode = origSurfaceNode.GetNodeReference("ParcellationColorNode")
+    if parcellationColorNode is None:
+      parcellationColorNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLColorTableNode", "ParcellationColorNode")
+    parcellationColorNode.SetLookupTable(lookupTable)
+    origSurfaceNode.SetNodeReferenceID("ParcellationColorNode", parcellationColorNode.GetID())
 
   def getQueryString(self, parameterNode):
     if parameterNode is None:
