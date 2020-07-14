@@ -558,28 +558,38 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
   def updateScalarOverlay(self):
     scalarName = None
+    colorNode = None
+    attributeType = 0
     if self.ui.curvRadioButton.isChecked():
       scalarName = "curv"
+      attributeType = vtk.vtkDataObject.POINT
+      colorNode = slicer.util.getNode("RedGreen")
     elif self.ui.sulcRadioButton.isChecked():
       scalarName = "sulc"
+      attributeType = vtk.vtkDataObject.POINT
+      colorNode = slicer.util.getNode("RedGreen")
     elif self.ui.segRadioButton.isChecked():
       scalarName = "seg"
+      attributeType = vtk.vtkDataObject.CELL
+      colorNode = self.logic.getParcellationColorNode()
     if scalarName is None:
       return
 
     modelNodes = [
-      self._parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE), 
+      self._parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE),
       self._parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE),
       self._parameterNode.GetNodeReference(INFLATED_MODEL_REFERENCE),
       ]
     for modelNode in modelNodes:
-      displayNode = modelNode.GetDisplayNode()
       if modelNode is None:
         continue
       displayNode = modelNode.GetDisplayNode()
       if displayNode is None:
         continue
-      displayNode.SetActiveScalar(scalarName, vtk.VTK_CELL_DATA)
+      displayNode.SetActiveScalar(scalarName, attributeType)
+      if colorNode:
+        print(colorNode.GetName())
+        displayNode.SetAndObserveColorNodeID(colorNode.GetID())
 
   def onApplyButton(self):
     """
@@ -1095,23 +1105,32 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       return
 
     cellCount = origSurfaceNode.GetPolyData().GetNumberOfCells()
-    labelArray = origSurfaceNode.GetPolyData().GetCellData().GetArray("label")
+    labelArray = origSurfaceNode.GetPolyData().GetCellData().GetArray("seg")
     if labelArray is None:
       labelArray = vtk.vtkIntArray()
-      labelArray.SetName("label")
+      labelArray.SetName("seg")
       labelArray.SetNumberOfComponents(1)
       labelArray.SetNumberOfTuples(cellCount)
     labelArray.Fill(0)
 
+    transformToWorld = vtk.vtkGeneralTransform()
+    if origSurfaceNode.GetParentTransformNode():
+      origSurfaceNode.GetParentTransformNode().GetTransformToWorld(transformToWorld)
+
+    transformToWorldFilter = vtk.vtkTransformPolyDataFilter()
+    transformToWorldFilter.SetInputData(origSurfaceNode.GetPolyData())
+    transformToWorldFilter.SetTransform(transformToWorld)
+    transformToWorldFilter.Update()
+
     cellLocator = vtk.vtkCellLocator()
-    cellLocator.SetDataSet(origSurfaceNode.GetPolyData())
+    cellLocator.SetDataSet(transformToWorldFilter.GetOutput())
     cellLocator.BuildLocator()
 
     numberOfOutputModels = parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
     lookupTable = vtk.vtkLookupTable()
     lookupTable.SetNumberOfColors(numberOfOutputModels + 1)
     lookupTable.SetTableValue(0, 0.0, 0.0, 0.0)
-    
+
     labelValue = 1
     for i in range(numberOfOutputModels):
       outputSurfaceNode = parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
@@ -1133,17 +1152,34 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
             labelArray.SetValue(cellId, labelValue)
       labelValue += 1
 
+    # Update color table
+    self.getParcellationColorNode()
+
     origSurfaceNode.GetPolyData().GetCellData().AddArray(labelArray)
     if pialSurfaceNode:
       pialSurfaceNode.GetPolyData().GetCellData().AddArray(labelArray)
     if inflatedSurfaceNode:
       inflatedSurfaceNode.GetPolyData().GetCellData().AddArray(labelArray)
 
-    parcellationColorNode = origSurfaceNode.GetNodeReference("ParcellationColorNode")
+  def getParcellationColorNode(self):
+    parcellationColorNode = self.parameterNode.GetNodeReference("ParcellationColorNode")
     if parcellationColorNode is None:
       parcellationColorNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLColorTableNode", "ParcellationColorNode")
+      self.parameterNode.SetNodeReferenceID("ParcellationColorNode", parcellationColorNode.GetID())
+
+    numberOfOutputModels = self.parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
+    lookupTable = vtk.vtkLookupTable()
+    lookupTable.SetNumberOfColors(numberOfOutputModels + 1)
+    lookupTable.SetTableValue(0, 0.0, 0.0, 0.0)
+    labelValue = 1
+    for i in range(numberOfOutputModels):
+      outputSurfaceNode = self.parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
+      color = outputSurfaceNode.GetDisplayNode().GetColor()
+      lookupTable.SetTableValue(labelValue, color[0], color[1], color[2])
+      labelValue += 1
     parcellationColorNode.SetLookupTable(lookupTable)
-    origSurfaceNode.SetNodeReferenceID("ParcellationColorNode", parcellationColorNode.GetID())
+
+    return parcellationColorNode
 
   def getQueryString(self, parameterNode):
     if parameterNode is None:
