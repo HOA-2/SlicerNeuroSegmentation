@@ -188,6 +188,9 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.inflatedModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.exportSegmentationSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.applyButton.connect('checkBoxToggled(bool)', self.updateParameterNodeFromGUI)
+    self.ui.curvRadioButton.connect("toggled(bool)", self.updateScalarOverlay)
+    self.ui.sulcRadioButton.connect("toggled(bool)", self.updateScalarOverlay)
+    self.ui.segRadioButton.connect("toggled(bool)", self.updateScalarOverlay)
 
     slicer.app.layoutManager().connect("layoutChanged(int)", self.onLayoutChanged)
     self.ui.parcellationViewLayoutButton.connect("clicked()", self.onParcellationViewLayoutButtonClicked)
@@ -552,6 +555,31 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       toolNode = self._parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
       toolNode.SetContinuousUpdate(self.ui.applyButton.checked)
     self._parameterNode.EndModify(wasModifying)
+
+  def updateScalarOverlay(self):
+    scalarName = None
+    if self.ui.curvRadioButton.isChecked():
+      scalarName = "curv"
+    elif self.ui.sulcRadioButton.isChecked():
+      scalarName = "sulc"
+    elif self.ui.segRadioButton.isChecked():
+      scalarName = "seg"
+    if scalarName is None:
+      return
+
+    modelNodes = [
+      self._parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE), 
+      self._parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE),
+      self._parameterNode.GetNodeReference(INFLATED_MODEL_REFERENCE),
+      ]
+    for modelNode in modelNodes:
+      displayNode = modelNode.GetDisplayNode()
+      if modelNode is None:
+        continue
+      displayNode = modelNode.GetDisplayNode()
+      if displayNode is None:
+        continue
+      displayNode.SetActiveScalar(scalarName, vtk.VTK_CELL_DATA)
 
   def onApplyButton(self):
     """

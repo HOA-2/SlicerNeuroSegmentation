@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>224</width>
-    <height>609</height>
+    <width>262</width>
+    <height>659</height>
    </rect>
   </property>
   <layout class="QFormLayout" name="formLayout">
@@ -172,6 +172,38 @@
          <string>Inflated surface:</string>
         </property>
        </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>Overlay:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QRadioButton" name="curvRadioButton">
+          <property name="text">
+           <string>curv</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="sulcRadioButton">
+          <property name="text">
+           <string>sulc</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="segRadioButton">
+          <property name="text">
+           <string>seg</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>
