@@ -197,9 +197,9 @@
          </widget>
         </item>
         <item>
-         <widget class="QRadioButton" name="segRadioButton">
+         <widget class="QRadioButton" name="labelsRadioButton">
           <property name="text">
-           <string>seg</string>
+           <string>labels</string>
           </property>
          </widget>
         </item>

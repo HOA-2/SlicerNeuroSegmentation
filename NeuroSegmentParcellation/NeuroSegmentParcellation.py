@@ -190,7 +190,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.applyButton.connect('checkBoxToggled(bool)', self.updateParameterNodeFromGUI)
     self.ui.curvRadioButton.connect("toggled(bool)", self.updateScalarOverlay)
     self.ui.sulcRadioButton.connect("toggled(bool)", self.updateScalarOverlay)
-    self.ui.segRadioButton.connect("toggled(bool)", self.updateScalarOverlay)
+    self.ui.labelsRadioButton.connect("toggled(bool)", self.updateScalarOverlay)
 
     slicer.app.layoutManager().connect("layoutChanged(int)", self.onLayoutChanged)
     self.ui.parcellationViewLayoutButton.connect("clicked()", self.onParcellationViewLayoutButtonClicked)
@@ -568,8 +568,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       scalarName = "sulc"
       attributeType = vtk.vtkDataObject.POINT
       colorNode = slicer.util.getNode("RedGreen")
-    elif self.ui.segRadioButton.isChecked():
-      scalarName = "seg"
+    elif self.ui.labelsRadioButton.isChecked():
+      scalarName = "labels"
       attributeType = vtk.vtkDataObject.CELL
       colorNode = self.logic.getParcellationColorNode()
     if scalarName is None:
@@ -588,7 +588,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
         continue
       displayNode.SetActiveScalar(scalarName, attributeType)
       if colorNode:
-        print(colorNode.GetName())
         displayNode.SetAndObserveColorNodeID(colorNode.GetID())
 
   def onApplyButton(self):
@@ -596,12 +595,18 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     Apply all of the parcellation tools
     """
     if self._parameterNode is None:
+      logging.error("Invalid parameter node")
       return
+
+    self.logic.initializePedigreeIds(self._parameterNode)
+
     numberOfToolNodes = self._parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
     dynamicModelerLogic = slicer.modules.dynamicmodeler.logic()
     for i in range(numberOfToolNodes):
       toolNode = self._parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
       dynamicModelerLogic.RunDynamicModelerTool(toolNode)
+
+    self.logic.exportOutputToSurfaceLabel(self._parameterNode)
 
   def onExportButton(self):
     """
@@ -978,8 +983,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     # TODO: We should be able to reverse engineer where this point should be inserted to be added to the "orig" curve
     return
 
-
-
   def getDerivedCurveNode(self, origMarkupNode, nodeType):
     if origMarkupNode is None:
       return None
@@ -1096,6 +1099,41 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       segmentation.SetSegmentIndex(segmentId, segmentIndex)
     slicer.mrmlScene.RemoveNode(outputModelNode)
 
+  def initializePedigreeIds(self, parameterNode):
+    """
+    Add Pedigree Ids to Orig model cell data and point data
+    """
+    if parameterNode is None:
+      logging.error("Invalid parameter node")
+      return
+
+    origModelNode = parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
+    if origModelNode is None or origModelNode.GetPolyData() is None:
+      logging.error("Invalid Orig model")
+      return
+
+    polyData = origModelNode.GetPolyData()
+
+    cellData = polyData.GetCellData()
+    cellPedigreeArray = cellData.GetArray("cellPedigree")
+    if cellPedigreeArray is None:
+      cellPedigreeIds = vtk.vtkIdTypeArray()
+      cellPedigreeIds.SetName("cellPedigree")
+      cellPedigreeIds.SetNumberOfValues(polyData.GetNumberOfCells())
+      for i in range(polyData.GetNumberOfCells()):
+        cellPedigreeIds.SetValue(i, i)
+      origModelNode.AddCellScalars(cellPedigreeIds)
+
+    pointData = polyData.GetPointData()
+    pointPedigreeArray = pointData.GetArray("pointPedigree")
+    if pointPedigreeArray  is None:
+      pointPedigreeIds = vtk.vtkIdTypeArray()
+      pointPedigreeIds.SetName("pointPedigree")
+      pointPedigreeIds.SetNumberOfValues(polyData.GetNumberOfPoints())
+      for i in range(polyData.GetNumberOfPoints()):
+        pointPedigreeIds.SetValue(i, i)
+      origModelNode.AddPointScalars(pointPedigreeIds)
+
   def exportOutputToSurfaceLabel(self, parameterNode, surfacesToExport=[]):
     origSurfaceNode = parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
     pialSurfaceNode = parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
@@ -1105,52 +1143,32 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       return
 
     cellCount = origSurfaceNode.GetPolyData().GetNumberOfCells()
-    labelArray = origSurfaceNode.GetPolyData().GetCellData().GetArray("seg")
+    labelArray = origSurfaceNode.GetPolyData().GetCellData().GetArray("labels")
     if labelArray is None:
       labelArray = vtk.vtkIntArray()
-      labelArray.SetName("seg")
+      labelArray.SetName("labels")
       labelArray.SetNumberOfComponents(1)
       labelArray.SetNumberOfTuples(cellCount)
     labelArray.Fill(0)
 
-    transformToWorld = vtk.vtkGeneralTransform()
-    if origSurfaceNode.GetParentTransformNode():
-      origSurfaceNode.GetParentTransformNode().GetTransformToWorld(transformToWorld)
-
-    transformToWorldFilter = vtk.vtkTransformPolyDataFilter()
-    transformToWorldFilter.SetInputData(origSurfaceNode.GetPolyData())
-    transformToWorldFilter.SetTransform(transformToWorld)
-    transformToWorldFilter.Update()
-
-    cellLocator = vtk.vtkCellLocator()
-    cellLocator.SetDataSet(transformToWorldFilter.GetOutput())
-    cellLocator.BuildLocator()
-
     numberOfOutputModels = parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
-    lookupTable = vtk.vtkLookupTable()
-    lookupTable.SetNumberOfColors(numberOfOutputModels + 1)
-    lookupTable.SetTableValue(0, 0.0, 0.0, 0.0)
+    for modelIndex in range(numberOfOutputModels):
+      outputSurfaceNode = parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, modelIndex)
+      if len(surfacesToExport) != 0 and not outputSurfaceNode.GetName() in surfacesToExport:
+        continue
 
-    labelValue = 1
-    for i in range(numberOfOutputModels):
-      outputSurfaceNode = parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
-      color = outputSurfaceNode.GetDisplayNode().GetColor()
-      lookupTable.SetTableValue(labelValue, color[0], color[1], color[2])
-      if outputSurfaceNode.GetName() in surfacesToExport or len(surfacesToExport) == 0:
-        cellCenters = vtk.vtkCellCenters()
-        cellCenters.SetInputData(outputSurfaceNode.GetPolyData())
-        cellCenters.Update()
-        centers = cellCenters.GetOutput()
-        for pointId in range(centers.GetNumberOfPoints()):
-          point = centers.GetPoint(pointId)
-          closestPoint = [0,0,0]
-          cellId = vtk.reference(0)
-          subId = vtk.reference(0)
-          d2 = vtk.reference(0.0)
-          cellLocator.FindClosestPoint(point, closestPoint, cellId, subId, d2)
-          if cellId >= 0:
-            labelArray.SetValue(cellId, labelValue)
-      labelValue += 1
+      polyData = outputSurfaceNode.GetPolyData()
+      if polyData is None:
+        continue
+
+      cellData = polyData.GetCellData()
+      cellPedigreeArray = cellData.GetArray("cellPedigree")
+      if cellPedigreeArray is None:
+        continue
+
+      for cellIndex in range(cellPedigreeArray.GetNumberOfValues()):
+        cellId = cellPedigreeArray.GetValue(cellIndex)
+        labelArray.SetValue(cellId, modelIndex+1)
 
     # Update color table
     self.getParcellationColorNode()
@@ -1170,7 +1188,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     numberOfOutputModels = self.parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
     lookupTable = vtk.vtkLookupTable()
     lookupTable.SetNumberOfColors(numberOfOutputModels + 1)
-    lookupTable.SetTableValue(0, 0.0, 0.0, 0.0)
+    lookupTable.SetTableValue(0, 0.1, 0.1, 0.1)
     labelValue = 1
     for i in range(numberOfOutputModels):
       outputSurfaceNode = self.parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
@@ -1239,6 +1257,11 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     outputModel = slicer.util.getFirstNodeByClassByName("vtkMRMLModelNode", target.id)
     if outputModel is None:
       outputModel = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", target.id)
+    outputModelDisplayNode = outputModel.GetDisplayNode()
+    if outputModelDisplayNode is None:
+      outputModel.CreateDefaultDisplayNodes()
+      outputModelDisplayNode = outputModel.GetDisplayNode()
+      outputModelDisplayNode.SetVisibility(False)
     self._parameterNode.AddNodeReferenceID(OUTPUT_MODEL_REFERENCE, outputModel.GetID())
 
     toolNode = slicer.vtkMRMLDynamicModelerNode()
