@@ -604,7 +604,21 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     dynamicModelerLogic = slicer.modules.dynamicmodeler.logic()
     for i in range(numberOfToolNodes):
       toolNode = self._parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
-      dynamicModelerLogic.RunDynamicModelerTool(toolNode)
+      numberOfInputMarkups = toolNode.GetNumberOfNodeReferences("BoundaryCut.InputBorder")
+      toolHasAllInputs = True
+      for inputNodeIndex in range(numberOfInputMarkups):
+        inputNode = toolNode.GetNthNodeReference("BoundaryCut.InputBorder", inputNodeIndex)
+        if inputNode is None:
+          continue
+        if inputNode.GetNumberOfControlPoints() == 0:
+          toolHasAllInputs = False
+          break
+      if toolHasAllInputs:
+        dynamicModelerLogic.RunDynamicModelerTool(toolNode)
+      else:
+        outputModel = toolNode.GetNodeReference("BoundaryCut.OutputModel")
+        if outputModel and outputModel.GetPolyData():
+          outputModel.GetPolyData().Initialize()
 
     self.logic.exportOutputToSurfaceLabel(self._parameterNode)
 
