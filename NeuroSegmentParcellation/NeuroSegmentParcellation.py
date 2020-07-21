@@ -182,7 +182,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     # These connections ensure that whenever user changes some settings on the GUI, that is saved in the MRML scene
     # (in the selected parameter node).
-    self.ui.querySelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.origModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.pialModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.inflatedModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
@@ -370,18 +369,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       self.addObserver(inputParameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
     self._parameterNode = inputParameterNode
 
-    if self._parameterNode is not None:
-      parcellationQueryNode = self._parameterNode.GetNodeReference(INPUT_QUERY_REFERENCE)
-      if parcellationQueryNode is None:
-        parcellationQueryNode = slicer.util.getFirstNodeByClassByName("vtkMRMLTextNode", "ParcellationQuery")
-        if parcellationQueryNode is None:
-          parcellationQueryNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTextNode", "ParcellationQuery")
-          storageNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTextStorageNode")
-          storageNode.SetFileName(self.resourcePath('Parcellation/parcellation.qry'))
-          storageNode.ReadData(parcellationQueryNode)
-          slicer.mrmlScene.RemoveNode(storageNode)
-        self._parameterNode.SetNodeReferenceID(INPUT_QUERY_REFERENCE, parcellationQueryNode.GetID())
-
     # Initial GUI update
     self.updateGUIFromParameterNode()
     self.logic.setParameterNode(inputParameterNode)
@@ -392,7 +379,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     The module GUI is updated to show the current state of the parameter node.
     """
     # Disable all sections if no parameter node is selected
-    self.ui.inputQueryCollapsibleButton .enabled = self._parameterNode is not None
     self.ui.inputPlanesCollapsibleButton.enabled = self._parameterNode is not None
     self.ui.inputCurvesCollapsibleButton.enabled = self._parameterNode is not None
     self.ui.inputModelCollapsibleButton.enabled = self._parameterNode is not None
@@ -417,10 +403,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     # Update each widget from parameter node
     # Need to temporarily block signals to prevent infinite recursion (MRML node update triggers
     # GUI update, which triggers MRML node update, which triggers GUI update, ...)
-
-    wasBlocked = self.ui.querySelector.blockSignals(True)
-    self.ui.querySelector.setCurrentNode(self._parameterNode.GetNodeReference(INPUT_QUERY_REFERENCE))
-    self.ui.querySelector.blockSignals(wasBlocked)
 
     wasBlocked = self.ui.origModelSelector.blockSignals(True)
     self.ui.origModelSelector.setCurrentNode(self._parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE))
@@ -545,7 +527,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       return
 
     wasModifying = self._parameterNode.StartModify()
-    self._parameterNode.SetNodeReferenceID(INPUT_QUERY_REFERENCE, self.ui.querySelector.currentNodeID)
     self._parameterNode.SetNodeReferenceID(ORIG_MODEL_REFERENCE, self.ui.origModelSelector.currentNodeID)
     self._parameterNode.SetNodeReferenceID(PIAL_MODEL_REFERENCE, self.ui.pialModelSelector.currentNodeID)
     self._parameterNode.SetNodeReferenceID(INFLATED_MODEL_REFERENCE, self.ui.inflatedModelSelector.currentNodeID)
@@ -652,8 +633,19 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     """
     if self._parameterNode is None:
       return
+
     self.ui.loadQueryButton.setIcon(qt.QIcon())
     self.ui.loadQueryButton.setToolTip("")
+
+    parcellationQueryNode = self._parameterNode.GetNodeReference(INPUT_QUERY_REFERENCE)
+    if parcellationQueryNode is None:
+      parcellationQueryNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTextNode", "ParcellationQuery")
+      self._parameterNode.SetNodeReferenceID(INPUT_QUERY_REFERENCE, parcellationQueryNode.GetID())
+
+    storageNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTextStorageNode")
+    storageNode.SetFileName(self.resourcePath('Parcellation/parcellation.qry'))
+    storageNode.ReadData(parcellationQueryNode)
+    slicer.mrmlScene.RemoveNode(storageNode)
 
     self._parameterNode.RemoveNodeReferenceIDs(INPUT_MARKUPS_REFERENCE)
     self._parameterNode.RemoveNodeReferenceIDs(OUTPUT_MODEL_REFERENCE)
@@ -792,8 +784,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
           sulcArray = origModelNode.GetPolyData().GetPointData().GetArray("sulc")
           curvArray = origModelNode.GetPolyData().GetPointData().GetArray("curv")
 
-        distanceWeightingFunction = parameterNode.GetParameter("DistanceWeightingFunction")
+        distanceWeightingFunction = inputCurveNode.GetAttribute("DistanceWeightingFunction")
         if distanceWeightingFunction and distanceWeightingFunction != "" and sulcArray and curvArray:
+          print(distanceWeightingFunction)
           sulcRange = sulcArray.GetRange()
           curvRange = curvArray.GetRange()
           distanceWeightingFunction = distanceWeightingFunction.replace("sulcMin", str(sulcRange[0]))
@@ -1263,7 +1256,6 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       return
     elif target.id == "_DistanceWeightingFunction":
       self.distanceWeightingFunction = node.value.s
-      self._parameterNode.SetParameter("DistanceWeightingFunction", self.distanceWeightingFunction)
       return
 
     nodes = self.visit(node.value)
@@ -1304,6 +1296,8 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
           displayNode.SetGlyphScale(4.0)
           if className == "vtkMRMLMarkupsPlaneNode":
             displayNode.HandlesInteractiveOn()
+      if inputNode.IsA("vtkMRMLMarkupsCurveNode"):
+        inputNode.SetAttribute("DistanceWeightingFunction", self.distanceWeightingFunction)
         inputNodes.append(inputNode)
       self._parameterNode.AddNodeReferenceID(INPUT_MARKUPS_REFERENCE, inputNode.GetID())
     return inputNodes

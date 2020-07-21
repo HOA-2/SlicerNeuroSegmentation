@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>262</width>
+    <width>272</width>
     <height>659</height>
    </rect>
   </property>
@@ -39,54 +39,27 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="0" colspan="2">
-    <widget class="ctkCollapsibleButton" name="inputQueryCollapsibleButton">
+   <item row="1" column="1">
+    <widget class="QPushButton" name="loadQueryButton">
      <property name="text">
-      <string>Input query</string>
+      <string>Load</string>
      </property>
-     <layout class="QFormLayout" name="formLayout_2">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Query text:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="qMRMLNodeComboBox" name="querySelector">
-        <property name="toolTip">
-         <string>Pick the input to the algorithm.</string>
-        </property>
-        <property name="nodeTypes">
-         <stringlist>
-          <string>vtkMRMLTextNode</string>
-         </stringlist>
-        </property>
-        <property name="showChildNodeTypes">
-         <bool>false</bool>
-        </property>
-        <property name="addEnabled">
-         <bool>false</bool>
-        </property>
-        <property name="removeEnabled">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QPushButton" name="loadQueryButton">
-        <property name="text">
-         <string>Load</string>
-        </property>
-        <property name="iconSize">
-         <size>
-          <width>12</width>
-          <height>12</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-     </layout>
+     <property name="iconSize">
+      <size>
+       <width>12</width>
+       <height>12</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="2">
+    <widget class="QPushButton" name="parcellationViewLayoutButton">
+     <property name="text">
+      <string>Parcellation view layout</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
     </widget>
    </item>
    <item row="3" column="0" colspan="2">
@@ -322,16 +295,6 @@
      </property>
     </spacer>
    </item>
-   <item row="1" column="0" colspan="2">
-    <widget class="QPushButton" name="parcellationViewLayoutButton">
-     <property name="text">
-      <string>Parcellation view layout</string>
-     </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
   </layout>
  </widget>
  <customwidgets>
@@ -376,22 +339,6 @@
  </customwidgets>
  <resources/>
  <connections>
-  <connection>
-   <sender>NeuroSegmentParcellation</sender>
-   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
-   <receiver>querySelector</receiver>
-   <slot>setMRMLScene(vtkMRMLScene*)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>122</x>
-     <y>132</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>140</x>
-     <y>66</y>
-    </hint>
-   </hints>
-  </connection>
   <connection>
    <sender>NeuroSegmentParcellation</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>

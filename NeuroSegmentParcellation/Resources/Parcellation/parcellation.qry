@@ -1,8 +1,5 @@
 # Parcellation description file
 
-# Distance weighting function is applied using this formula: cost = distance / _DistanceWeightingFunction
-_DistanceWeightingFunction = "(sulc - sulcMin) + (curv - curvMin)"
-
 _Planes = [
   BASFRBRN,
   PlaneA,
@@ -24,8 +21,14 @@ _Planes = [
   Seuptum,
 ]
 
+_DistanceWeightingFunction = "1.0"
+
+_Curves = [HemisphericMargin]
+
+# Distance weighting function is applied using this formula: cost = distance / _DistanceWeightingFunction
+_DistanceWeightingFunction = "(sulc - sulcMin) + (curv - curvMin)"
+
 _Curves = [
-  HemisphericMargin,
   Inferior45DegreeLine,
   OlfactorySulcus,
   PrecentralSulcus,
