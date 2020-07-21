@@ -732,45 +732,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       return
 
     self.updateInputMarkupObservers(parameterNode)
-
-    sliceViewIDs = ["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
+    self.updateAllModelViews(parameterNode)
+    self.updatePointLocators(parameterNode)
 
     origModelNode = parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
-    if origModelNode is not None:
-      if self.origPointLocator.GetDataSet() != origModelNode.GetPolyData():
-        self.origPointLocator.SetDataSet(origModelNode.GetPolyData())
-        self.origPointLocator.BuildLocator()
-
-        origViews = sliceViewIDs[:]
-        origViews.append("vtkMRMLViewNodeO")
-        origModelNode.GetDisplayNode().SetViewNodeIDs(origViews)
-
-    pialModelNode = parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
-    if pialModelNode is not None:
-      if self.pialPointLocator.GetDataSet() != pialModelNode.GetPolyData():
-        self.pialPointLocator.SetDataSet(pialModelNode.GetPolyData())
-        self.pialPointLocator.BuildLocator()
-
-        pialViews = sliceViewIDs[:]
-        pialViews.append("vtkMRMLViewNodeP")
-        pialModelNode.GetDisplayNode().SetViewNodeIDs(pialViews)
-
-    inflatedModelNode = parameterNode.GetNodeReference(INFLATED_MODEL_REFERENCE)
-    if inflatedModelNode is not None:
-      if self.inflatedPointLocator.GetDataSet() != inflatedModelNode.GetPolyData():
-        self.inflatedPointLocator.SetDataSet(inflatedModelNode.GetPolyData())
-        self.inflatedPointLocator.BuildLocator()
-        inflatedViews = sliceViewIDs[:]
-        inflatedViews.append("vtkMRMLViewNodeI")
-        inflatedModelNode.GetDisplayNode().SetViewNodeIDs(inflatedViews)
-
-    numberOfOutputModels = parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
-    for i in range(numberOfOutputModels):
-      outputModel = parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
-      outputViews = sliceViewIDs[:]
-      outputViews.append("vtkMRMLViewNodeO")
-      outputModel.GetDisplayNode().SetViewNodeIDs(outputViews)
-
     numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
     for i in range(numberOfToolNodes):
       toolNode = parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
@@ -805,6 +770,48 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         else:
           distanceType = inputCurveNode.GetSurfaceCostFunctionTypeFromString('distance')
           inputCurveNode.SetSurfaceCostFunctionType(distanceType)
+
+  def updateAllModelViews(self, parameterNode):
+    if parameterNode is None:
+      return
+
+    sliceViewIDs = ["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
+
+    self.updateModelViews(parameterNode, ORIG_MODEL_REFERENCE, "vtkMRMLViewNodeO")
+    self.updateModelViews(parameterNode, PIAL_MODEL_REFERENCE, "vtkMRMLViewNodeP")
+    self.updateModelViews(parameterNode, INFLATED_MODEL_REFERENCE, "vtkMRMLViewNodeI")
+    self.updateModelViews(parameterNode, OUTPUT_MODEL_REFERENCE, "vtkMRMLViewNodeO")
+
+  def updateModelViews(self, parameterNode, modelReference, viewID):
+    if parameterNode is None:
+      return
+
+    viewIDs = ["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow", viewID]
+    numberOfModels = parameterNode.GetNumberOfNodeReferences(modelReference)
+    for i in range(numberOfModels):
+      modelNode = parameterNode.GetNthNodeReference(modelReference, i)
+      if modelNode is None:
+        continue
+      modelNode.GetDisplayNode().SetViewNodeIDs(viewIDs)
+
+  def updatePointLocators(self, parameterNode):
+    if parameterNode is None:
+      return
+
+    origModelNode = parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
+    if origModelNode is not None and self.origPointLocator.GetDataSet() != origModelNode.GetPolyData():
+        self.origPointLocator.SetDataSet(origModelNode.GetPolyData())
+        self.origPointLocator.BuildLocator()
+
+    pialModelNode = parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
+    if pialModelNode is not None and self.pialPointLocator.GetDataSet() != pialModelNode.GetPolyData():
+        self.pialPointLocator.SetDataSet(pialModelNode.GetPolyData())
+        self.pialPointLocator.BuildLocator()
+
+    inflatedModelNode = parameterNode.GetNodeReference(INFLATED_MODEL_REFERENCE)
+    if inflatedModelNode is not None and self.inflatedPointLocator.GetDataSet() != inflatedModelNode.GetPolyData():
+        self.inflatedPointLocator.SetDataSet(inflatedModelNode.GetPolyData())
+        self.inflatedPointLocator.BuildLocator()
 
   def removeObservers(self):
     VTKObservationMixin.removeObservers(self)
