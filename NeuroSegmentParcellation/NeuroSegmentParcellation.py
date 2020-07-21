@@ -764,6 +764,13 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         inflatedViews.append("vtkMRMLViewNodeI")
         inflatedModelNode.GetDisplayNode().SetViewNodeIDs(inflatedViews)
 
+    numberOfOutputModels = parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
+    for i in range(numberOfOutputModels):
+      outputModel = parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
+      outputViews = sliceViewIDs[:]
+      outputViews.append("vtkMRMLViewNodeO")
+      outputModel.GetDisplayNode().SetViewNodeIDs(outputViews)
+
     numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
     for i in range(numberOfToolNodes):
       toolNode = parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
@@ -786,7 +793,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
         distanceWeightingFunction = inputCurveNode.GetAttribute("DistanceWeightingFunction")
         if distanceWeightingFunction and distanceWeightingFunction != "" and sulcArray and curvArray:
-          print(distanceWeightingFunction)
           sulcRange = sulcArray.GetRange()
           curvRange = curvArray.GetRange()
           distanceWeightingFunction = distanceWeightingFunction.replace("sulcMin", str(sulcRange[0]))
