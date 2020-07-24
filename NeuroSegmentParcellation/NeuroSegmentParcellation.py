@@ -427,32 +427,10 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     else:
       self.ui.exportButton.enabled = False
 
-    # Curve widgets
-    inputCurvesLayout = qt.QFormLayout()
-    for i in range(self._parameterNode.GetNumberOfNodeReferences(INPUT_MARKUPS_REFERENCE)):
-      inputCurveNode = self._parameterNode.GetNthNodeReference(INPUT_MARKUPS_REFERENCE, i)
-      if inputCurveNode.IsA("vtkMRMLMarkupsCurveNode"):
-        placeWidget = slicer.qSlicerMarkupsPlaceWidget()
-        placeWidget.setMRMLScene(slicer.mrmlScene)
-        placeWidget.setCurrentNode(inputCurveNode)
-        inputCurvesLayout.addRow(qt.QLabel(inputCurveNode.GetName()), placeWidget)
-
-    self._inputCurvesWidget = qt.QWidget()
-    self._inputCurvesWidget.setLayout(inputCurvesLayout)
+    self._inputCurvesWidget = self.createInputMarkupsWidget("vtkMRMLMarkupsCurveNode")
     self.ui.inputCurvesCollapsibleButton.layout().addWidget(self._inputCurvesWidget)
 
-    # Plane widgets
-    inputPlanesLayout = qt.QFormLayout()
-    for i in range(self._parameterNode.GetNumberOfNodeReferences(INPUT_MARKUPS_REFERENCE)):
-      inputPlaneNode = self._parameterNode.GetNthNodeReference(INPUT_MARKUPS_REFERENCE, i)
-      if inputPlaneNode.IsA("vtkMRMLMarkupsPlaneNode"):
-        placeWidget = slicer.qSlicerMarkupsPlaceWidget()
-        placeWidget.setMRMLScene(slicer.mrmlScene)
-        placeWidget.setCurrentNode(inputPlaneNode)
-        inputPlanesLayout.addRow(qt.QLabel(inputPlaneNode.GetName()), placeWidget)
-
-    self._inputPlanesWidget = qt.QWidget()
-    self._inputPlanesWidget.setLayout(inputPlanesLayout)
+    self._inputPlanesWidget = self.createInputMarkupsWidget("vtkMRMLMarkupsPlaneNode")
     self.ui.inputPlanesCollapsibleButton.layout().addWidget(self._inputPlanesWidget)
 
     toolNode = self._parameterNode.GetNodeReference(TOOL_NODE_REFERENCE)
@@ -475,7 +453,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       colorPicker.displayColorName = False
       colorPicker.connect('colorChanged(QColor)', lambda color, id=outputModelNode.GetID(): self.onColorChanged(color, id))
 
-      visibilityButton = qt.QPushButton()
+      visibilityButton = qt.QToolButton()
       if outputModelDisplayNode.GetVisibility():
         visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerVisible.png"))
       else:
@@ -499,6 +477,43 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     self.updateOutputStructures()
 
+  def createInputMarkupsWidget(self, markupNodeClass):
+    markupsLayout = qt.QFormLayout()
+    for i in range(self._parameterNode.GetNumberOfNodeReferences(INPUT_MARKUPS_REFERENCE)):
+      inputNode = self._parameterNode.GetNthNodeReference(INPUT_MARKUPS_REFERENCE, i)
+      if inputNode.IsA(markupNodeClass):
+        placeWidget = slicer.qSlicerMarkupsPlaceWidget()
+        placeWidget.findChild("QToolButton", "MoreButton").setVisible(False)
+        placeWidget.setMRMLScene(slicer.mrmlScene)
+        placeWidget.setCurrentNode(inputNode)
+
+        visibilityButton = qt.QToolButton()
+        inputNode.CreateDefaultDisplayNodes()
+        displayNode = inputNode.GetDisplayNode()
+        if displayNode.GetVisibility():
+          visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerVisible.png"))
+        else:
+          visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerInvisible.png"))
+        visibilityButton.connect('clicked(bool)', lambda visibility, id=inputNode.GetID(): self.onVisibilityClicked(id))
+
+        lockButton = qt.QToolButton()
+        inputNode.CreateDefaultDisplayNodes()
+        if inputNode.GetLocked():
+          lockButton.setIcon(qt.QIcon(":/Icons/Small/SlicerLock.png"))
+        else:
+          lockButton.setIcon(qt.QIcon(":/Icons/Small/SlicerUnlock.png"))
+        lockButton.connect('clicked(bool)', lambda visibility, id=inputNode.GetID(): self.onLockClicked(id))
+
+        markupWidget = qt.QWidget()
+        markupWidget.setLayout(qt.QHBoxLayout())
+        markupWidget.layout().addWidget(placeWidget)
+        markupWidget.layout().addWidget(visibilityButton)
+        markupWidget.layout().addWidget(lockButton)
+        markupsLayout.addRow(qt.QLabel(inputNode.GetName()), markupWidget)
+    markupsWidget = qt.QWidget()
+    markupsWidget.setLayout(markupsLayout)
+    return markupsWidget
+
   def onColorChanged(self, color, id):
     modelNode = slicer.mrmlScene.GetNodeByID(id)
     if modelNode is None:
@@ -516,6 +531,13 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if displayNode is None:
       return
     displayNode.SetVisibility(not displayNode.GetVisibility())
+    self.updateGUIFromParameterNode()
+
+  def onLockClicked(self, id):
+    markupNode = slicer.mrmlScene.GetNodeByID(id)
+    if markupNode is None:
+      return
+    markupNode.SetLocked(not markupNode.GetLocked())
     self.updateGUIFromParameterNode()
 
   def updateParameterNodeFromGUI(self, caller=None, event=None):
