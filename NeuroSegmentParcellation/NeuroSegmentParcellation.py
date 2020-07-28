@@ -1085,12 +1085,14 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       eq.setParameterNode(parameterNode)
       eq.visit(astNode)
       success = True
-    except SyntaxError as e:
+    except Exception as e:
+      slicer.util.errorDisplay("Error parsing parcellation: "+str(e))
+      import traceback
+      traceback.print_exc()
       logging.error("Error parsing mesh tool string!")
-      errorMessage = str(e)
-      logging.error(errorMessage)
-    slicer.mrmlScene.EndState(slicer.mrmlScene.BatchProcessState)
-    parameterNode.EndModify(wasModifying)
+    finally:
+      slicer.mrmlScene.EndState(slicer.mrmlScene.BatchProcessState)
+      parameterNode.EndModify(wasModifying)
     return [success, errorMessage]
 
   def exportOutputToSegmentation(self, parameterNode, surfacesToExport=[]):
