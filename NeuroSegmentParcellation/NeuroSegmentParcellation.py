@@ -460,10 +460,15 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
         visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerInvisible.png"))
       visibilityButton.connect('clicked(bool)', lambda visibility, id=outputModelNode.GetID(): self.onVisibilityClicked(id))
 
+      computeButton = qt.QPushButton("Compute")
+      computeButton.connect('clicked(bool)', lambda visibility, id=outputModelNode.GetID(): self.onComputeClicked(id))
+
       outputModelLayout = qt.QHBoxLayout()
       outputModelLayout.setContentsMargins(6, 0, 0, 0)
       outputModelLayout.addWidget(colorPicker)
+      outputModelLayout.addWidget(computeButton)
       outputModelLayout.addWidget(visibilityButton)
+
 
       outputModelWidget = qt.QWidget()
       outputModelWidget.setLayout(outputModelLayout)
@@ -598,7 +603,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     Apply all of the parcellation tools
     """
     if self._parameterNode is None:
-      logging.error("Invalid parameter node")
+      logging.error("onApplyButton: Invalid parameter node")
       return
 
     self.logic.initializePedigreeIds(self._parameterNode)
@@ -607,23 +612,49 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     dynamicModelerLogic = slicer.modules.dynamicmodeler.logic()
     for i in range(numberOfToolNodes):
       toolNode = self._parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
-      numberOfInputMarkups = toolNode.GetNumberOfNodeReferences("BoundaryCut.InputBorder")
-      toolHasAllInputs = True
-      for inputNodeIndex in range(numberOfInputMarkups):
-        inputNode = toolNode.GetNthNodeReference("BoundaryCut.InputBorder", inputNodeIndex)
-        if inputNode is None:
-          continue
-        if inputNode.GetNumberOfControlPoints() == 0:
-          toolHasAllInputs = False
-          break
-      if toolHasAllInputs:
-        dynamicModelerLogic.RunDynamicModelerTool(toolNode)
-      else:
-        outputModel = toolNode.GetNodeReference("BoundaryCut.OutputModel")
-        if outputModel and outputModel.GetPolyData():
-          outputModel.GetPolyData().Initialize()
-
+      self.runDynamicModelerTool(toolNode)
     self.logic.exportOutputToSurfaceLabel(self._parameterNode)
+
+  def onComputeClicked(self, id):
+    if self._parameterNode is None:
+      logging.error("onComputeClicked: Invalid parameter node")
+      return
+
+    numberOfToolNodes = self._parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
+    toolNode = None
+    for i in range(numberOfToolNodes):
+      toolNode = self._parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
+      if toolNode is None:
+        continue
+      outputModelNode = toolNode.GetNodeReference("BoundaryCut.OutputModel")
+      if outputModelNode is None:
+        continue
+      if outputModelNode.GetID() == id:
+        break
+      toolNode = None
+
+    if toolNode is None:
+      logging.error("onComputeClicked: Could not find tool node with output ID: " + id)
+      return
+    self.runDynamicModelerTool(toolNode)
+
+  def runDynamicModelerTool(self, toolNode):
+    dynamicModelerLogic = slicer.modules.dynamicmodeler.logic()
+    numberOfInputMarkups = toolNode.GetNumberOfNodeReferences("BoundaryCut.InputBorder")
+    toolHasAllInputs = True
+    for inputNodeIndex in range(numberOfInputMarkups):
+      inputNode = toolNode.GetNthNodeReference("BoundaryCut.InputBorder", inputNodeIndex)
+      if inputNode is None:
+        continue
+      if inputNode.GetNumberOfControlPoints() == 0:
+        toolHasAllInputs = False
+        break
+    if toolHasAllInputs:
+      dynamicModelerLogic.RunDynamicModelerTool(toolNode)
+    else:
+      outputModel = toolNode.GetNodeReference("BoundaryCut.OutputModel")
+      if outputModel and outputModel.GetPolyData():
+        outputModel.GetPolyData().Initialize()
 
   def onExportButton(self):
     """
