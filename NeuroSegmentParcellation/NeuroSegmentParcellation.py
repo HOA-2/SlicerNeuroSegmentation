@@ -579,6 +579,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     elif self.ui.labelsRadioButton.isChecked():
       scalarName = "labels"
       attributeType = vtk.vtkDataObject.CELL
+      self.logic.updateParcellationColorNode()
       colorNode = self.logic.getParcellationColorNode()
     if scalarName is None:
       return
@@ -637,6 +638,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       logging.error("onComputeClicked: Could not find tool node with output ID: " + id)
       return
     self.runDynamicModelerTool(toolNode)
+    self.logic.exportOutputToSurfaceLabel(self._parameterNode)
 
   def runDynamicModelerTool(self, toolNode):
     dynamicModelerLogic = slicer.modules.dynamicmodeler.logic()
@@ -1246,7 +1248,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         labelArray.SetValue(cellId, modelIndex+1)
 
     # Update color table
-    self.getParcellationColorNode()
+    self.updateParcellationColorNode()
 
     origSurfaceNode.GetPolyData().GetCellData().AddArray(labelArray)
     if pialSurfaceNode:
@@ -1259,7 +1261,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if parcellationColorNode is None:
       parcellationColorNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLColorTableNode", "ParcellationColorNode")
       self.parameterNode.SetNodeReferenceID("ParcellationColorNode", parcellationColorNode.GetID())
+    return parcellationColorNode
 
+  def updateParcellationColorNode(self):
+    parcellationColorNode = self.getParcellationColorNode()
     numberOfOutputModels = self.parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
     lookupTable = vtk.vtkLookupTable()
     lookupTable.SetNumberOfColors(numberOfOutputModels + 1)
@@ -1271,8 +1276,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       lookupTable.SetTableValue(labelValue, color[0], color[1], color[2])
       labelValue += 1
     parcellationColorNode.SetLookupTable(lookupTable)
-
-    return parcellationColorNode
 
   def getQueryString(self, parameterNode):
     if parameterNode is None:
