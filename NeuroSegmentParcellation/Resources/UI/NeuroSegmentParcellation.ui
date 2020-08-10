@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>272</width>
-    <height>659</height>
+    <width>280</width>
+    <height>647</height>
    </rect>
   </property>
   <layout class="QFormLayout" name="formLayout">
@@ -53,13 +53,90 @@
     </widget>
    </item>
    <item row="2" column="0" colspan="2">
-    <widget class="QPushButton" name="parcellationViewLayoutButton">
+    <widget class="ctkCollapsibleButton" name="CollapsibleButton">
      <property name="text">
-      <string>Parcellation view layout</string>
+      <string>Display</string>
      </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3">
+      <item>
+       <widget class="QPushButton" name="parcellationViewLayoutButton">
+        <property name="text">
+         <string>Parcellation view layout</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QFormLayout" name="formLayout_2">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Overlay:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QRadioButton" name="curvRadioButton">
+            <property name="text">
+             <string>curv</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="sulcRadioButton">
+            <property name="text">
+             <string>sulc</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="labelsRadioButton">
+            <property name="text">
+             <string>labels</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Visible markups:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <widget class="QCheckBox" name="origMarkupsCheckBox">
+            <property name="text">
+             <string>Orig</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="pialMarkupsCheckBox">
+            <property name="text">
+             <string>Pial</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="inflatedMarkupsCheckBox">
+            <property name="text">
+             <string>Inflated</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+     </layout>
     </widget>
    </item>
    <item row="3" column="0" colspan="2">
@@ -96,6 +173,13 @@
         </property>
        </widget>
       </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>Pial surface:</string>
+        </property>
+       </widget>
+      </item>
       <item row="1" column="1">
        <widget class="qMRMLNodeComboBox" name="pialModelSelector">
         <property name="nodeTypes">
@@ -111,6 +195,13 @@
         </property>
         <property name="removeEnabled">
          <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Inflated surface:</string>
         </property>
        </widget>
       </item>
@@ -131,52 +222,6 @@
          <bool>false</bool>
         </property>
        </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_7">
-        <property name="text">
-         <string>Pial surface:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>Inflated surface:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>Overlay:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <layout class="QHBoxLayout" name="horizontalLayout">
-        <item>
-         <widget class="QRadioButton" name="curvRadioButton">
-          <property name="text">
-           <string>curv</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QRadioButton" name="sulcRadioButton">
-          <property name="text">
-           <string>sulc</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QRadioButton" name="labelsRadioButton">
-          <property name="text">
-           <string>labels</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
       </item>
      </layout>
     </widget>
@@ -308,6 +353,7 @@
    <class>qMRMLNodeComboBox</class>
    <extends>QWidget</extends>
    <header>qMRMLNodeComboBox.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>qMRMLWidget</class>

@@ -178,9 +178,14 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.inflatedModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.exportSegmentationSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.applyButton.connect('checkBoxToggled(bool)', self.updateParameterNodeFromGUI)
+
     self.ui.curvRadioButton.connect("toggled(bool)", self.updateScalarOverlay)
     self.ui.sulcRadioButton.connect("toggled(bool)", self.updateScalarOverlay)
     self.ui.labelsRadioButton.connect("toggled(bool)", self.updateScalarOverlay)
+
+    self.ui.origMarkupsCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
+    self.ui.pialMarkupsCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
+    self.ui.inflatedMarkupsCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
 
     slicer.app.layoutManager().connect("layoutChanged(int)", self.onLayoutChanged)
     self.ui.parcellationViewLayoutButton.connect("clicked()", self.onParcellationViewLayoutButtonClicked)
@@ -573,6 +578,15 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       colorNode = self.logic.getParcellationColorNode()
     self.logic.setScalarOverlay(scalarName)
 
+  def updateMarkupDisplay(self):
+    """
+    Update the visibility of markups in each view based on the slice visibility checkboxes
+    """
+    with slicer.util.NodeModify(self.parameterNode):
+      self.logic.setMarkupSliceViewVisibility("orig", self.ui.origMarkupsCheckBox.isChecked())
+      self.logic.setMarkupSliceViewVisibility("pial", self.ui.pialMarkupsCheckBox.isChecked())
+      self.logic.setMarkupSliceViewVisibility("inflated", self.ui.inflatedMarkupsCheckBox.isChecked())
+
   def onApplyButton(self):
     """
     Apply all of the parcellation tools
@@ -644,7 +658,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     self.ui.loadQueryButton.setIcon(qt.QIcon())
     self.ui.loadQueryButton.setToolTip("")
-    
+
     success, message = self.logic.loadQuery()
     if not success:
       icon = self.ui.loadQueryButton.style().standardIcon(qt.QStyle.SP_MessageBoxCritical)
