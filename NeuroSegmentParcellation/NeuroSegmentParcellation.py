@@ -441,8 +441,10 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     #
     outputModelsLayout = qt.QFormLayout()
-    for i in range(self._parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)):
-      outputModelNode = self._parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
+    numberOfToolNodes = self._parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
+    for i in range(numberOfToolNodes):
+      toolNode = self._parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
+      outputModelNode = toolNode.GetNodeReference("BoundaryCut.OutputModel")
       outputModelNode .CreateDefaultDisplayNodes()
       outputModelDisplayNode = outputModelNode.GetDisplayNode()
       color = outputModelDisplayNode.GetColor()
@@ -460,12 +462,22 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
         visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerInvisible.png"))
       visibilityButton.connect('clicked(bool)', lambda visibility, id=outputModelNode.GetID(): self.onVisibilityClicked(id))
 
+      seedNode = toolNode.GetNodeReference("BoundaryCut.InputSeed")
+      seedPlaceWidget = slicer.qSlicerMarkupsPlaceWidget()
+      seedPlaceWidget.findChild("QToolButton", "MoreButton").setVisible(False)
+      seedPlaceWidget.setMRMLScene(slicer.mrmlScene)
+      seedPlaceWidget.deleteButton().setVisible(False)
+      seedPlaceWidget.findChild("QToolButton", "MoreButton").setVisible(False)
+      seedPlaceWidget.findChild("ctkColorPickerButton", "ColorButton").setVisible(False)
+      seedPlaceWidget.setCurrentNode(seedNode)
+
       computeButton = qt.QPushButton("Compute")
       computeButton.connect('clicked(bool)', lambda visibility, id=outputModelNode.GetID(): self.onComputeClicked(id))
 
       outputModelLayout = qt.QHBoxLayout()
       outputModelLayout.setContentsMargins(6, 0, 0, 0)
       outputModelLayout.addWidget(colorPicker)
+      outputModelLayout.addWidget(seedPlaceWidget)
       outputModelLayout.addWidget(computeButton)
       outputModelLayout.addWidget(visibilityButton)
 
@@ -924,6 +936,13 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         #self.inputMarkupObservers.append((inflatedCurveNode, tag))
         inflatedCurveNode.GetDisplayNode().SetViewNodeIDs(["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow", "vtkMRMLViewNodeI"])
 
+      numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
+      for i in range(numberOfToolNodes):
+        toolNode = parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
+        inputSeed = toolNode.GetNodeReference("BoundaryCut.InputSeed")
+        if inputSeed:
+          inputSeed.GetDisplayNode().SetViewNodeIDs(["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow", "vtkMRMLViewNodeO"])
+
   def onMasterMarkupModified(self, inputMarkupNode, eventId=None, node=None):
     if self.updatingFromMasterMarkup or self.parameterNode is None:
       return
@@ -1341,11 +1360,17 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       outputModelDisplayNode.SetVisibility(False)
     self._parameterNode.AddNodeReferenceID(OUTPUT_MODEL_REFERENCE, outputModel.GetID())
 
-    toolNode = slicer.vtkMRMLDynamicModelerNode()
-    slicer.mrmlScene.AddNode(toolNode)
-    toolNode.SetName(outputModel.GetName() + "_BoundaryCut")
+    inputSeed = slicer.util.getFirstNodeByClassByName("vtkMRMLMarkupsFiducialNode", target.id + "_SeedPoints")
+    if inputSeed is None:
+      inputSeed = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", target.id + "_SeedPoints")
+      inputSeed.CreateDefaultDisplayNodes()
+
+    toolNode = slicer.util.getFirstNodeByClassByName("vtkMRMLModelNode", outputModel.GetName() + "_BoundaryCut")
+    if toolNode is None:
+      toolNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLDynamicModelerNode", outputModel.GetName() + "_BoundaryCut")
     toolNode.SetToolName(slicer.vtkSlicerDynamicModelerBoundaryCutTool().GetName())
     toolNode.SetNodeReferenceID("BoundaryCut.OutputModel", outputModel.GetID())
+    toolNode.SetNodeReferenceID("BoundaryCut.InputSeed", inputSeed.GetID())
     for inputNode in nodes:
       toolNode.AddNodeReferenceID("BoundaryCut.InputBorder", inputNode.GetID())
     toolNode.ContinuousUpdateOff()
