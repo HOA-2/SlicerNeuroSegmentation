@@ -4,20 +4,27 @@ import vtk, slicer
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
 
-INPUT_MARKUPS_REFERENCE = "InputMarkups"
-ORIG_MODEL_REFERENCE = "OrigModel"
-PIAL_MODEL_REFERENCE = "PialModel"
-INFLATED_MODEL_REFERENCE = "InflatedModel"
-INPUT_QUERY_REFERENCE = "InputQuery"
-OUTPUT_MODEL_REFERENCE = "OutputModel"
-TOOL_NODE_REFERENCE = "ToolNode"
-EXPORT_SEGMENTATION_REFERENCE = "ExportSegmentation"
-
 from NeuroSegmentParcellationLibs.NeuroSegmentParcellationVisitor import NeuroSegmentParcellationVisitor
 
 class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   """Perform filtering
   """
+
+  # Boundary cut references
+  BOUNDARY_CUT_INPUT_BORDER_REFERENCE = "BoundaryCut.InputBorder"
+  BOUNDARY_CUT_OUTPUT_MODEL_REFERENCE = "BoundaryCut.OutputModel"
+  BOUNDARY_CUT_INPUT_SEED_REFERENCE = "BoundaryCut.InputSeed"
+
+
+  INPUT_MARKUPS_REFERENCE = "InputMarkups"
+  ORIG_MODEL_REFERENCE = "OrigModel"
+  PIAL_MODEL_REFERENCE = "PialModel"
+  INFLATED_MODEL_REFERENCE = "InflatedModel"
+  INPUT_QUERY_REFERENCE = "InputQuery"
+  OUTPUT_MODEL_REFERENCE = "OutputModel"
+  TOOL_NODE_REFERENCE = "ToolNode"
+  EXPORT_SEGMENTATION_REFERENCE = "ExportSegmentation"
+
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
     VTKObservationMixin.__init__(self)
@@ -80,18 +87,18 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.updateAllModelViews(parameterNode)
     self.updatePointLocators(parameterNode)
 
-    origModelNode = parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
-    numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
+    origModelNode = parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
+    numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(self.TOOL_NODE_REFERENCE)
     for i in range(numberOfToolNodes):
-      toolNode = parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
+      toolNode = parameterNode.GetNthNodeReference(self.TOOL_NODE_REFERENCE, i)
       if origModelNode is None:
         toolNode.RemoveNodeReferenceIDs("BoundaryCut.InputModel")
       elif toolNode.GetNodeReference("BoundaryCut.InputModel") != origModelNode:
         toolNode.SetNodeReferenceID("BoundaryCut.InputModel", origModelNode.GetID())
 
-    numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(INPUT_MARKUPS_REFERENCE)
+    numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
-      inputCurveNode = parameterNode.GetNthNodeReference(INPUT_MARKUPS_REFERENCE, i)
+      inputCurveNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
       if inputCurveNode.IsA("vtkMRMLMarkupsCurveNode"):
         inputCurveNode.SetAndObserveShortestDistanceSurfaceNode(origModelNode)
 
@@ -122,10 +129,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     sliceViewIDs = ["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
 
-    self.updateModelViews(parameterNode, ORIG_MODEL_REFERENCE, "vtkMRMLViewNodeO")
-    self.updateModelViews(parameterNode, PIAL_MODEL_REFERENCE, "vtkMRMLViewNodeP")
-    self.updateModelViews(parameterNode, INFLATED_MODEL_REFERENCE, "vtkMRMLViewNodeI")
-    self.updateModelViews(parameterNode, OUTPUT_MODEL_REFERENCE, "vtkMRMLViewNodeO")
+    self.updateModelViews(parameterNode, self.ORIG_MODEL_REFERENCE, "vtkMRMLViewNodeO")
+    self.updateModelViews(parameterNode, self.PIAL_MODEL_REFERENCE, "vtkMRMLViewNodeP")
+    self.updateModelViews(parameterNode, self.INFLATED_MODEL_REFERENCE, "vtkMRMLViewNodeI")
+    self.updateModelViews(parameterNode, self.OUTPUT_MODEL_REFERENCE, "vtkMRMLViewNodeO")
 
   def updateModelViews(self, parameterNode, modelReference, viewID):
     if parameterNode is None:
@@ -143,17 +150,17 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if parameterNode is None:
       return
 
-    origModelNode = parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
+    origModelNode = parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
     if origModelNode is not None and self.origPointLocator.GetDataSet() != origModelNode.GetPolyData():
         self.origPointLocator.SetDataSet(origModelNode.GetPolyData())
         self.origPointLocator.BuildLocator()
 
-    pialModelNode = parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
+    pialModelNode = parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
     if pialModelNode is not None and self.pialPointLocator.GetDataSet() != pialModelNode.GetPolyData():
         self.pialPointLocator.SetDataSet(pialModelNode.GetPolyData())
         self.pialPointLocator.BuildLocator()
 
-    inflatedModelNode = parameterNode.GetNodeReference(INFLATED_MODEL_REFERENCE)
+    inflatedModelNode = parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
     if inflatedModelNode is not None and self.inflatedPointLocator.GetDataSet() != inflatedModelNode.GetPolyData():
         self.inflatedPointLocator.SetDataSet(inflatedModelNode.GetPolyData())
         self.inflatedPointLocator.BuildLocator()
@@ -172,9 +179,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if parameterNode is None:
       return
 
-    numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(INPUT_MARKUPS_REFERENCE)
+    numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
-      inputMarkupNode = parameterNode.GetNthNodeReference(INPUT_MARKUPS_REFERENCE, i)
+      inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
       if not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
         continue
       tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointAddedEvent, self.onMasterMarkupModified)
@@ -214,10 +221,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         #self.inputMarkupObservers.append((inflatedCurveNode, tag))
         inflatedCurveNode.GetDisplayNode().SetViewNodeIDs(["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow", "vtkMRMLViewNodeI"])
 
-      numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
+      numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(self.TOOL_NODE_REFERENCE)
       for i in range(numberOfToolNodes):
-        toolNode = parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
-        inputSeed = toolNode.GetNodeReference("BoundaryCut.InputSeed")
+        toolNode = parameterNode.GetNthNodeReference(self.TOOL_NODE_REFERENCE, i)
+        inputSeed = toolNode.GetNodeReference(self.BOUNDARY_CUT_INPUT_SEED_REFERENCE)
         if inputSeed:
           inputSeed.GetDisplayNode().SetViewNodeIDs(["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow", "vtkMRMLViewNodeO"])
 
@@ -225,7 +232,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.updatingFromMasterMarkup or self.parameterNode is None:
       return
 
-    origModel = self.parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
+    origModel = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
     if origModel is None:
       return
 
@@ -243,7 +250,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     pialMarkup = self.getDerivedCurveNode(inputMarkupNode, "Pial")
     if pialMarkup:
-      pialModel = self.parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
+      pialModel = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
       if pialModel and pialModel.GetPolyData() and pialModel.GetPolyData().GetPoints():
         wasModifying = pialMarkup.StartModify()
         pialPoints = vtk.vtkPoints()
@@ -261,7 +268,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     inflatedMarkup = self.getDerivedCurveNode(inputMarkupNode, "Inflated")
     if inflatedMarkup:
-      inflatedModel = self.parameterNode.GetNodeReference(INFLATED_MODEL_REFERENCE)
+      inflatedModel = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
       if inflatedModel and inflatedModel.GetPolyData() and inflatedModel.GetPolyData().GetPoints():
         wasModifying = inflatedMarkup.StartModify()
         inflatedPoints = vtk.vtkPoints()
@@ -317,7 +324,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     self.updatingFromDerivedMarkup = True
     origMarkup = derivedMarkupNode.GetNodeReference("OrigMarkup")
-    origModel = self.parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
+    origModel = self.parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
     nodeType = derivedMarkupNode.GetAttribute("NeuroSegmentParcellation.NodeType")
     locator = None
     derivedModelNode = None
@@ -325,16 +332,16 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     otherModelNode = None
     if nodeType == "Pial":
       locator = self.pialPointLocator
-      derivedModelNode = self.parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
+      derivedModelNode = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
 
       otherMarkupNode = self.getDerivedControlPointsNode(origMarkup, "Inflated")
-      otherModelNode = self.parameterNode.GetNodeReference(INFLATED_MODEL_REFERENCE)
+      otherModelNode = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
     elif nodeType == "Inflated":
       locator = self.inflatedPointLocator
-      derivedModelNode = self.parameterNode.GetNodeReference(INFLATED_MODEL_REFERENCE)
+      derivedModelNode = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
 
       otherMarkupNode = self.getDerivedControlPointsNode(origMarkup, "Pial")
-      otherModelNode = self.parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
+      otherModelNode = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
     if locator == None or derivedModelNode == None:
       self.updatingFromDerivedMarkup = False
       return
@@ -411,7 +418,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     slicer.mrmlScene.StartState(slicer.mrmlScene.BatchProcessState)
     try:
       astNode = ast.parse(queryString)
-      eq = NeuroSegmentParcellationVisitor()
+      eq = NeuroSegmentParcellationVisitor(self)
       eq.setParameterNode(parameterNode)
       eq.visit(astNode)
       success = True
@@ -429,12 +436,12 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if parameterNode is None:
       return
 
-    numberOfOutputModels = parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
-    exportSegmentationNode = parameterNode.GetNodeReference(EXPORT_SEGMENTATION_REFERENCE)
-    innerSurfaceNode = parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
-    outerSurfaceNode = parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
+    numberOfOutputModels = parameterNode.GetNumberOfNodeReferences(self.OUTPUT_MODEL_REFERENCE)
+    exportSegmentationNode = parameterNode.GetNodeReference(self.EXPORT_SEGMENTATION_REFERENCE)
+    innerSurfaceNode = parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
+    outerSurfaceNode = parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
     for i in range(numberOfOutputModels):
-      outputSurfaceNode = parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
+      outputSurfaceNode = parameterNode.GetNthNodeReference(self.OUTPUT_MODEL_REFERENCE, i)
       if len(surfacesToExport) > 0 and not outputSurfaceNode.GetName() in surfacesToExport:
         continue
       self.exportMeshToSegmentation(outputSurfaceNode, innerSurfaceNode, outerSurfaceNode, exportSegmentationNode)
@@ -443,7 +450,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   def getQueryNode(self):
     if self.parameterNode is None:
       return None
-    return self.parameterNode.GetNodeReference(INPUT_QUERY_REFERENCE)
+    return self.parameterNode.GetNodeReference(self.INPUT_QUERY_REFERENCE)
 
   def setQueryNode(self, queryNode):
     if self.parameterNode is None:
@@ -451,7 +458,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     id = None
     if queryNode:
       id = queryNode.GetID()
-    self.parameterNode.SetNodeReferenceID(INPUT_QUERY_REFERENCE, id)
+    self.parameterNode.SetNodeReferenceID(self.INPUT_QUERY_REFERENCE, id)
 
   def getExportSegmentation(self):
     """
@@ -459,7 +466,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     """
     if self.parameterNode is None:
       return None
-    return self.parameterNode.GetNodeReference(EXPORT_SEGMENTATION_REFERENCE)
+    return self.parameterNode.GetNodeReference(self.EXPORT_SEGMENTATION_REFERENCE)
 
   def setExportSegmentation(self, segmentationNode):
     if self.parameterNode is None:
@@ -467,7 +474,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     id = None
     if segmentationNode:
       id = segmentationNode.GetID()
-    self.parameterNode.SetNodeReferenceID(EXPORT_SEGMENTATION_REFERENCE, id)
+    self.parameterNode.SetNodeReferenceID(self.EXPORT_SEGMENTATION_REFERENCE, id)
 
   def getOrigModelNode(self):
     """
@@ -475,7 +482,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     """
     if self.parameterNode is None:
       return None
-    return self.parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
+    return self.parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
 
   def setOrigModelNode(self, modelNode):
     if self.parameterNode is None:
@@ -483,7 +490,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     id = None
     if modelNode:
       id = modelNode.GetID()
-    self.parameterNode.SetNodeReferenceID(ORIG_MODEL_REFERENCE, id)
+    self.parameterNode.SetNodeReferenceID(self.ORIG_MODEL_REFERENCE, id)
 
   def getPialModelNode(self):
     """
@@ -491,7 +498,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     """
     if self.parameterNode is None:
       return None
-    return self.parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
+    return self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
 
   def setPialModelNode(self, modelNode):
     if self.parameterNode is None:
@@ -499,7 +506,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     id = None
     if modelNode:
       id = modelNode.GetID()
-    self.parameterNode.SetNodeReferenceID(PIAL_MODEL_REFERENCE, id)
+    self.parameterNode.SetNodeReferenceID(self.PIAL_MODEL_REFERENCE, id)
 
   def getInflatedModelNode(self):
     """
@@ -507,7 +514,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     """
     if self.parameterNode is None:
       return None
-    return self.parameterNode.GetNodeReference(INFLATED_MODEL_REFERENCE)
+    return self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
 
   def setInflatedModelNode(self, modelNode):
     if self.parameterNode is None:
@@ -515,21 +522,21 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     id = None
     if modelNode:
       id = modelNode.GetID()
-    self.parameterNode.SetNodeReferenceID(INFLATED_MODEL_REFERENCE, id)
+    self.parameterNode.SetNodeReferenceID(self.INFLATED_MODEL_REFERENCE, id)
 
   def getNumberOfOutputModels(self):
     if self.parameterNode is None:
       return 0
-    return self.parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
+    return self.parameterNode.GetNumberOfNodeReferences(self.OUTPUT_MODEL_REFERENCE)
 
   def getToolNodes(self):
     if self.parameterNode is None:
       return []
 
     toolNodes = []
-    numberOfToolNodes = self.parameterNode.GetNumberOfNodeReferences(TOOL_NODE_REFERENCE)
+    numberOfToolNodes = self.parameterNode.GetNumberOfNodeReferences(self.TOOL_NODE_REFERENCE)
     for i in range(numberOfToolNodes):
-      toolNode = self.parameterNode.GetNthNodeReference(TOOL_NODE_REFERENCE, i)
+      toolNode = self.parameterNode.GetNthNodeReference(self.TOOL_NODE_REFERENCE, i)
       toolNodes.append(toolNode)
     return toolNodes
 
@@ -538,9 +545,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       return []
 
     inputMarkupNodes = []
-    numberOfInputMarkupNodes = self.parameterNode.GetNumberOfNodeReferences(INPUT_MARKUPS_REFERENCE)
+    numberOfInputMarkupNodes = self.parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfInputMarkupNodes):
-      inputMarkupNode = self.parameterNode.GetNthNodeReference(INPUT_MARKUPS_REFERENCE, i)
+      inputMarkupNode = self.parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
       inputMarkupNodes.append(inputMarkupNode)
     return inputMarkupNodes
 
@@ -549,9 +556,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       return []
 
     outputModelNodes = []
-    numberOfOutputModelNodes = self.parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
+    numberOfOutputModelNodes = self.parameterNode.GetNumberOfNodeReferences(self.OUTPUT_MODEL_REFERENCE)
     for i in range(numberOfOutputModelNodes):
-      outputModelNode = self.parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
+      outputModelNode = self.parameterNode.GetNthNodeReference(self.OUTPUT_MODEL_REFERENCE, i)
       outputModelNodes.append(outputModelNode)
     return outputModelNodes
 
@@ -595,10 +602,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
   def runDynamicModelerTool(self, toolNode):
     dynamicModelerLogic = slicer.modules.dynamicmodeler.logic()
-    numberOfInputMarkups = toolNode.GetNumberOfNodeReferences("BoundaryCut.InputBorder")
+    numberOfInputMarkups = toolNode.GetNumberOfNodeReferences(self.BOUNDARY_CUT_INPUT_BORDER_REFERENCE)
     toolHasAllInputs = True
     for inputNodeIndex in range(numberOfInputMarkups):
-      inputNode = toolNode.GetNthNodeReference("BoundaryCut.InputBorder", inputNodeIndex)
+      inputNode = toolNode.GetNthNodeReference(self.BOUNDARY_CUT_INPUT_BORDER_REFERENCE, inputNodeIndex)
       if inputNode is None:
         continue
       if inputNode.GetNumberOfControlPoints() == 0:
@@ -607,7 +614,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if toolHasAllInputs:
       dynamicModelerLogic.RunDynamicModelerTool(toolNode)
     else:
-      outputModel = toolNode.GetNodeReference("BoundaryCut.OutputModel")
+      outputModel = toolNode.GetNodeReference(self.BOUNDARY_CUT_OUTPUT_MODEL_REFERENCE)
       if outputModel and outputModel.GetPolyData():
         outputModel.GetPolyData().Initialize()
 
@@ -657,8 +664,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     storageNode.ReadData(parcellationQueryNode)
     slicer.mrmlScene.RemoveNode(storageNode)
 
-    self.parameterNode.RemoveNodeReferenceIDs(INPUT_MARKUPS_REFERENCE)
-    self.parameterNode.RemoveNodeReferenceIDs(OUTPUT_MODEL_REFERENCE)
+    self.parameterNode.RemoveNodeReferenceIDs(self.INPUT_MARKUPS_REFERENCE)
+    self.parameterNode.RemoveNodeReferenceIDs(self.OUTPUT_MODEL_REFERENCE)
     return self.parseParcellationString(self.parameterNode)
 
   def initializePedigreeIds(self, parameterNode):
@@ -669,7 +676,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       logging.error("Invalid parameter node")
       return
 
-    origModelNode = parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
+    origModelNode = parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
     if origModelNode is None or origModelNode.GetPolyData() is None:
       logging.error("Invalid Orig model")
       return
@@ -697,9 +704,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       origModelNode.AddPointScalars(pointPedigreeIds)
 
   def exportOutputToSurfaceLabel(self, parameterNode, surfacesToExport=[]):
-    origSurfaceNode = parameterNode.GetNodeReference(ORIG_MODEL_REFERENCE)
-    pialSurfaceNode = parameterNode.GetNodeReference(PIAL_MODEL_REFERENCE)
-    inflatedSurfaceNode = parameterNode.GetNodeReference(INFLATED_MODEL_REFERENCE)
+    origSurfaceNode = parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
+    pialSurfaceNode = parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
+    inflatedSurfaceNode = parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
     if origSurfaceNode is None or (origSurfaceNode is None and pialSurfaceNode is None and inflatedSurfaceNode is None):
       logging.error("exportOutputToSurfaceLabel: Invalid surface node")
       return
@@ -713,9 +720,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       labelArray.SetNumberOfTuples(cellCount)
     labelArray.Fill(0)
 
-    numberOfOutputModels = parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
+    numberOfOutputModels = parameterNode.GetNumberOfNodeReferences(self.OUTPUT_MODEL_REFERENCE)
     for modelIndex in range(numberOfOutputModels):
-      outputSurfaceNode = parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, modelIndex)
+      outputSurfaceNode = parameterNode.GetNthNodeReference(self.OUTPUT_MODEL_REFERENCE, modelIndex)
       if len(surfacesToExport) != 0 and not outputSurfaceNode.GetName() in surfacesToExport:
         continue
 
@@ -750,13 +757,13 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
   def updateParcellationColorNode(self):
     parcellationColorNode = self.getParcellationColorNode()
-    numberOfOutputModels = self.parameterNode.GetNumberOfNodeReferences(OUTPUT_MODEL_REFERENCE)
+    numberOfOutputModels = self.parameterNode.GetNumberOfNodeReferences(self.OUTPUT_MODEL_REFERENCE)
     lookupTable = vtk.vtkLookupTable()
     lookupTable.SetNumberOfColors(numberOfOutputModels + 1)
     lookupTable.SetTableValue(0, 0.1, 0.1, 0.1)
     labelValue = 1
     for i in range(numberOfOutputModels):
-      outputSurfaceNode = self.parameterNode.GetNthNodeReference(OUTPUT_MODEL_REFERENCE, i)
+      outputSurfaceNode = self.parameterNode.GetNthNodeReference(self.OUTPUT_MODEL_REFERENCE, i)
       color = outputSurfaceNode.GetDisplayNode().GetColor()
       lookupTable.SetTableValue(labelValue, color[0], color[1], color[2])
       labelValue += 1
@@ -765,7 +772,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   def getQueryString(self, parameterNode):
     if parameterNode is None:
       return None
-    queryTextNode = parameterNode.GetNodeReference(INPUT_QUERY_REFERENCE)
+    queryTextNode = parameterNode.GetNodeReference(self.INPUT_QUERY_REFERENCE)
     if queryTextNode is None:
       return None
     return queryTextNode.GetText()
