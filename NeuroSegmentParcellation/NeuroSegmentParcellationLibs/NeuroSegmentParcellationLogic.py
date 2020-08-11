@@ -250,39 +250,37 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     pialMarkup = self.getDerivedCurveNode(inputMarkupNode, "Pial")
     if pialMarkup:
-      pialModel = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
-      if pialModel and pialModel.GetPolyData() and pialModel.GetPolyData().GetPoints():
-        wasModifying = pialMarkup.StartModify()
-        pialPoints = vtk.vtkPoints()
-        pointIndex = 0
-        pialPoints.SetNumberOfPoints(len(pointIds))
-        for pointId in pointIds:
-          pialPoint = list(pialModel.GetPolyData().GetPoints().GetPoint(pointId))
-          pialModel.TransformPointToWorld(pialPoint, pialPoint)
-          pialPoints.SetPoint(pointIndex, pialPoint)
-          pointIndex += 1
-        pialMarkup.SetControlPointPositionsWorld(pialPoints)
-        for pointIndex in range(len(pointIds)):
-          pialMarkup.SetNthControlPointVisibility(pointIndex, False)
-        pialMarkup.EndModify(wasModifying)
+      with slicer.util.NodeModify(pialMarkup):
+        pialModel = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
+        if pialModel and pialModel.GetPolyData() and pialModel.GetPolyData().GetPoints():
+          pialPoints = vtk.vtkPoints()
+          pointIndex = 0
+          pialPoints.SetNumberOfPoints(len(pointIds))
+          for pointId in pointIds:
+            pialPoint = list(pialModel.GetPolyData().GetPoints().GetPoint(pointId))
+            pialModel.TransformPointToWorld(pialPoint, pialPoint)
+            pialPoints.SetPoint(pointIndex, pialPoint)
+            pointIndex += 1
+          pialMarkup.SetControlPointPositionsWorld(pialPoints)
+          for pointIndex in range(len(pointIds)):
+            pialMarkup.SetNthControlPointVisibility(pointIndex, False)
 
     inflatedMarkup = self.getDerivedCurveNode(inputMarkupNode, "Inflated")
     if inflatedMarkup:
-      inflatedModel = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
-      if inflatedModel and inflatedModel.GetPolyData() and inflatedModel.GetPolyData().GetPoints():
-        wasModifying = inflatedMarkup.StartModify()
-        inflatedPoints = vtk.vtkPoints()
-        inflatedPoints.SetNumberOfPoints(len(pointIds))
-        pointIndex = 0
-        for pointId in pointIds:
-          inflatedPoint = list(inflatedModel.GetPolyData().GetPoints().GetPoint(pointId))
-          inflatedModel.TransformPointToWorld(inflatedPoint, inflatedPoint)
-          inflatedPoints.SetPoint(pointIndex, inflatedPoint)
-          pointIndex += 1
-        inflatedMarkup.SetControlPointPositionsWorld(inflatedPoints)
-        for pointIndex in range(len(pointIds)):
-          inflatedMarkup.SetNthControlPointVisibility(pointIndex, False)
-        inflatedMarkup.EndModify(wasModifying)
+      with slicer.util.NodeModify(inflatedMarkup):
+        inflatedModel = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
+        if inflatedModel and inflatedModel.GetPolyData() and inflatedModel.GetPolyData().GetPoints():
+          inflatedPoints = vtk.vtkPoints()
+          inflatedPoints.SetNumberOfPoints(len(pointIds))
+          pointIndex = 0
+          for pointId in pointIds:
+            inflatedPoint = list(inflatedModel.GetPolyData().GetPoints().GetPoint(pointId))
+            inflatedModel.TransformPointToWorld(inflatedPoint, inflatedPoint)
+            inflatedPoints.SetPoint(pointIndex, inflatedPoint)
+            pointIndex += 1
+          inflatedMarkup.SetControlPointPositionsWorld(inflatedPoints)
+          for pointIndex in range(len(pointIds)):
+            inflatedMarkup.SetNthControlPointVisibility(pointIndex, False)
 
     if not self.updatingFromDerivedMarkup:
       pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, "Pial")
@@ -303,20 +301,18 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if sourceMarkup is None or sourceModel is None or destinationMarkup is None or destinationModel is None:
       return
     if destinationModel and destinationModel.GetPolyData() and destinationModel.GetPolyData().GetPoints():
-      wasModifying = destinationMarkup.StartModify()
-      destinationMarkup.RemoveAllControlPoints()
-      for i in range(sourceMarkup.GetNumberOfControlPoints()):
-        if not copyUndefinedControlPoints and sourceMarkup.GetNthControlPointPositionStatus(i) != sourceMarkup.PositionDefined:
-          continue
-        sourcePoint = [0,0,0]
-        sourceMarkup.GetNthControlPointPositionWorld(i, sourcePoint)
-        sourceModel.TransformPointFromWorld(sourcePoint, sourcePoint)
-        pointId = sourceLocator.FindClosestPoint(sourcePoint)
-        destinationPoint = list(destinationModel.GetPolyData().GetPoints().GetPoint(pointId))
-        destinationModel.TransformPointToWorld(destinationPoint, destinationPoint)
-        destinationMarkup.AddControlPoint(vtk.vtkVector3d(destinationPoint))
-
-      destinationMarkup.EndModify(wasModifying)
+      with slicer.util.NodeModify(destinationModel):
+        destinationMarkup.RemoveAllControlPoints()
+        for i in range(sourceMarkup.GetNumberOfControlPoints()):
+          if not copyUndefinedControlPoints and sourceMarkup.GetNthControlPointPositionStatus(i) != sourceMarkup.PositionDefined:
+            continue
+          sourcePoint = [0,0,0]
+          sourceMarkup.GetNthControlPointPositionWorld(i, sourcePoint)
+          sourceModel.TransformPointFromWorld(sourcePoint, sourcePoint)
+          pointId = sourceLocator.FindClosestPoint(sourcePoint)
+          destinationPoint = list(destinationModel.GetPolyData().GetPoints().GetPoint(pointId))
+          destinationModel.TransformPointToWorld(destinationPoint, destinationPoint)
+          destinationMarkup.AddControlPoint(vtk.vtkVector3d(destinationPoint))
 
   def onDerivedControlPointsModified(self, derivedMarkupNode, eventId=None, node=None):
     if self.updatingFromMasterMarkup or self.updatingFromDerivedMarkup:
@@ -414,14 +410,14 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     success = False
     errorMessage = ""
-    wasModifying = parameterNode.StartModify()
     slicer.mrmlScene.StartState(slicer.mrmlScene.BatchProcessState)
     try:
-      astNode = ast.parse(queryString)
-      eq = NeuroSegmentParcellationVisitor(self)
-      eq.setParameterNode(parameterNode)
-      eq.visit(astNode)
-      success = True
+      with slicer.util.NodeModify(parameterNode):
+        astNode = ast.parse(queryString)
+        eq = NeuroSegmentParcellationVisitor(self)
+        eq.setParameterNode(parameterNode)
+        eq.visit(astNode)
+        success = True
     except Exception as e:
       slicer.util.errorDisplay("Error parsing parcellation: "+str(e))
       import traceback
@@ -429,23 +425,33 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       logging.error("Error parsing mesh tool string!")
     finally:
       slicer.mrmlScene.EndState(slicer.mrmlScene.BatchProcessState)
-      parameterNode.EndModify(wasModifying)
     return [success, errorMessage]
 
   def exportOutputToSegmentation(self, parameterNode, surfacesToExport=[]):
     if parameterNode is None:
       return
 
-    numberOfOutputModels = parameterNode.GetNumberOfNodeReferences(self.OUTPUT_MODEL_REFERENCE)
-    exportSegmentationNode = parameterNode.GetNodeReference(self.EXPORT_SEGMENTATION_REFERENCE)
-    innerSurfaceNode = parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
-    outerSurfaceNode = parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
-    for i in range(numberOfOutputModels):
-      outputSurfaceNode = parameterNode.GetNthNodeReference(self.OUTPUT_MODEL_REFERENCE, i)
-      if len(surfacesToExport) > 0 and not outputSurfaceNode.GetName() in surfacesToExport:
-        continue
-      self.exportMeshToSegmentation(outputSurfaceNode, innerSurfaceNode, outerSurfaceNode, exportSegmentationNode)
-    exportSegmentationNode.CreateDefaultDisplayNodes()
+    exportSegmentationNode = self.getExportSegmentation()
+    if exportSegmentationNode is None:
+      logging.error("exportOutputToSegmentation: Invalid segmentation node")
+      return
+
+    origModelNode = self.getOrigModelNode()
+    if origModelNode is None:
+      logging.error("exportOutputToSegmentation: Invalid orig node")
+      return
+
+    pialModelNode = self.getPialModelNode()
+    if pialModelNode is None:
+      logging.error("exportOutputToSegmentation: Invalid pial node")
+      return
+
+    with slicer.util.NodeModify(exportSegmentationNode):
+      for outputModelNode in self.getOutputModelNodes():
+        if len(surfacesToExport) > 0 and not outputModelNode.GetName() in surfacesToExport:
+          continue
+        self.exportMeshToSegmentation(outputModelNode, origModelNode, pialModelNode, exportSegmentationNode)
+      exportSegmentationNode.CreateDefaultDisplayNodes()
 
   def getQueryNode(self):
     if self.parameterNode is None:

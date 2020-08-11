@@ -555,13 +555,12 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if self.parameterNode is None:
       return
 
-    wasModifying = self.parameterNode.StartModify()
-    self.logic.setOrigModelNode(self.ui.origModelSelector.currentNode())
-    self.logic.setPialModelNode(self.ui.pialModelSelector.currentNode())
-    self.logic.setInflatedModelNode(self.ui.inflatedModelSelector.currentNode())
-    self.logic.setExportSegmentation(self.ui.exportSegmentationSelector.currentNode())
-    self.logic.setToolNodesContinuousUpdate(self.ui.applyButton.checked)
-    self.parameterNode.EndModify(wasModifying)
+    with slicer.util.NodeModify(self.parameterNode):
+      self.logic.setOrigModelNode(self.ui.origModelSelector.currentNode())
+      self.logic.setPialModelNode(self.ui.pialModelSelector.currentNode())
+      self.logic.setInflatedModelNode(self.ui.inflatedModelSelector.currentNode())
+      self.logic.setExportSegmentation(self.ui.exportSegmentationSelector.currentNode())
+      self.logic.setToolNodesContinuousUpdate(self.ui.applyButton.checked)
 
   def updateScalarOverlay(self):
     scalarName = None
