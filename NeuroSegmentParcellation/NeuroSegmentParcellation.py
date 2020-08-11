@@ -361,8 +361,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.parameterNode = inputParameterNode
 
     # Initial GUI update
-    self.updateGUIFromParameterNode()
     self.logic.setParameterNode(inputParameterNode)
+    self.updateGUIFromParameterNode()
 
   def updateGUIFromParameterNode(self, caller=None, event=None):
     """
@@ -686,10 +686,10 @@ class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
 
     self.meshParseTool1()
 
-  def setupSphere(self):
+  def setupSphere(self, radius):
 
     sphereSource = vtk.vtkSphereSource()
-    sphereSource.SetRadius(50.0)
+    sphereSource.SetRadius(radius)
     sphereSource.SetPhiResolution(75)
     sphereSource.SetThetaResolution(75)
     sphereSource.Update()
@@ -703,34 +703,64 @@ class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
     import time
     startTime = time.time()
 
-    inputModelNode = self.setupSphere()
-
     logic = NeuroSegmentParcellationLogic()
+    parameterNode = logic.getParameterNode()
+
+    origModelNode = self.setupSphere(50.0)
+    pialModelNode = self.setupSphere(75.0)
+    pialModelNode.GetDisplayNode().SetVisibility(False)
+
+    logic.setOrigModelNode(origModelNode)
+    logic.setPialModelNode(pialModelNode)
 
     parcellationQueryNode = slicer.vtkMRMLTextNode()
     parcellationQueryNode.SetName("ParcellationQuery")
+    parcellationQueryNode.SetText("""_Planes = [ PA, PB, PC ]; A = (PA & PB & PC); B = (PA & PB & PC); C = (PA & PB & PC)""")
     slicer.mrmlScene.AddNode(parcellationQueryNode)
-
-    storageNode = slicer.vtkMRMLTextStorageNode()
-    storageNode.SetFileName(self.resourcePath('Parcellation/parcellation.qry'))
-    storageNode.ReadData(parcellationQueryNode)
-    slicer.mrmlScene.RemoveNode(storageNode)
-
-    parameterNode = logic.getParameterNode()
-
+    logic.setQueryNode(parcellationQueryNode)
     logic.parseParcellationString(parameterNode)
 
-    planeA = slicer.util.getNode("PlaneA")
+    planeA = slicer.util.getNode("PA")
     planeA.SetOrigin([0, 0, 0])
     planeA.SetNormal([0, 0, 1])
+    planeA.GetDisplayNode().SetVisibility(False)
 
-    planeB = slicer.util.getNode("PlaneB")
+    planeB = slicer.util.getNode("PB")
     planeB.SetOrigin([0, 0, 0])
     planeB.SetNormal([1, 0, 0])
+    planeB.GetDisplayNode().SetVisibility(False)
 
-    planeC = slicer.util.getNode("PlaneC")
+    planeC = slicer.util.getNode("PC")
     planeC.SetOrigin([0, 0, 0])
     planeC.SetNormal([0, 1, 0])
+    planeC.GetDisplayNode().SetVisibility(False)
+
+    i = 0
+    colors = [
+      [1.0, 0.0, 0.0],
+      [0.0, 1.0, 0.0],
+      [0.0, 0.0, 1.0]
+    ]
+    for outputModelNode in logic.getOutputModelNodes():
+      outputModelNode.GetDisplayNode().SetColor(colors[i])
+      i+=1
+
+    seedPositions = [
+      [[-24.256452560424805, -24.25225257873535, 36.426605224609375], [23.89341163635254, -22.64985466003418, 37.68958282470703]],
+      [[24.005630493164062, 29.707569122314453, 32.274898529052734],[-19.602069854736328, 18.553592681884766, 42.119205474853516]],
+      [[27.62245750427246, 29.372499465942383, -29.621036529541016],[-19.98876190185547, 31.806682586669922, -32.98733901977539]],
+    ]
+
+    i = 0
+    for toolNode in logic.getToolNodes():
+      seed = logic.getInputSeedNode(toolNode)
+      for point in seedPositions[i]:
+        seed.AddFiducial(point[0], point[1], point[2])
+      seed.GetDisplayNode().SetVisibility(False)
+      logic.runDynamicModelerTool(toolNode)
+      i+=1
+    logic.exportOutputToSurfaceLabel(parameterNode)
+    logic.setScalarOverlay("labels")
 
     testDuration = time.time() - startTime
     logging.info("Test duration: %f", testDuration)

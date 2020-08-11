@@ -3,6 +3,7 @@ import ast
 import vtk, slicer
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
+import logging
 
 from NeuroSegmentParcellationLibs.NeuroSegmentParcellationVisitor import NeuroSegmentParcellationVisitor
 
@@ -568,6 +569,11 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       outputModelNodes.append(outputModelNode)
     return outputModelNodes
 
+  def getInputSeedNode(self, toolNode):
+    if toolNode is None:
+      return
+    return toolNode.GetNodeReference(self.BOUNDARY_CUT_INPUT_SEED_REFERENCE)
+
   def setToolNodesContinuousUpdate(self, continuousUpdate):
     for toolNode in self.getToolNodes():
       toolNode.SetContinuousUpdate(continuousUpdate)
@@ -605,6 +611,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       displayNode.SetActiveScalar(scalarName, attributeType)
       if colorNode:
         displayNode.SetAndObserveColorNodeID(colorNode.GetID())
+      displayNode.SetScalarVisibility(True)
 
   def runDynamicModelerTool(self, toolNode):
     dynamicModelerLogic = slicer.modules.dynamicmodeler.logic()
