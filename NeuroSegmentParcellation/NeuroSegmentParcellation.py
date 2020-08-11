@@ -751,6 +751,8 @@ class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
       [[27.62245750427246, 29.372499465942383, -29.621036529541016],[-19.98876190185547, 31.806682586669922, -32.98733901977539]],
     ]
 
+    logic.initializePedigreeIds(parameterNode)
+
     i = 0
     for toolNode in logic.getToolNodes():
       seed = logic.getInputSeedNode(toolNode)
@@ -759,6 +761,7 @@ class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
       seed.GetDisplayNode().SetVisibility(False)
       logic.runDynamicModelerTool(toolNode)
       i+=1
+
     logic.exportOutputToSurfaceLabel(parameterNode)
     logic.setScalarOverlay("labels")
 
