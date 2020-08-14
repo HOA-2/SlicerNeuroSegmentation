@@ -225,12 +225,21 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     pialMarkupViews = self.getMarkupViewIDs(parameterNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
     inflatedMarkupViews = self.getMarkupViewIDs(parameterNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
 
+    projectionEnabled = self.getMarkupProjectionEnabled(parameterNode)
+    startFade = 0.0
+    endFade = 0.5
+    if projectionEnabled:
+      startFade = 1.0
+      endFade = 10.0
+
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
       inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
       if inputMarkupNode is None or not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
         continue
       inputMarkupNode.GetDisplayNode().SetViewNodeIDs(origMarkupViews)
+      inputMarkupNode.GetDisplayNode().SetLineColorFadingStart(startFade)
+      inputMarkupNode.GetDisplayNode().SetLineColorFadingEnd(endFade)
 
       pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialControlPoints:
@@ -243,10 +252,14 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       pialCurveNode = self.getDerivedCurveNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialCurveNode:
         pialCurveNode.GetDisplayNode().SetViewNodeIDs(pialMarkupViews)
+        pialCurveNode.GetDisplayNode().SetLineColorFadingStart(startFade)
+        pialCurveNode.GetDisplayNode().SetLineColorFadingEnd(endFade)
 
       inflatedCurveNode = self.getDerivedCurveNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
       if inflatedCurveNode:
         inflatedCurveNode.GetDisplayNode().SetViewNodeIDs(inflatedMarkupViews)
+        inflatedCurveNode.GetDisplayNode().SetLineColorFadingStart(startFade)
+        inflatedCurveNode.GetDisplayNode().SetLineColorFadingEnd(endFade)
 
       numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(self.TOOL_NODE_REFERENCE)
       for i in range(numberOfToolNodes):
@@ -645,14 +658,14 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       return
     if parameterNode is None:
       logging.error("setMarkupSliceViewVisibility: Invalid parameter node")
-      return False
+      return
 
     parameterNode.SetParameter("MarkupSliceVisibility." + markupType, "TRUE" if visible else "FALSE")
 
   def getMarkupSliceViewVisibility(self, parameterNode, markupType):
     if markupType != self.ORIG_NODE_ATTRIBUTE_VALUE and markupType != self.PIAL_NODE_ATTRIBUTE_VALUE and markupType != self.INFLATED_NODE_ATTRIBUTE_VALUE:
       logging.error("getMarkupSliceViewVisibility: Invalid markup type. Expected orig, pial or inflated, got: " + markupType)
-      return
+      return False
     if parameterNode is None:
       logging.error("getMarkupSliceViewVisibility: Invalid parameter node")
       return False
@@ -678,6 +691,19 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     elif markupType == self.INFLATED_NODE_ATTRIBUTE_VALUE:
       viewIDs.append("vtkMRMLViewNodeI")
     return viewIDs
+
+  def setMarkupProjectionEnabled(self, parameterNode, visible):
+    if parameterNode is None:
+      logging.error("setMarkupProjectionEnabled: Invalid parameter node")
+      return
+
+    parameterNode.SetParameter("MarkupProjectionVisibility", "TRUE" if visible else "FALSE")
+
+  def getMarkupProjectionEnabled(self, parameterNode):
+    if parameterNode is None:
+      logging.error("setMarkupProjectionEnabled: Invalid parameter node")
+      return False
+    return True if parameterNode.GetParameter("MarkupProjectionVisibility") == "TRUE" else False
 
   def runDynamicModelerTool(self, toolNode):
     dynamicModelerLogic = slicer.modules.dynamicmodeler.logic()

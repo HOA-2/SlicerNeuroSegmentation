@@ -186,6 +186,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.origMarkupsCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
     self.ui.pialMarkupsCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
     self.ui.inflatedMarkupsCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
+    self.ui.markupsProjectionCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
 
     slicer.app.layoutManager().connect("layoutChanged(int)", self.onLayoutChanged)
     self.ui.parcellationViewLayoutButton.connect("clicked()", self.onParcellationViewLayoutButtonClicked)
@@ -586,6 +587,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       self.logic.setMarkupSliceViewVisibility(self.parameterNode, self.logic.ORIG_NODE_ATTRIBUTE_VALUE, self.ui.origMarkupsCheckBox.isChecked())
       self.logic.setMarkupSliceViewVisibility(self.parameterNode, self.logic.PIAL_NODE_ATTRIBUTE_VALUE, self.ui.pialMarkupsCheckBox.isChecked())
       self.logic.setMarkupSliceViewVisibility(self.parameterNode, self.logic.INFLATED_NODE_ATTRIBUTE_VALUE, self.ui.inflatedMarkupsCheckBox.isChecked())
+      self.logic.setMarkupProjectionEnabled(self.parameterNode, self.ui.markupsProjectionCheckBox.isChecked())
 
   def onApplyButton(self):
     """
