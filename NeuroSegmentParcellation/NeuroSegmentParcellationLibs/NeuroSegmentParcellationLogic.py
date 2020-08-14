@@ -85,9 +85,13 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       return
 
     self.updateInputMarkupObservers(parameterNode)
+    self.updateInputMarkupDisplay(parameterNode)
     self.updateAllModelViews(parameterNode)
-    self.updatePointLocators(parameterNode)
+    self.updateInputModelPointLocators(parameterNode)
+    self.updateInputModelNodes(parameterNode)
+    self.updateInputMarkupSurfaceCostFunction(parameterNode)
 
+  def updateInputModelNodes(self, parameterNode):
     origModelNode = parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
     numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(self.TOOL_NODE_REFERENCE)
     for i in range(numberOfToolNodes):
@@ -97,6 +101,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       elif toolNode.GetNodeReference("BoundaryCut.InputModel") != origModelNode:
         toolNode.SetNodeReferenceID("BoundaryCut.InputModel", origModelNode.GetID())
 
+  def updateInputMarkupSurfaceCostFunction(self, parameterNode):
+    origModelNode = parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
       inputCurveNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
@@ -147,7 +153,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         continue
       modelNode.GetDisplayNode().SetViewNodeIDs(viewIDs)
 
-  def updatePointLocators(self, parameterNode):
+  def updateInputModelPointLocators(self, parameterNode):
     if parameterNode is None:
       return
 
@@ -180,14 +186,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if parameterNode is None:
       return
 
-    origMarkupViews = self.getMarkupViewIDs(parameterNode, "orig")
-    pialMarkupViews = self.getMarkupViewIDs(parameterNode, "pial")
-    inflatedMarkupViews = self.getMarkupViewIDs(parameterNode, "inflated")
-
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
       inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
-      if not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
+      if inputMarkupNode is None or not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
         continue
       tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointAddedEvent, self.onMasterMarkupModified)
       self.inputMarkupObservers.append((inputMarkupNode, tag))
@@ -195,7 +197,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       self.inputMarkupObservers.append((inputMarkupNode, tag))
       tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointRemovedEvent, self.onMasterMarkupModified)
       self.inputMarkupObservers.append((inputMarkupNode, tag))
-      inputMarkupNode.GetDisplayNode().SetViewNodeIDs(origMarkupViews)
       inputMarkupNode.SetAttribute("NeuroSegmentParcellation.NodeType", "Orig")
 
       pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, "Pial")
@@ -204,7 +205,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         self.inputMarkupObservers.append((pialControlPoints, tag))
         tag = pialControlPoints.AddObserver(slicer.vtkMRMLMarkupsNode.PointRemovedEvent, self.onDerivedControlPointsModified)
         self.inputMarkupObservers.append((pialControlPoints, tag))
-        pialControlPoints.GetDisplayNode().SetViewNodeIDs(pialMarkupViews)
 
       inflatedControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, "Inflated")
       if inflatedControlPoints:
@@ -212,6 +212,28 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         self.inputMarkupObservers.append((inflatedControlPoints, tag))
         tag = inflatedControlPoints.AddObserver(slicer.vtkMRMLMarkupsNode.PointRemovedEvent, self.onDerivedControlPointsModified)
         self.inputMarkupObservers.append((inflatedControlPoints, tag))
+
+  def updateInputMarkupDisplay(self, parameterNode):
+    if parameterNode is None:
+      return
+
+    origMarkupViews = self.getMarkupViewIDs(parameterNode, "orig")
+    pialMarkupViews = self.getMarkupViewIDs(parameterNode, "pial")
+    inflatedMarkupViews = self.getMarkupViewIDs(parameterNode, "inflated")
+
+    numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
+    for i in range(numberOfMarkupNodes):
+      inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
+      if inputMarkupNode is None or not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
+        continue
+      inputMarkupNode.GetDisplayNode().SetViewNodeIDs(origMarkupViews)
+
+      pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, "Pial")
+      if pialControlPoints:
+        pialControlPoints.GetDisplayNode().SetViewNodeIDs(pialMarkupViews)
+
+      inflatedControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, "Inflated")
+      if inflatedControlPoints:
         inflatedControlPoints.GetDisplayNode().SetViewNodeIDs(inflatedMarkupViews)
 
       pialCurveNode = self.getDerivedCurveNode(inputMarkupNode, "Pial")
@@ -227,7 +249,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         toolNode = parameterNode.GetNthNodeReference(self.TOOL_NODE_REFERENCE, i)
         inputSeed = toolNode.GetNodeReference(self.BOUNDARY_CUT_INPUT_SEED_REFERENCE)
         if inputSeed:
-          inputSeed.GetDisplayNode().SetViewNodeIDs(["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow", "vtkMRMLViewNodeO"])
+          inputSeed.GetDisplayNode().SetViewNodeIDs(origMarkupViews)
 
   def onMasterMarkupModified(self, inputMarkupNode, eventId=None, node=None):
     if self.updatingFromMasterMarkup or self.parameterNode is None:
@@ -708,6 +730,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.parameterNode is None:
       logging.error("loadQuery: Invalid parameter node")
       return False
+
     parcellationQueryNode = self.getQueryNode()
     if parcellationQueryNode is None:
       parcellationQueryNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTextNode", "ParcellationQuery")
