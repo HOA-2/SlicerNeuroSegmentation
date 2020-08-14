@@ -265,9 +265,9 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if nodeType is None:
       return
 
-    if nodeType == "Orig":
+    if nodeType == self.logic.ORIG_NODE_ATTRIBUTE_VALUE:
       self.logic.onMasterMarkupModified(currentPlaceNode)
-    elif nodeType == "Pial" or nodeType == "Inflated":
+    elif nodeType == self.logic.PIAL_NODE_ATTRIBUTE_VALUE or nodeType == self.logic.INFLATED_NODE_ATTRIBUTE_VALUE:
       self.logic.onDerivedControlPointsModified(currentPlaceNode)
 
   def onMouseMoveIn3DView(self, caller, event=None):
@@ -303,22 +303,22 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     origNode = None
     pialNode = None
     inflatedNode = None
-    if nodeType == "Orig":
+    if nodeType == self.logic.ORIG_NODE_ATTRIBUTE_VALUE:
       origNode = currentPlaceNode
-      pialNode = self.logic.getDerivedControlPointsNode(origNode, "Pial")
-      inflatedNode = self.logic.getDerivedControlPointsNode(origNode, "Inflated")
-    elif nodeType == "Pial":
+      pialNode = self.logic.getDerivedControlPointsNode(origNode, self.logic.PIAL_NODE_ATTRIBUTE_VALUE)
+      inflatedNode = self.logic.getDerivedControlPointsNode(origNode, self.logic.INFLATED_NODE_ATTRIBUTE_VALUE)
+    elif nodeType == self.logic.PIAL_NODE_ATTRIBUTE_VALUE:
       origNode = currentPlaceNode.GetNodeReference("OrigMarkup")
       pialNode = currentPlaceNode
-      inflatedNode = self.logic.getDerivedControlPointsNode(origNode, "Inflated")
-    elif nodeType == "Inflated":
+      inflatedNode = self.logic.getDerivedControlPointsNode(origNode, self.logic.INFLATED_NODE_ATTRIBUTE_VALUE)
+    elif nodeType == self.logic.INFLATED_NODE_ATTRIBUTE_VALUE:
       origNode = currentPlaceNode.GetNodeReference("OrigMarkup")
-      pialNode = self.logic.getDerivedControlPointsNode(origNode, "Pial")
+      pialNode = self.logic.getDerivedControlPointsNode(origNode, self.logic.PIAL_NODE_ATTRIBUTE_VALUE)
       inflatedNode = currentPlaceNode
 
-    if (nodeName == "ViewI" and nodeType == "Inflated" or
-        nodeName == "ViewP" and nodeType == "Pial" or
-        nodeName == "ViewO" and nodeType == "Orig"):
+    if (nodeName == "ViewI" and nodeType == self.logic.INFLATED_NODE_ATTRIBUTE_VALUE or
+        nodeName == "ViewP" and nodeType == self.logic.PIAL_NODE_ATTRIBUTE_VALUE or
+        nodeName == "ViewO" and nodeType == self.logic.ORIG_NODE_ATTRIBUTE_VALUE):
       return
 
     interactionNode.SetCurrentInteractionMode(interactionNode.Select)
@@ -583,9 +583,9 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     Update the visibility of markups in each view based on the slice visibility checkboxes
     """
     with slicer.util.NodeModify(self.parameterNode):
-      self.logic.setMarkupSliceViewVisibility(self.parameterNode, "orig", self.ui.origMarkupsCheckBox.isChecked())
-      self.logic.setMarkupSliceViewVisibility(self.parameterNode, "pial", self.ui.pialMarkupsCheckBox.isChecked())
-      self.logic.setMarkupSliceViewVisibility(self.parameterNode, "inflated", self.ui.inflatedMarkupsCheckBox.isChecked())
+      self.logic.setMarkupSliceViewVisibility(self.parameterNode, self.logic.ORIG_NODE_ATTRIBUTE_VALUE, self.ui.origMarkupsCheckBox.isChecked())
+      self.logic.setMarkupSliceViewVisibility(self.parameterNode, self.logic.PIAL_NODE_ATTRIBUTE_VALUE, self.ui.pialMarkupsCheckBox.isChecked())
+      self.logic.setMarkupSliceViewVisibility(self.parameterNode, self.logic.INFLATED_NODE_ATTRIBUTE_VALUE, self.ui.inflatedMarkupsCheckBox.isChecked())
 
   def onApplyButton(self):
     """

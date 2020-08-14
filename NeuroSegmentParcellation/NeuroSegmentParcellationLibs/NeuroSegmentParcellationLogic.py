@@ -16,7 +16,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   BOUNDARY_CUT_OUTPUT_MODEL_REFERENCE = "BoundaryCut.OutputModel"
   BOUNDARY_CUT_INPUT_SEED_REFERENCE = "BoundaryCut.InputSeed"
 
-
   INPUT_MARKUPS_REFERENCE = "InputMarkups"
   ORIG_MODEL_REFERENCE = "OrigModel"
   PIAL_MODEL_REFERENCE = "PialModel"
@@ -25,6 +24,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   OUTPUT_MODEL_REFERENCE = "OutputModel"
   TOOL_NODE_REFERENCE = "ToolNode"
   EXPORT_SEGMENTATION_REFERENCE = "ExportSegmentation"
+
+  ORIG_NODE_ATTRIBUTE_VALUE = "Orig"
+  PIAL_NODE_ATTRIBUTE_VALUE = "Pial"
+  INFLATED_NODE_ATTRIBUTE_VALUE = "Inflated"
 
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
@@ -84,12 +87,14 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if parameterNode is None:
       return
 
-    self.updateInputMarkupObservers(parameterNode)
-    self.updateInputMarkupDisplay(parameterNode)
-    self.updateAllModelViews(parameterNode)
-    self.updateInputModelPointLocators(parameterNode)
     self.updateInputModelNodes(parameterNode)
+    self.updateInputModelPointLocators(parameterNode)
+    self.updateAllModelViews(parameterNode)
+
+    self.removeInputMarkupObservers()
+    self.updateInputMarkupDisplay(parameterNode)
     self.updateInputMarkupSurfaceCostFunction(parameterNode)
+    self.updateInputMarkupObservers(parameterNode)
 
   def updateInputModelNodes(self, parameterNode):
     origModelNode = parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
@@ -182,7 +187,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.inputMarkupObservers = []
 
   def updateInputMarkupObservers(self, parameterNode):
-    self.removeInputMarkupObservers()
     if parameterNode is None:
       return
 
@@ -197,16 +201,16 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       self.inputMarkupObservers.append((inputMarkupNode, tag))
       tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointRemovedEvent, self.onMasterMarkupModified)
       self.inputMarkupObservers.append((inputMarkupNode, tag))
-      inputMarkupNode.SetAttribute("NeuroSegmentParcellation.NodeType", "Orig")
+      inputMarkupNode.SetAttribute("NeuroSegmentParcellation.NodeType", self.ORIG_NODE_ATTRIBUTE_VALUE)
 
-      pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, "Pial")
+      pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialControlPoints:
         tag = pialControlPoints.AddObserver(slicer.vtkMRMLMarkupsNode.PointModifiedEvent, self.onDerivedControlPointsModified)
         self.inputMarkupObservers.append((pialControlPoints, tag))
         tag = pialControlPoints.AddObserver(slicer.vtkMRMLMarkupsNode.PointRemovedEvent, self.onDerivedControlPointsModified)
         self.inputMarkupObservers.append((pialControlPoints, tag))
 
-      inflatedControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, "Inflated")
+      inflatedControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
       if inflatedControlPoints:
         tag = inflatedControlPoints.AddObserver(slicer.vtkMRMLMarkupsNode.PointModifiedEvent, self.onDerivedControlPointsModified)
         self.inputMarkupObservers.append((inflatedControlPoints, tag))
@@ -217,9 +221,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if parameterNode is None:
       return
 
-    origMarkupViews = self.getMarkupViewIDs(parameterNode, "orig")
-    pialMarkupViews = self.getMarkupViewIDs(parameterNode, "pial")
-    inflatedMarkupViews = self.getMarkupViewIDs(parameterNode, "inflated")
+    origMarkupViews = self.getMarkupViewIDs(parameterNode, self.ORIG_NODE_ATTRIBUTE_VALUE)
+    pialMarkupViews = self.getMarkupViewIDs(parameterNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
+    inflatedMarkupViews = self.getMarkupViewIDs(parameterNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
 
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
@@ -228,19 +232,19 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         continue
       inputMarkupNode.GetDisplayNode().SetViewNodeIDs(origMarkupViews)
 
-      pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, "Pial")
+      pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialControlPoints:
         pialControlPoints.GetDisplayNode().SetViewNodeIDs(pialMarkupViews)
 
-      inflatedControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, "Inflated")
+      inflatedControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
       if inflatedControlPoints:
         inflatedControlPoints.GetDisplayNode().SetViewNodeIDs(inflatedMarkupViews)
 
-      pialCurveNode = self.getDerivedCurveNode(inputMarkupNode, "Pial")
+      pialCurveNode = self.getDerivedCurveNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialCurveNode:
         pialCurveNode.GetDisplayNode().SetViewNodeIDs(pialMarkupViews)
 
-      inflatedCurveNode = self.getDerivedCurveNode(inputMarkupNode, "Inflated")
+      inflatedCurveNode = self.getDerivedCurveNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
       if inflatedCurveNode:
         inflatedCurveNode.GetDisplayNode().SetViewNodeIDs(inflatedMarkupViews)
 
@@ -271,7 +275,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       origModel.TransformPointFromWorld(origPoint, origPoint)
       pointIds.append(self.origPointLocator.FindClosestPoint(origPoint))
 
-    pialMarkup = self.getDerivedCurveNode(inputMarkupNode, "Pial")
+    pialMarkup = self.getDerivedCurveNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
     if pialMarkup:
       with slicer.util.NodeModify(pialMarkup):
         pialModel = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
@@ -288,7 +292,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
           for pointIndex in range(len(pointIds)):
             pialMarkup.SetNthControlPointVisibility(pointIndex, False)
 
-    inflatedMarkup = self.getDerivedCurveNode(inputMarkupNode, "Inflated")
+    inflatedMarkup = self.getDerivedCurveNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
     if inflatedMarkup:
       with slicer.util.NodeModify(inflatedMarkup):
         inflatedModel = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
@@ -306,13 +310,13 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
             inflatedMarkup.SetNthControlPointVisibility(pointIndex, False)
 
     if not self.updatingFromDerivedMarkup:
-      pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, "Pial")
+      pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialControlPoints is None:
         logging.error("Could not find inflated markup!")
       else:
         self.copyControlPoints(inputMarkupNode, origModel, self.origPointLocator, pialControlPoints, pialModel)
 
-      inflatedControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, "Inflated")
+      inflatedControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
       if inflatedControlPoints is None:
         logging.error("Could not find inflated markup!")
       else:
@@ -349,17 +353,17 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     derivedModelNode = None
     otherMarkupNode = None
     otherModelNode = None
-    if nodeType == "Pial":
+    if nodeType == self.PIAL_NODE_ATTRIBUTE_VALUE:
       locator = self.pialPointLocator
       derivedModelNode = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
 
-      otherMarkupNode = self.getDerivedControlPointsNode(origMarkup, "Inflated")
+      otherMarkupNode = self.getDerivedControlPointsNode(origMarkup, self.INFLATED_NODE_ATTRIBUTE_VALUE)
       otherModelNode = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
-    elif nodeType == "Inflated":
+    elif nodeType == self.INFLATED_NODE_ATTRIBUTE_VALUE:
       locator = self.inflatedPointLocator
       derivedModelNode = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
 
-      otherMarkupNode = self.getDerivedControlPointsNode(origMarkup, "Pial")
+      otherMarkupNode = self.getDerivedControlPointsNode(origMarkup, self.PIAL_NODE_ATTRIBUTE_VALUE)
       otherModelNode = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
     if locator == None or derivedModelNode == None:
       self.updatingFromDerivedMarkup = False
@@ -378,7 +382,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if not derivedCurveNode or not derivedCurveNode.IsA("vtkMRMLMarkupsCurveNode"):
       return
 
-    # TODO: We should be able to reverse engineer where this point should be inserted to be added to the "orig" curve
+    # TODO: We should be able to reverse engineer where this point should be inserted to be added to the self.ORIG_NODE_ATTRIBUTE_VALUE curve
     return
 
   def getDerivedCurveNode(self, origMarkupNode, nodeType):
@@ -636,7 +640,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       displayNode.SetScalarVisibility(True)
 
   def setMarkupSliceViewVisibility(self, parameterNode, markupType, visible):
-    if markupType != "orig" and markupType != "pial" and markupType != "inflated":
+    if markupType != self.ORIG_NODE_ATTRIBUTE_VALUE and markupType != self.PIAL_NODE_ATTRIBUTE_VALUE and markupType != self.INFLATED_NODE_ATTRIBUTE_VALUE:
       logging.error("setMarkupSliceViewVisibility: Invalid markup type. Expected orig, pial or inflated, got: " + markupType)
       return
     if parameterNode is None:
@@ -646,7 +650,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     parameterNode.SetParameter("MarkupSliceVisibility." + markupType, "TRUE" if visible else "FALSE")
 
   def getMarkupSliceViewVisibility(self, parameterNode, markupType):
-    if markupType != "orig" and markupType != "pial" and markupType != "inflated":
+    if markupType != self.ORIG_NODE_ATTRIBUTE_VALUE and markupType != self.PIAL_NODE_ATTRIBUTE_VALUE and markupType != self.INFLATED_NODE_ATTRIBUTE_VALUE:
       logging.error("getMarkupSliceViewVisibility: Invalid markup type. Expected orig, pial or inflated, got: " + markupType)
       return
     if parameterNode is None:
@@ -656,7 +660,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     return True if parameterNode.GetParameter("MarkupSliceVisibility." + markupType) == "TRUE" else False
 
   def getMarkupViewIDs(self, parameterNode, markupType):
-    if markupType != "orig" and markupType != "pial" and markupType != "inflated":
+    if markupType != self.ORIG_NODE_ATTRIBUTE_VALUE and markupType != self.PIAL_NODE_ATTRIBUTE_VALUE and markupType != self.INFLATED_NODE_ATTRIBUTE_VALUE:
       logging.error("getMarkupViewIDs: Invalid markup type. Expected orig, pial or inflated, got: " + markupType)
       return []
     if parameterNode is None:
@@ -667,11 +671,11 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.getMarkupSliceViewVisibility(parameterNode, markupType):
       viewIDs += ["vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
 
-    if markupType == "orig":
+    if markupType == self.ORIG_NODE_ATTRIBUTE_VALUE:
       viewIDs.append("vtkMRMLViewNodeO")
-    elif markupType == "pial":
+    elif markupType == self.PIAL_NODE_ATTRIBUTE_VALUE:
       viewIDs.append("vtkMRMLViewNodeP")
-    elif markupType == "inflated":
+    elif markupType == self.INFLATED_NODE_ATTRIBUTE_VALUE:
       viewIDs.append("vtkMRMLViewNodeI")
     return viewIDs
 
