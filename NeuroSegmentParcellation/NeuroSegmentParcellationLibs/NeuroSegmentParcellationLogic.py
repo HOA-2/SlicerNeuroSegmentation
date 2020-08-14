@@ -180,9 +180,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if parameterNode is None:
       return
 
-    origMarkupViews = self.getMarkupViewIDs("orig")
-    pialMarkupViews = self.getMarkupViewIDs("pial")
-    inflatedMarkupViews = self.getMarkupViewIDs("inflated")
+    origMarkupViews = self.getMarkupViewIDs(parameterNode, "orig")
+    pialMarkupViews = self.getMarkupViewIDs(parameterNode, "pial")
+    inflatedMarkupViews = self.getMarkupViewIDs(parameterNode, "inflated")
 
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
@@ -613,36 +613,36 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         displayNode.SetAndObserveColorNodeID(colorNode.GetID())
       displayNode.SetScalarVisibility(True)
 
-  def setMarkupSliceViewVisibility(self, markupType, visible):
+  def setMarkupSliceViewVisibility(self, parameterNode, markupType, visible):
     if markupType != "orig" and markupType != "pial" and markupType != "inflated":
       logging.error("setMarkupSliceViewVisibility: Invalid markup type. Expected orig, pial or inflated, got: " + markupType)
       return
-    if self.parameterNode is None:
+    if parameterNode is None:
       logging.error("setMarkupSliceViewVisibility: Invalid parameter node")
       return False
 
-    self.parameterNode.SetParameter("MarkupSliceVisibility." + markupType, "TRUE" if visible else "FALSE")
+    parameterNode.SetParameter("MarkupSliceVisibility." + markupType, "TRUE" if visible else "FALSE")
 
-  def getMarkupSliceViewVisibility(self, markupType):
+  def getMarkupSliceViewVisibility(self, parameterNode, markupType):
     if markupType != "orig" and markupType != "pial" and markupType != "inflated":
       logging.error("getMarkupSliceViewVisibility: Invalid markup type. Expected orig, pial or inflated, got: " + markupType)
       return
-    if self.parameterNode is None:
+    if parameterNode is None:
       logging.error("getMarkupSliceViewVisibility: Invalid parameter node")
       return False
 
-    return True if self.parameterNode.GetParameter("MarkupSliceVisibility." + markupType) == "TRUE" else False
+    return True if parameterNode.GetParameter("MarkupSliceVisibility." + markupType) == "TRUE" else False
 
-  def getMarkupViewIDs(self, markupType):
+  def getMarkupViewIDs(self, parameterNode, markupType):
     if markupType != "orig" and markupType != "pial" and markupType != "inflated":
       logging.error("getMarkupViewIDs: Invalid markup type. Expected orig, pial or inflated, got: " + markupType)
       return []
-    if self.parameterNode is None:
+    if parameterNode is None:
       logging.error("getMarkupViewIDs: Invalid parameter node")
       return []
 
     viewIDs = ["vtkMRMLViewNode1"]
-    if self.getMarkupSliceViewVisibility(markupType):
+    if self.getMarkupSliceViewVisibility(parameterNode, markupType):
       viewIDs += ["vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
 
     if markupType == "orig":

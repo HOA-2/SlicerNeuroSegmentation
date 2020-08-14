@@ -583,9 +583,9 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     Update the visibility of markups in each view based on the slice visibility checkboxes
     """
     with slicer.util.NodeModify(self.parameterNode):
-      self.logic.setMarkupSliceViewVisibility("orig", self.ui.origMarkupsCheckBox.isChecked())
-      self.logic.setMarkupSliceViewVisibility("pial", self.ui.pialMarkupsCheckBox.isChecked())
-      self.logic.setMarkupSliceViewVisibility("inflated", self.ui.inflatedMarkupsCheckBox.isChecked())
+      self.logic.setMarkupSliceViewVisibility(self.parameterNode, "orig", self.ui.origMarkupsCheckBox.isChecked())
+      self.logic.setMarkupSliceViewVisibility(self.parameterNode, "pial", self.ui.pialMarkupsCheckBox.isChecked())
+      self.logic.setMarkupSliceViewVisibility(self.parameterNode, "inflated", self.ui.inflatedMarkupsCheckBox.isChecked())
 
   def onApplyButton(self):
     """
