@@ -195,6 +195,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
       if inputMarkupNode is None or not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
         continue
+      tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.LockModifiedEvent, self.onMarkupLockStateModified)
+      self.inputMarkupObservers.append((inputMarkupNode, tag))
       tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointAddedEvent, self.onMasterMarkupModified)
       self.inputMarkupObservers.append((inputMarkupNode, tag))
       tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointModifiedEvent, self.onMasterMarkupModified)
@@ -202,6 +204,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointRemovedEvent, self.onMasterMarkupModified)
       self.inputMarkupObservers.append((inputMarkupNode, tag))
       inputMarkupNode.SetAttribute("NeuroSegmentParcellation.NodeType", self.ORIG_NODE_ATTRIBUTE_VALUE)
+      self.onMarkupLockStateModified(inputMarkupNode)
 
       pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialControlPoints:
@@ -492,6 +495,29 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
           continue
         self.exportMeshToSegmentation(outputModelNode, origModelNode, pialModelNode, exportSegmentationNode)
       exportSegmentationNode.CreateDefaultDisplayNodes()
+
+  @vtk.calldata_type(vtk.VTK_OBJECT)
+  def onMarkupLockStateModified(self, markupNode, eventId=None, callData=None):
+    """
+    Function that is called when the lock state of the master markup node is changed.
+    Applies the same lock state to all of the derived nodes.
+    """
+    if self.updatingFromMasterMarkup or markupNode is None:
+      return
+
+    nodeType = markupNode.GetAttribute("NeuroSegmentParcellation.NodeType")
+    if nodeType is None or nodeType == "":
+      return
+
+    if nodeType != self.ORIG_NODE_ATTRIBUTE_VALUE:
+      return
+
+    pialControlPoints = self.getDerivedControlPointsNode(markupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
+    if pialControlPoints:
+      pialControlPoints.SetLocked(markupNode.GetLocked())
+    inflatedControlPoints = self.getDerivedControlPointsNode(markupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
+    if inflatedControlPoints:
+      inflatedControlPoints.SetLocked(markupNode.GetLocked())
 
   def getQueryNode(self):
     if self.parameterNode is None:
