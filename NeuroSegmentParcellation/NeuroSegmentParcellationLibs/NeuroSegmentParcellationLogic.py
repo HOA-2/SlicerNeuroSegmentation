@@ -195,13 +195,15 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
       if inputMarkupNode is None or not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
         continue
-      tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.LockModifiedEvent, self.onMarkupLockStateModified)
-      self.inputMarkupObservers.append((inputMarkupNode, tag))
       tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointAddedEvent, self.onMasterMarkupModified)
       self.inputMarkupObservers.append((inputMarkupNode, tag))
       tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointModifiedEvent, self.onMasterMarkupModified)
       self.inputMarkupObservers.append((inputMarkupNode, tag))
       tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointRemovedEvent, self.onMasterMarkupModified)
+      self.inputMarkupObservers.append((inputMarkupNode, tag))
+      tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.LockModifiedEvent, self.onMarkupLockStateModified)
+      self.inputMarkupObservers.append((inputMarkupNode, tag))
+      tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.DisplayModifiedEvent, self.onMasterMarkupDisplayModified)
       self.inputMarkupObservers.append((inputMarkupNode, tag))
       inputMarkupNode.SetAttribute("NeuroSegmentParcellation.NodeType", self.ORIG_NODE_ATTRIBUTE_VALUE)
       self.onMarkupLockStateModified(inputMarkupNode)
@@ -512,12 +514,54 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if nodeType != self.ORIG_NODE_ATTRIBUTE_VALUE:
       return
 
+    self.updatingFromMasterMarkup = True
+
     pialControlPoints = self.getDerivedControlPointsNode(markupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
     if pialControlPoints:
       pialControlPoints.SetLocked(markupNode.GetLocked())
     inflatedControlPoints = self.getDerivedControlPointsNode(markupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
     if inflatedControlPoints:
       inflatedControlPoints.SetLocked(markupNode.GetLocked())
+
+    self.updatingFromMasterMarkup = False
+
+  @vtk.calldata_type(vtk.VTK_OBJECT)
+  def onMasterMarkupDisplayModified(self, markupNode, eventId=None, callData=None):
+    """
+    Function that is called when the lock state of the master markup node is changed.
+    Applies the same lock state to all of the derived nodes.
+    """
+    if self.updatingFromMasterMarkup or markupNode is None or markupNode.GetDisplayNode() is None:
+      return
+
+    nodeType = markupNode.GetAttribute("NeuroSegmentParcellation.NodeType")
+    if nodeType is None or nodeType == "":
+      return
+
+    if nodeType != self.ORIG_NODE_ATTRIBUTE_VALUE:
+      return
+
+    self.updatingFromMasterMarkup = True
+
+    derivedNodes = [
+      self.getDerivedControlPointsNode(markupNode, self.PIAL_NODE_ATTRIBUTE_VALUE),
+      self.getDerivedCurveNode(markupNode,         self.PIAL_NODE_ATTRIBUTE_VALUE),
+      self.getDerivedControlPointsNode(markupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE),
+      self.getDerivedCurveNode(markupNode,         self.INFLATED_NODE_ATTRIBUTE_VALUE),
+    ]
+
+    for derivedNode in derivedNodes:
+      if derivedNode is None:
+        continue
+      displayNode = derivedNode.GetDisplayNode()
+      if displayNode is None:
+        derivedNode.CreateDefaultDisplayNodes()
+        displayNode = derivedNode.GetDisplayNode()
+      if displayNode is None:
+        continue
+      displayNode.CopyContent(markupNode.GetDisplayNode())
+
+    self.updatingFromMasterMarkup = False
 
   def getQueryNode(self):
     if self.parameterNode is None:
