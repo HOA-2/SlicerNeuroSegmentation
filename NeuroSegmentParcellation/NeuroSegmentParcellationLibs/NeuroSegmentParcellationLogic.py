@@ -210,20 +210,24 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
       inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
-      if inputMarkupNode is None or not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
+      if inputMarkupNode is None:
         continue
-      tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointAddedEvent, self.onMasterMarkupModified)
-      self.inputMarkupObservers.append((inputMarkupNode, tag))
-      tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointModifiedEvent, self.onMasterMarkupModified)
-      self.inputMarkupObservers.append((inputMarkupNode, tag))
-      tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointRemovedEvent, self.onMasterMarkupModified)
-      self.inputMarkupObservers.append((inputMarkupNode, tag))
-      tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.LockModifiedEvent, self.onMarkupLockStateModified)
-      self.inputMarkupObservers.append((inputMarkupNode, tag))
-      tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.DisplayModifiedEvent, self.onMasterMarkupDisplayModified)
-      self.inputMarkupObservers.append((inputMarkupNode, tag))
-      inputMarkupNode.SetAttribute("NeuroSegmentParcellation.NodeType", self.ORIG_NODE_ATTRIBUTE_VALUE)
-      self.onMarkupLockStateModified(inputMarkupNode)
+      if inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
+        tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointAddedEvent, self.onMasterMarkupModified)
+        self.inputMarkupObservers.append((inputMarkupNode, tag))
+        tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointModifiedEvent, self.onMasterMarkupModified)
+        self.inputMarkupObservers.append((inputMarkupNode, tag))
+        tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointRemovedEvent, self.onMasterMarkupModified)
+        self.inputMarkupObservers.append((inputMarkupNode, tag))
+        tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.LockModifiedEvent, self.onMarkupLockStateModified)
+        self.inputMarkupObservers.append((inputMarkupNode, tag))
+        tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.DisplayModifiedEvent, self.onMasterMarkupDisplayModified)
+        self.inputMarkupObservers.append((inputMarkupNode, tag))
+        inputMarkupNode.SetAttribute("NeuroSegmentParcellation.NodeType", self.ORIG_NODE_ATTRIBUTE_VALUE)
+        self.onMarkupLockStateModified(inputMarkupNode)
+      elif inputMarkupNode.IsA("vtkMRMLMarkupsPlaneNode"):
+        tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointModifiedEvent, self.onPlaneMarkupModified)
+        self.inputMarkupObservers.append((inputMarkupNode, tag))
 
       pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialControlPoints:
@@ -290,7 +294,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         if inputSeed:
           inputSeed.GetDisplayNode().SetViewNodeIDs(origMarkupViews)
 
-  def onMasterMarkupModified(self, inputMarkupNode, eventId=None, node=None):
+  def onMasterMarkupModified(self, inputMarkupNode, eventId=None, callData=None):
     if self.updatingFromMasterMarkup or self.parameterNode is None:
       return
 
@@ -357,11 +361,30 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       else:
         self.copyControlPoints(inputMarkupNode, origModel, self.origPointLocator, inflatedControlPoints, inflatedModel)
 
-    seedNodes = self.getRelativeSeedNodes(inputMarkupNode)
+    self.updateRelativeSeedsForMarkup(inputMarkupNode)
+    self.updatingFromMasterMarkup = False
+
+  def onPlaneMarkupModified(self, planeMarkupNode, eventId=None, callData=None):
+    self.updateRelativeSeedsForMarkup(planeMarkupNode)
+
+  def updateRelativeSeedsForMarkup(self, markupNode):
+    if markupNode is None:
+      logging.error("updateRelativeSeedsForMarkup: Invalid markupNode")
+      return
+    seedNodes = self.getRelativeSeedNodes(markupNode)
     for seedNode in seedNodes:
       self.updateRelativeSeedNode(seedNode)
 
-    self.updatingFromMasterMarkup = False
+  def snapSeedsToSurface(self, seedNode):
+    dataSet = self.origPointLocator.GetDataSet()
+    if dataSet is None:
+      return
+    for i in range(seedNode.GetNumberOfControlPoints()):         
+      controlPoint = [0.0, 0.0, 0.0]
+      seedNode.GetNthControlPointPosition(i, controlPoint)
+      pointId = self.origPointLocator.FindClosestPoint(controlPoint)
+      dataSet.GetPoint(pointId, controlPoint)
+      seedNode.SetNthControlPointPosition(i, controlPoint[0], controlPoint[1], controlPoint[2])
 
   def copyControlPoints(self, sourceMarkup, sourceModel, sourceLocator, destinationMarkup, destinationModel, copyUndefinedControlPoints=True):
     if sourceMarkup is None or sourceModel is None or destinationMarkup is None or destinationModel is None:
@@ -1021,17 +1044,44 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   def updateRelativeSeedNode(self, seedNode):
     """
     """
+    if seedNode.GetNumberOfControlPoints() == 0:
+      self.initializeSeedNode(seedNode)
+
     for relativeRole in self.RELATIVE_SEED_ROLES:
       relativeNodes = self.getRelativeNodesOfRole(seedNode, relativeRole)
       for relativeNode in relativeNodes:
         self.updateRelativeSeedPosition(seedNode, relativeNode, relativeRole)
+    self.snapSeedsToSurface(seedNode)
+
+  def initializeSeedNode(self, seedNode):
+    seedPoint = [0.0, 0.0, 0.0]
+    relativeNodes = []
+    for relativeRole in self.RELATIVE_SEED_ROLES:
+      relativeNodes += self.getRelativeNodesOfRole(seedNode, relativeRole)
+
+    numberOfRelativeNodes = len(relativeNodes)
+    inverseNumberOfRelativeNodes = 1.0 / numberOfRelativeNodes
+    for relativeNode in relativeNodes:
+      numberOfPoints = relativeNode.GetNumberOfControlPoints()
+      if numberOfPoints == 0:
+        continue
+      averagePoint = [0,0,0]
+      inverseNumberOfPoints = 1.0 / numberOfPoints
+      for i in range(numberOfPoints):
+        point = [0,0,0]
+        relativeNode.GetNthControlPointPosition(i, point)
+        vtk.vtkMath.MultiplyScalar(point, inverseNumberOfPoints)
+        vtk.vtkMath.Add(point, averagePoint, averagePoint)
+      vtk.vtkMath.MultiplyScalar(averagePoint, numberOfRelativeNodes)
+      vtk.vtkMath.Add(averagePoint, seedPoint, seedPoint)
+    seedNode.AddControlPoint(vtk.vtkVector3d(seedPoint))
 
   def updateRelativeSeedPosition(self, seedNode, relativeNode, relativeRole):
     if relativeNode.GetNumberOfControlPoints() == 0:
       return
 
     if seedNode.GetNumberOfControlPoints() == 0:
-      seedNode.SetNthControlPointPosition(0, 0.0, 0.0, 0.0)
+      self.initializeSeedNode(seedNode)
 
     for i in range(seedNode.GetNumberOfControlPoints()):
       seedPoint = [0.0, 0.0, 0.0]
