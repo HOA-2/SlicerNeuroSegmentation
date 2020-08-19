@@ -1,6 +1,7 @@
 
 import ast
 import vtk, slicer
+import logging
 
 class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
   """
@@ -18,6 +19,7 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
   def __init__(self, logic):
     self.parameterNode = None
     self.logic = logic
+    self.currentSeedNode = None
 
   def setParameterNode(self, parameterNode):
     self.parameterNode = parameterNode
@@ -59,8 +61,6 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       self.distanceWeightingFunction = node.value.s
       return
 
-    nodes = self.visit(node.value)
-
     outputModel = slicer.util.getFirstNodeByClassByName("vtkMRMLModelNode", target.id)
     if outputModel is None:
       outputModel = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", target.id)
@@ -75,6 +75,8 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     if inputSeed is None:
       inputSeed = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", target.id + "_SeedPoints")
       inputSeed.CreateDefaultDisplayNodes()
+    inputSeed.SetAttribute("PositionRequirements", "")
+    self.currentSeedNode = inputSeed
 
     toolNode = slicer.util.getFirstNodeByClassByName("vtkMRMLModelNode", outputModel.GetName() + "_BoundaryCut")
     if toolNode is None:
@@ -82,6 +84,8 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     toolNode.SetToolName(slicer.vtkSlicerDynamicModelerBoundaryCutTool().GetName())
     toolNode.SetNodeReferenceID(self.logic.BOUNDARY_CUT_OUTPUT_MODEL_REFERENCE, outputModel.GetID())
     toolNode.SetNodeReferenceID(self.logic.BOUNDARY_CUT_INPUT_SEED_REFERENCE, inputSeed.GetID())
+
+    nodes = self.visit(node.value)
     for inputNode in nodes:
       toolNode.AddNodeReferenceID(self.logic.BOUNDARY_CUT_INPUT_BORDER_REFERENCE, inputNode.GetID())
     toolNode.ContinuousUpdateOff()
@@ -102,7 +106,7 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     planeNames = [e.id for e in node.elts]
     inputNodes = []
     for name in planeNames:
-      inputNode = slicer.util.getFirstNodeByClassByName(className, name)      
+      inputNode = slicer.util.getFirstNodeByClassByName(className, name)
       if not inputNode:
         inputNode = slicer.mrmlScene.AddNewNodeByClass(className, name)
         inputNode.CreateDefaultDisplayNodes()
@@ -132,7 +136,23 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     """
     Not handled currently
     """
-    pass
+    functionName = node.func.id
+    if functionName in self.logic.RELATIVE_SEED_ROLES:
+      self.process_SeedPlacement(node)
+    else:
+      raise Exception("visit_Call: Invalid function name " + functionName)
+
+  def process_SeedPlacement(self, node):
+    if self.currentSeedNode is None:
+      logging.error("process_SeedPlacement: Current seed node is invalid")
+
+    relativeNodes = []
+    for arg in node.args:
+      relativeNodes += self.visit(arg)
+
+    relativeRole = node.func.id
+    for relativeNode in relativeNodes:
+      self.logic.addRelativeSeed(self.currentSeedNode, relativeNode, relativeRole)
 
   def visit_BinOp(self, node):
     """
@@ -142,13 +162,16 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
 
     leftValue = node.left
     rightValue = node.right
-    if leftValue == None or rightValue == None:
-      logging.error("Invalid binary operator arguments!")
-      return
+    if leftValue == None and rightValue == None:
+      return []
 
     # Both left and right nodes are assumed to contain lists
     leftNodes = self.visit(leftValue)
     rightNodes = self.visit(rightValue)
+    if leftNodes is None:
+      leftNodes = []
+    if rightNodes is None:
+      rightNodes = []
     return leftNodes + rightNodes
 
   def visit_UnaryOp(self, node):

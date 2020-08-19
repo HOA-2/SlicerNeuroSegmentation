@@ -16,6 +16,23 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   BOUNDARY_CUT_OUTPUT_MODEL_REFERENCE = "BoundaryCut.OutputModel"
   BOUNDARY_CUT_INPUT_SEED_REFERENCE = "BoundaryCut.InputSeed"
 
+  ANTERIOR_OF_RELATIVE_ROLE = "anterior_of"
+  POSTERIOR_OF_RELATIVE_ROLE = "posterior_of"
+  SUPERIOR_OF_RELATIVE_ROLE = "superior_of"
+  INFERIOR_OF_RELATIVE_ROLE = "inferior_of"
+  MEDIAL_OF_RELATIVE_ROLE = "medial_of"
+  LATERAL_OF_RELATIVE_ROLE = "lateral_of"
+
+  RELATIVE_SEED_ROLES = [
+    ANTERIOR_OF_RELATIVE_ROLE,
+    POSTERIOR_OF_RELATIVE_ROLE,
+    SUPERIOR_OF_RELATIVE_ROLE,
+    INFERIOR_OF_RELATIVE_ROLE,
+    MEDIAL_OF_RELATIVE_ROLE,
+    LATERAL_OF_RELATIVE_ROLE,
+  ]
+  RELATIVE_NODE_REFERENCE = "Relative"
+
   INPUT_MARKUPS_REFERENCE = "InputMarkups"
   ORIG_MODEL_REFERENCE = "OrigModel"
   PIAL_MODEL_REFERENCE = "PialModel"
@@ -339,6 +356,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         logging.error("Could not find inflated markup!")
       else:
         self.copyControlPoints(inputMarkupNode, origModel, self.origPointLocator, inflatedControlPoints, inflatedModel)
+
+    seedNodes = self.getRelativeSeedNodes(inputMarkupNode)
+    for seedNode in seedNodes:
+      self.updateRelativeSeedNode(seedNode)
 
     self.updatingFromMasterMarkup = False
 
@@ -953,3 +974,93 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if queryTextNode is None:
       return None
     return queryTextNode.GetText()
+
+  def addRelativeSeed(self, seedNode, relativeNode, relativeRole):
+    """
+    TODO
+    """
+    if seedNode is None:
+      logging.error("addRelativeSeed: Invalid seed node")
+      return
+    if relativeNode is None:
+      logging.error("addRelativeSeed: Invalid relative node")
+      return
+
+    seedRelativeRole = self.RELATIVE_NODE_REFERENCE + "." + relativeRole
+    seedNode.AddNodeReferenceID(seedRelativeRole, relativeNode.GetID())
+
+    relativeNode.AddNodeReferenceID(self.RELATIVE_NODE_REFERENCE, seedNode.GetID())
+
+  def getRelativeSeedNodes(self, relativeNode):
+    """
+    TODO
+    """
+    if relativeNode is None:
+      logging.error("getRelativeSeedNodes: Invalid relative node")
+      return []
+
+    seedNodes = []
+    numberOfSeedNodes = relativeNode.GetNumberOfNodeReferences(self.RELATIVE_NODE_REFERENCE)
+    for i in range(numberOfSeedNodes):
+      seedNode = relativeNode.GetNthNodeReference(self.RELATIVE_NODE_REFERENCE, i)
+      seedNodes.append(seedNode)
+    return seedNodes
+
+  def getRelativeNodesOfRole(self, seedNode, relativeRole):
+    if seedNode is None:
+      logging.error("getRelativeNodesOfRole: Invalid seed node")
+      return []
+
+    relativeNodes = []
+    referenceRole = self.RELATIVE_NODE_REFERENCE + "." + relativeRole
+    numberOfRelativeNodes = seedNode.GetNumberOfNodeReferences(referenceRole)
+    for i in range(numberOfRelativeNodes):
+      relativeNodes.append(seedNode.GetNthNodeReference(referenceRole, i))
+    return relativeNodes
+
+  def updateRelativeSeedNode(self, seedNode):
+    """
+    """
+    for relativeRole in self.RELATIVE_SEED_ROLES:
+      relativeNodes = self.getRelativeNodesOfRole(seedNode, relativeRole)
+      for relativeNode in relativeNodes:
+        self.updateRelativeSeedPosition(seedNode, relativeNode, relativeRole)
+
+  def updateRelativeSeedPosition(self, seedNode, relativeNode, relativeRole):
+    if relativeNode.GetNumberOfControlPoints() == 0:
+      return
+
+    if seedNode.GetNumberOfControlPoints() == 0:
+      seedNode.SetNthControlPointPosition(0, 0.0, 0.0, 0.0)
+
+    for i in range(seedNode.GetNumberOfControlPoints()):
+      seedPoint = [0.0, 0.0, 0.0]
+      seedNode.GetNthControlPointPosition(i, seedPoint)
+
+      closestPoint = [0.0, 0.0, 0.0]
+      if relativeNode.IsA("vtkMRMLMarkupsCurveNode"):
+        relativeNode.GetClosestPointPositionAlongCurveWorld(seedPoint, closestPoint)
+      elif relativeNode.IsA("vtkMRMLMarkupsPlaneNode"):
+        continue # TODO
+
+      differenceVector = [0.0, 0.0, 0.0]
+      vtk.vtkMath.Subtract(seedPoint, closestPoint, differenceVector)
+
+      invalidAxis = -1
+      if relativeRole == self.LATERAL_OF_RELATIVE_ROLE and abs(seedPoint[0]) < abs(closestPoint[0]):
+        invalidAxis = 0
+      elif relativeRole == self.MEDIAL_OF_RELATIVE_ROLE and abs(seedPoint[0]) > abs(closestPoint[0]):
+        invalidAxis = 0
+      if relativeRole == self.ANTERIOR_OF_RELATIVE_ROLE and differenceVector[1] < 0.0:
+        invalidAxis = 1
+      elif relativeRole == self.POSTERIOR_OF_RELATIVE_ROLE and differenceVector[1] > 0.0:
+        invalidAxis = 1
+      elif relativeRole == self.SUPERIOR_OF_RELATIVE_ROLE and differenceVector[2] < 0.0:
+        invalidAxis = 2
+      elif relativeRole == self.INFERIOR_OF_RELATIVE_ROLE and differenceVector[2] > 0.0:
+        invalidAxis = 2
+      if invalidAxis < 0:
+        continue
+
+      seedPoint[invalidAxis] = closestPoint[invalidAxis] - (differenceVector[invalidAxis])
+      seedNode.SetNthControlPointPosition(i, seedPoint[0], seedPoint[1], seedPoint[2])
