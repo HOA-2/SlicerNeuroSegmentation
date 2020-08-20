@@ -1151,19 +1151,32 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     minimumDistance = vtk.VTK_DOUBLE_MAX
     curvePoints = curveNode.GetCurve().GetPoints()
 
+    lateralDirection = [1, 0, 0]
+    medialDirection = [-1, 0, 0]
+    if seedPoint[0] < 0.0:
+      lateralDirection[0] = -1.0
+      medialDirection[0] = 1.0
+    anteriorDirection = [0, 1, 0]
+    posteriorDirection = [0, -1, 0]
+    superiorDirection = [0, 0, 1]
+    inferiorDirection = [0, 0, -1]
+
     directionVector = [0,0,0]
     if relativeRole == self.LATERAL_OF_RELATIVE_ROLE:
-      pass
+      directionVector = medialDirection
     elif relativeRole == self.MEDIAL_OF_RELATIVE_ROLE:
-      pass
+      directionVector = lateralDirection
     elif relativeRole == self.ANTERIOR_OF_RELATIVE_ROLE:
-      directionVector[1] = -1.0
+      directionVector = posteriorDirection
     elif relativeRole == self.POSTERIOR_OF_RELATIVE_ROLE:
-      directionVector[1] = 1.0
+      directionVector = anteriorDirection
     elif relativeRole == self.SUPERIOR_OF_RELATIVE_ROLE:
-      directionVector[2] = -1.0
+      directionVector = inferiorDirection
     elif relativeRole == self.INFERIOR_OF_RELATIVE_ROLE:
-      directionVector[2] = 1.0
+      directionVector = superiorDirection
+    else:
+      logging.error("getClosestPointOnCurveAlongLine: Invalid relative role")
+      return
 
     seedLineEnd = directionVector[:]
     vtk.vtkMath.MultiplyScalar(seedLineEnd, 10000)
