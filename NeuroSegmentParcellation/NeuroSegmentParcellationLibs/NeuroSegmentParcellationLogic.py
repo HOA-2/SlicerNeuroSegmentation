@@ -1121,7 +1121,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
       closestPoint = [0.0, 0.0, 0.0]
       if relativeNode.IsA("vtkMRMLMarkupsCurveNode"):
-        relativeNode.GetClosestPointPositionAlongCurveWorld(seedPoint, closestPoint)
+        self.getClosestPointOnCurveAlongLine(seedPoint, relativeNode, relativeRole, closestPoint)
       elif relativeNode.IsA("vtkMRMLMarkupsPlaneNode"):
         relativeNode.GetClosestPointOnPlaneWorld(seedPoint, closestPoint)
 
@@ -1146,3 +1146,36 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
       seedPoint[invalidAxis] = closestPoint[invalidAxis] - (differenceVector[invalidAxis])
       seedNode.SetNthControlPointPosition(i, seedPoint[0], seedPoint[1], seedPoint[2])
+
+  def getClosestPointOnCurveAlongLine(self, seedPoint, curveNode, relativeRole, closestPoint):
+    minimumDistance = vtk.VTK_DOUBLE_MAX
+    curvePoints = curveNode.GetCurve().GetPoints()
+
+    directionVector = [0,0,0]
+    if relativeRole == self.LATERAL_OF_RELATIVE_ROLE:
+      pass
+    elif relativeRole == self.MEDIAL_OF_RELATIVE_ROLE:
+      pass
+    elif relativeRole == self.ANTERIOR_OF_RELATIVE_ROLE:
+      directionVector[1] = -1.0
+    elif relativeRole == self.POSTERIOR_OF_RELATIVE_ROLE:
+      directionVector[1] = 1.0
+    elif relativeRole == self.SUPERIOR_OF_RELATIVE_ROLE:
+      directionVector[2] = -1.0
+    elif relativeRole == self.INFERIOR_OF_RELATIVE_ROLE:
+      directionVector[2] = 1.0
+
+    seedLineEnd = directionVector[:]
+    vtk.vtkMath.MultiplyScalar(seedLineEnd, 10000)
+    vtk.vtkMath.Add(seedPoint, seedLineEnd, seedLineEnd)
+
+    t = 0
+    pointOnLine = [0,0,0]    
+    for i in range(curvePoints.GetNumberOfPoints()):
+      curvePoint = curvePoints.GetPoint(i)     
+      distance = vtk.vtkLine.DistanceToLine(curvePoint, seedPoint, seedLineEnd, vtk.reference(t), pointOnLine)
+      if distance < minimumDistance:
+        minimumDistance = distance
+        closestPoint[0] = pointOnLine[0]
+        closestPoint[1] = pointOnLine[1]
+        closestPoint[2] = pointOnLine[2]
