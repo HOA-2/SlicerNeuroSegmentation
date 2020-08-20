@@ -225,9 +225,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         self.inputMarkupObservers.append((inputMarkupNode, tag))
         inputMarkupNode.SetAttribute("NeuroSegmentParcellation.NodeType", self.ORIG_NODE_ATTRIBUTE_VALUE)
         self.onMarkupLockStateModified(inputMarkupNode)
-      elif inputMarkupNode.IsA("vtkMRMLMarkupsPlaneNode"):
-        tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointModifiedEvent, self.onPlaneMarkupModified)
-        self.inputMarkupObservers.append((inputMarkupNode, tag))
 
       pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialControlPoints:
@@ -317,6 +314,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.origPointLocator.GetDataSet() is None or curvePoints is None:
       return
 
+    wasUpdatingFromMasterMarkup = self.updatingFromMasterMarkup
     self.updatingFromMasterMarkup = True
 
     pointIds = []
@@ -372,8 +370,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       else:
         self.copyControlPoints(inputMarkupNode, origModel, self.origPointLocator, inflatedControlPoints, inflatedModel)
 
-    self.updateRelativeSeedsForMarkup(inputMarkupNode)
-    self.updatingFromMasterMarkup = False
+    self.updatingFromMasterMarkup = wasUpdatingFromMasterMarkup
 
   def onSeedNodeModified(self, seedNode, eventId=None, callData=None):
     if self.updatingSeedNodes:
@@ -386,9 +383,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if seedNode.GetNumberOfControlPoints() != 0:
       return
     seedNode.SetAttribute("ManuallyPlaced", "FALSE")
-
-  def onPlaneMarkupModified(self, planeMarkupNode, eventId=None, callData=None):
-    self.updateRelativeSeedsForMarkup(planeMarkupNode)
 
   def updateRelativeSeedsForMarkup(self, markupNode):
     if markupNode is None:
@@ -581,6 +575,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if nodeType != self.ORIG_NODE_ATTRIBUTE_VALUE:
       return
 
+    wasUpdatingFromMasterMarkup = self.updatingFromMasterMarkup
     self.updatingFromMasterMarkup = True
 
     pialControlPoints = self.getDerivedControlPointsNode(markupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
@@ -590,7 +585,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if inflatedControlPoints:
       inflatedControlPoints.SetLocked(markupNode.GetLocked())
 
-    self.updatingFromMasterMarkup = False
+    self.updatingFromMasterMarkup = wasUpdatingFromMasterMarkup
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onMasterMarkupDisplayModified(self, markupNode, eventId=None, callData=None):
@@ -608,6 +603,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if nodeType != self.ORIG_NODE_ATTRIBUTE_VALUE:
       return
 
+    wasUpdatingFromMasterMarkup = self.updatingFromMasterMarkup
     self.updatingFromMasterMarkup = True
 
     derivedNodes = [
@@ -628,7 +624,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         continue
       displayNode.CopyContent(markupNode.GetDisplayNode())
 
-    self.updatingFromMasterMarkup = False
+    self.updatingFromMasterMarkup = wasUpdatingFromMasterMarkup
 
   def getQueryNode(self):
     if self.parameterNode is None:
@@ -843,6 +839,14 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     return True if parameterNode.GetParameter("MarkupProjectionVisibility") == "TRUE" else False
 
   def runDynamicModelerTool(self, toolNode):
+    if toolNode is None:
+      logging.error("runDynamicModelerTool: Invalid tool node")
+      return
+
+    seedNode = self.getInputSeedNode(toolNode)
+    if seedNode:
+      self.updateRelativeSeedNode(seedNode)
+
     dynamicModelerLogic = slicer.modules.dynamicmodeler.logic()
     numberOfInputMarkups = toolNode.GetNumberOfNodeReferences(self.BOUNDARY_CUT_INPUT_BORDER_REFERENCE)
     toolHasAllInputs = True
