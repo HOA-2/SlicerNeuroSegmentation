@@ -1104,7 +1104,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         relativeNode.GetNthControlPointPosition(i, point)
         vtk.vtkMath.MultiplyScalar(point, inverseNumberOfPoints)
         vtk.vtkMath.Add(point, averagePoint, averagePoint)
-      vtk.vtkMath.MultiplyScalar(averagePoint, numberOfRelativeNodes)
+      vtk.vtkMath.MultiplyScalar(averagePoint, inverseNumberOfRelativeNodes)
       vtk.vtkMath.Add(averagePoint, seedPoint, seedPoint)
     seedNode.AddControlPoint(vtk.vtkVector3d(seedPoint))
 
