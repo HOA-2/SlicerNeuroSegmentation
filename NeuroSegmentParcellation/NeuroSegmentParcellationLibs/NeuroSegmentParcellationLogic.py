@@ -1091,7 +1091,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       if relativeNode.IsA("vtkMRMLMarkupsCurveNode"):
         relativeNode.GetClosestPointPositionAlongCurveWorld(seedPoint, closestPoint)
       elif relativeNode.IsA("vtkMRMLMarkupsPlaneNode"):
-        continue # TODO
+        relativeNode.GetClosestPointOnPlaneWorld(seedPoint, closestPoint)
 
       differenceVector = [0.0, 0.0, 0.0]
       vtk.vtkMath.Subtract(seedPoint, closestPoint, differenceVector)
