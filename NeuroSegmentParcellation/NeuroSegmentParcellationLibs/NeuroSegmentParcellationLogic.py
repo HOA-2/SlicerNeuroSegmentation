@@ -59,6 +59,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.parameterNode = None
     self.updatingFromMasterMarkup = False
     self.updatingFromDerivedMarkup = False
+    self.updatingSeedNodes = False
 
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.updateParameterNodeObservers)
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
@@ -207,9 +208,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if parameterNode is None:
       return
 
-    numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
-    for i in range(numberOfMarkupNodes):
-      inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
+    inputMarkupNodes = self.getInputMarkupNodes()
+    for inputMarkupNode in inputMarkupNodes:
       if inputMarkupNode is None:
         continue
       if inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
@@ -242,6 +242,16 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         self.inputMarkupObservers.append((inflatedControlPoints, tag))
         tag = inflatedControlPoints.AddObserver(slicer.vtkMRMLMarkupsNode.PointRemovedEvent, self.onDerivedControlPointsModified)
         self.inputMarkupObservers.append((inflatedControlPoints, tag))
+
+    toolNodes = self.getToolNodes()
+    for toolNode in toolNodes:
+      seedNode = self.getInputSeedNode(toolNode)
+      if seedNode is None:
+        continue
+      tag = seedNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointModifiedEvent, self.onSeedNodeModified)
+      self.inputMarkupObservers.append((seedNode, tag))
+      tag = seedNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointRemovedEvent, self.onSeedRemoved)
+      self.inputMarkupObservers.append((seedNode, tag))
 
   def updateInputMarkupDisplay(self, parameterNode):
     if parameterNode is None:
@@ -365,6 +375,18 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.updateRelativeSeedsForMarkup(inputMarkupNode)
     self.updatingFromMasterMarkup = False
 
+  def onSeedNodeModified(self, seedNode, eventId=None, callData=None):
+    if self.updatingSeedNodes:
+      return
+    seedNode.SetAttribute("ManuallyPlaced", "TRUE")
+
+  def onSeedRemoved(self, seedNode, eventId=None, callData=None):
+    if seedNode is None:
+      return
+    if seedNode.GetNumberOfControlPoints() != 0:
+      return
+    seedNode.SetAttribute("ManuallyPlaced", "FALSE")
+
   def onPlaneMarkupModified(self, planeMarkupNode, eventId=None, callData=None):
     self.updateRelativeSeedsForMarkup(planeMarkupNode)
 
@@ -380,7 +402,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     dataSet = self.origPointLocator.GetDataSet()
     if dataSet is None:
       return
-    for i in range(seedNode.GetNumberOfControlPoints()):         
+    for i in range(seedNode.GetNumberOfControlPoints()):
       controlPoint = [0.0, 0.0, 0.0]
       seedNode.GetNthControlPointPosition(i, controlPoint)
       pointId = self.origPointLocator.FindClosestPoint(controlPoint)
@@ -1045,14 +1067,19 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   def updateRelativeSeedNode(self, seedNode):
     """
     """
+    if seedNode.GetAttribute("ManuallyPlaced") == "TRUE":
+      return
+
+    wasUpdatingSeedNodes = self.updatingSeedNodes
+    self.updatingSeedNodes = True
     if seedNode.GetNumberOfControlPoints() == 0:
       self.initializeSeedNode(seedNode)
-
     for relativeRole in self.RELATIVE_SEED_ROLES:
       relativeNodes = self.getRelativeNodesOfRole(seedNode, relativeRole)
       for relativeNode in relativeNodes:
         self.updateRelativeSeedPosition(seedNode, relativeNode, relativeRole)
     self.snapSeedsToSurface(seedNode)
+    self.updatingSeedNodes = wasUpdatingSeedNodes
 
   def initializeSeedNode(self, seedNode):
     seedPoint = [0.0, 0.0, 0.0]
