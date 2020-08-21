@@ -1079,7 +1079,16 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   def updateRelativeSeedNode(self, seedNode):
     """
     """
-    if seedNode.GetAttribute(self.MANUALLY_PLACED_ATTRIBUTE_NAME) == "TRUE":
+    if seedNode is None:
+      return
+
+    manuallyPlacedAttribute = seedNode.GetAttribute(self.MANUALLY_PLACED_ATTRIBUTE_NAME)
+    if manuallyPlacedAttribute == "TRUE":
+      return
+
+    if manuallyPlacedAttribute is None and seedNode.GetNumberOfControlPoints() != 0:
+      # Scene was created before auto seed placement was added.
+      # Only update the seeds if the seed node doesn't have any control points.
       return
 
     wasUpdatingSeedNodes = self.updatingSeedNodes

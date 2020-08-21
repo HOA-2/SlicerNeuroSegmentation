@@ -75,7 +75,7 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     if inputSeed is None:
       inputSeed = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", target.id + "_SeedPoints")
       inputSeed.CreateDefaultDisplayNodes()
-    inputSeed.SetAttribute("PositionRequirements", "")
+      inputSeed.SetAttribute(self.logic.MANUALLY_PLACED_ATTRIBUTE_NAME, "FALSE")
     self.currentSeedNode = inputSeed
 
     toolNode = slicer.util.getFirstNodeByClassByName("vtkMRMLModelNode", outputModel.GetName() + "_BoundaryCut")
