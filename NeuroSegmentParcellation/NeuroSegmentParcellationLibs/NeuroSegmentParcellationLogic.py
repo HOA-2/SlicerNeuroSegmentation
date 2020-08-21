@@ -45,6 +45,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   ORIG_NODE_ATTRIBUTE_VALUE = "Orig"
   PIAL_NODE_ATTRIBUTE_VALUE = "Pial"
   INFLATED_NODE_ATTRIBUTE_VALUE = "Inflated"
+  NODE_TYPE_ATTRIBUTE_NAME = "NeuroSegmentParcellation.NodeType"
+  MANUALLY_PLACED_ATTRIBUTE_NAME = "NeuroSegmentParcellation.ManuallyPlaced"
+  MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX = self.MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX
 
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
@@ -223,7 +226,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         self.inputMarkupObservers.append((inputMarkupNode, tag))
         tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.DisplayModifiedEvent, self.onMasterMarkupDisplayModified)
         self.inputMarkupObservers.append((inputMarkupNode, tag))
-        inputMarkupNode.SetAttribute("NeuroSegmentParcellation.NodeType", self.ORIG_NODE_ATTRIBUTE_VALUE)
+        inputMarkupNode.SetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME, self.ORIG_NODE_ATTRIBUTE_VALUE)
         self.onMarkupLockStateModified(inputMarkupNode)
 
       pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
@@ -375,14 +378,14 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   def onSeedNodeModified(self, seedNode, eventId=None, callData=None):
     if self.updatingSeedNodes:
       return
-    seedNode.SetAttribute("ManuallyPlaced", "TRUE")
+    seedNode.SetAttribute(self.MANUALLY_PLACED_ATTRIBUTE_NAME, "TRUE")
 
   def onSeedRemoved(self, seedNode, eventId=None, callData=None):
     if seedNode is None:
       return
     if seedNode.GetNumberOfControlPoints() != 0:
       return
-    seedNode.SetAttribute("ManuallyPlaced", "FALSE")
+    seedNode.SetAttribute(self.MANUALLY_PLACED_ATTRIBUTE_NAME, "FALSE")
 
   def updateRelativeSeedsForMarkup(self, markupNode):
     if markupNode is None:
@@ -427,7 +430,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.updatingFromDerivedMarkup = True
     origMarkup = derivedMarkupNode.GetNodeReference("OrigMarkup")
     origModel = self.parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
-    nodeType = derivedMarkupNode.GetAttribute("NeuroSegmentParcellation.NodeType")
+    nodeType = derivedMarkupNode.GetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME)
     locator = None
     derivedModelNode = None
     otherMarkupNode = None
@@ -496,7 +499,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     derivedMarkup.CreateDefaultDisplayNodes()
     derivedMarkup.GetDisplayNode().CopyContent(origMarkupNode.GetDisplayNode())
     derivedMarkup.SetName(origMarkupNode.GetName() + "_" + nodeReference)
-    derivedMarkup.SetAttribute("NeuroSegmentParcellation.NodeType", nodeType)
+    derivedMarkup.SetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME, nodeType)
     origMarkupNode.SetNodeReferenceID(nodeReference, derivedMarkup.GetID())
     derivedMarkup.SetNodeReferenceID("OrigMarkup", origMarkupNode.GetID())
 
@@ -568,7 +571,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.updatingFromMasterMarkup or markupNode is None:
       return
 
-    nodeType = markupNode.GetAttribute("NeuroSegmentParcellation.NodeType")
+    nodeType = markupNode.GetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME)
     if nodeType is None or nodeType == "":
       return
 
@@ -596,7 +599,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.updatingFromMasterMarkup or markupNode is None or markupNode.GetDisplayNode() is None:
       return
 
-    nodeType = markupNode.GetAttribute("NeuroSegmentParcellation.NodeType")
+    nodeType = markupNode.GetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME)
     if nodeType is None or nodeType == "":
       return
 
@@ -793,7 +796,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       logging.error("setMarkupSliceViewVisibility: Invalid parameter node")
       return
 
-    parameterNode.SetParameter("MarkupSliceVisibility." + markupType, "TRUE" if visible else "FALSE")
+    parameterNode.SetParameter(self.MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX + markupType, "TRUE" if visible else "FALSE")
 
   def getMarkupSliceViewVisibility(self, parameterNode, markupType):
     if markupType != self.ORIG_NODE_ATTRIBUTE_VALUE and markupType != self.PIAL_NODE_ATTRIBUTE_VALUE and markupType != self.INFLATED_NODE_ATTRIBUTE_VALUE:
@@ -803,7 +806,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       logging.error("getMarkupSliceViewVisibility: Invalid parameter node")
       return False
 
-    return True if parameterNode.GetParameter("MarkupSliceVisibility." + markupType) == "TRUE" else False
+    return True if parameterNode.GetParameter(self.MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX + markupType) == "TRUE" else False
 
   def getMarkupViewIDs(self, parameterNode, markupType):
     if markupType != self.ORIG_NODE_ATTRIBUTE_VALUE and markupType != self.PIAL_NODE_ATTRIBUTE_VALUE and markupType != self.INFLATED_NODE_ATTRIBUTE_VALUE:
@@ -1071,7 +1074,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   def updateRelativeSeedNode(self, seedNode):
     """
     """
-    if seedNode.GetAttribute("ManuallyPlaced") == "TRUE":
+    if seedNode.GetAttribute(self.MANUALLY_PLACED_ATTRIBUTE_NAME) == "TRUE":
       return
 
     wasUpdatingSeedNodes = self.updatingSeedNodes
@@ -1183,9 +1186,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     vtk.vtkMath.Add(seedPoint, seedLineEnd, seedLineEnd)
 
     t = 0
-    pointOnLine = [0,0,0]    
+    pointOnLine = [0,0,0]
     for i in range(curvePoints.GetNumberOfPoints()):
-      curvePoint = curvePoints.GetPoint(i)     
+      curvePoint = curvePoints.GetPoint(i)
       distance = vtk.vtkLine.DistanceToLine(curvePoint, seedPoint, seedLineEnd, vtk.reference(t), pointOnLine)
       if distance < minimumDistance:
         minimumDistance = distance
