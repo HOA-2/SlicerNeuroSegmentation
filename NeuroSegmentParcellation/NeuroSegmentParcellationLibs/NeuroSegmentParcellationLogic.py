@@ -322,9 +322,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     pointIds = []
     for i in range(curvePoints.GetNumberOfPoints()):
-      origPoint = list(curvePoints.GetPoint(i))
-      origModel.TransformPointFromWorld(origPoint, origPoint)
-      pointIds.append(self.origPointLocator.FindClosestPoint(origPoint))
+      origPointLocal = list(curvePoints.GetPoint(i))
+      origModel.TransformPointFromWorld(origPointLocal, origPointLocal)
+      pointIds.append(self.origPointLocator.FindClosestPoint(origPointLocal))
 
     pialMarkup = self.getDerivedCurveNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
     if pialMarkup:
@@ -759,6 +759,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     colorNode = None
     attributeType = 0
+    scalarMode = slicer.vtkMRMLDisplayNode.UseColorNodeScalarRange
     if scalarName == "curv":
       attributeType = vtk.vtkDataObject.POINT
       colorNode = slicer.util.getNode("RedGreen")
@@ -786,6 +787,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       displayNode.SetActiveScalar(scalarName, attributeType)
       if colorNode:
         displayNode.SetAndObserveColorNodeID(colorNode.GetID())
+        displayNode.SetScalarRangeFlag(scalarMode)
       displayNode.SetScalarVisibility(True)
 
   def setMarkupSliceViewVisibility(self, parameterNode, markupType, visible):
@@ -849,6 +851,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     seedNode = self.getInputSeedNode(toolNode)
     if seedNode:
       self.updateRelativeSeedNode(seedNode)
+
+    self.initializePedigreeIds(self.parameterNode)
 
     dynamicModelerLogic = slicer.modules.dynamicmodeler.logic()
     numberOfInputMarkups = toolNode.GetNumberOfNodeReferences(self.BOUNDARY_CUT_INPUT_BORDER_REFERENCE)
@@ -990,14 +994,14 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         cellId = cellPedigreeArray.GetValue(cellIndex)
         labelArray.SetValue(cellId, modelIndex+1)
 
-    # Update color table
-    self.updateParcellationColorNode()
-
     origSurfaceNode.GetPolyData().GetCellData().AddArray(labelArray)
     if pialSurfaceNode:
       pialSurfaceNode.GetPolyData().GetCellData().AddArray(labelArray)
     if inflatedSurfaceNode:
       inflatedSurfaceNode.GetPolyData().GetCellData().AddArray(labelArray)
+
+    # Update color table
+    self.updateParcellationColorNode()
 
   def getParcellationColorNode(self):
     parcellationColorNode = self.parameterNode.GetNodeReference("ParcellationColorNode")
@@ -1012,6 +1016,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     lookupTable = vtk.vtkLookupTable()
     lookupTable.SetNumberOfColors(numberOfOutputModels + 1)
     lookupTable.SetTableValue(0, 0.1, 0.1, 0.1)
+    lookupTable.SetTableRange(0.0, numberOfOutputModels)
     labelValue = 1
     for i in range(numberOfOutputModels):
       outputSurfaceNode = self.parameterNode.GetNthNodeReference(self.OUTPUT_MODEL_REFERENCE, i)
@@ -1095,6 +1100,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       relativeNodes += self.getRelativeNodesOfRole(seedNode, relativeRole)
 
     numberOfRelativeNodes = len(relativeNodes)
+    if numberOfRelativeNodes == 0:
+      return
+
     inverseNumberOfRelativeNodes = 1.0 / numberOfRelativeNodes
     for relativeNode in relativeNodes:
       numberOfPoints = relativeNode.GetNumberOfControlPoints()
