@@ -47,7 +47,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   INFLATED_NODE_ATTRIBUTE_VALUE = "Inflated"
   NODE_TYPE_ATTRIBUTE_NAME = "NeuroSegmentParcellation.NodeType"
   MANUALLY_PLACED_ATTRIBUTE_NAME = "NeuroSegmentParcellation.ManuallyPlaced"
-  MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX = self.MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX
+  MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX = "MarkupSliceVisibility."
 
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
