@@ -66,7 +66,7 @@ _ClosedCurves = [
   CircularSulcusOfTheInsula,
 ]
 
-FP_l = PlaneA & HemisphericMargin & OlfactorySulcus
+FP_l = PlaneA & HemisphericMargin & OlfactorySulcus & anterior_of(PlaneA) & posterior_of(OlfactorySulcus) & medial_of(OlfactorySulcus) & lateral_of(HemisphericMargin)
 F1_l = PlaneA & PrecentralSulcus & HemisphericMargin & SuperiorFrontalSulcus
 F2 = PlaneA & SuperiorFrontalSulcus & InferiorFrontalSulcus & PrecentralSulcus
 F3t = PlaneA & Superior45DegreeLine & AnteriorAscendingRamusOfTheSylvian & InferiorFrontalSulcus
@@ -122,6 +122,10 @@ TFp = PlaneC & PlaneD & OccipitotemporalSulcus & CollateralSulcus
 TOF = PlaneD & PlaneF & OccipitotemporalSulcus & CollateralSulcus
 OF = PlaneF & PlaneG & OccipitotemporalSulcus & CollateralSulcus
 BFsbcmp = BASFRBRN & OlfactorySulcus & Bf_line & CircularSulcusOfTheInsula
+
+FP_l.color = [0,0,0]
+F1_l.color = [0,0,0]
+PlaneA.color = [0,0,0]
 
 # Additional Parcellation Units
 #AGa

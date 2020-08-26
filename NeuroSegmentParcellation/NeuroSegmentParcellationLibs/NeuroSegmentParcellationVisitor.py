@@ -40,6 +40,10 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       target = node.targets[0]
 
     # We currently don't perform assignments to anything except basic names.
+    if isinstance(target, ast.Attribute):
+      self.process_AssignAttribute(node)
+      return
+
     if not isinstance(target, ast.Name):
       logging.error("Invalid assignment in line %d" % node.lineno)
       return
@@ -90,6 +94,39 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       toolNode.AddNodeReferenceID(self.logic.BOUNDARY_CUT_INPUT_BORDER_REFERENCE, inputNode.GetID())
     toolNode.ContinuousUpdateOff()
     self.parameterNode.AddNodeReferenceID(self.logic.TOOL_NODE_REFERENCE, toolNode.GetID())
+
+  def process_AssignAttribute(self, node):
+    """
+    Process the assignment of a particular attribute.
+    ex. Node.color = [0.0, 1.0, 0.0]
+    :param node: ast.List representing all of the node names to be created
+    """
+    if 'target' in node._fields:
+      target = node.target
+    if 'targets' in node._fields:
+      target = node.targets[0]
+
+    objectName = target.value.id
+    attributeName = target.attr
+    if attributeName == "color":
+      displayableNode = slicer.util.getFirstNodeByClassByName("vtkMRMLDisplayableNode", objectName)
+      if not displayableNode:
+        logging.error("process_Attribute: Could not get displayable node: " + str(objectName))
+        return
+      displayNode = displayableNode.GetDisplayNode()
+      if displayNode is None:
+        displayableNode.CreateDefaultDisplayNodes()
+        displayNode = displayableNode.GetDisplayNode()
+      if displayNode is None:
+        logging.error("process_Attribute: Could not get display node for: " + str(objectName))
+        return
+
+      colors = [e.n for e in node.value.elts]
+      displayNode.SetColor(colors)
+      displayNode.SetSelectedColor(colors)
+    else:
+      logging.error("process_Attribute: Unknown attribute: " + str(attributeName))
+      return
 
   def process_InputNodes(self, node, className):
     """
