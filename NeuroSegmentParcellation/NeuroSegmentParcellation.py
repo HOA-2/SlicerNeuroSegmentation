@@ -357,18 +357,24 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       # No change
       return
 
-    # Unobserve previusly selected parameter node and add an observer to the newly selected.
-    # Changes of parameter node are observed so that whenever parameters are changed by a script or any other module
-    # those are reflected immediately in the GUI.
-    if self.parameterNode is not None:
-      self.removeObserver(self.parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
-    if inputParameterNode is not None:
-      self.addObserver(inputParameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
-    self.parameterNode = inputParameterNode
+    try:
+      slicer.app.pauseRender()
 
-    # Initial GUI update
-    self.logic.setParameterNode(inputParameterNode)
-    self.updateGUIFromParameterNode()
+      # Remove observers on previously selected parameter node and add an observer to the newly selected.
+      # Changes of parameter node are observed so that whenever parameters are changed by a script or any other module
+      # those are reflected immediately in the GUI.
+      if self.parameterNode is not None:
+        self.removeObserver(self.parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
+      if inputParameterNode is not None:
+        self.addObserver(inputParameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
+      self.parameterNode = inputParameterNode
+
+      # Initial GUI update
+      self.logic.setParameterNode(inputParameterNode)
+      self.updateGUIFromParameterNode()
+
+    finally:
+      slicer.app.resumeRender()
 
   def updateGUIFromParameterNode(self, caller=None, event=None):
     """
