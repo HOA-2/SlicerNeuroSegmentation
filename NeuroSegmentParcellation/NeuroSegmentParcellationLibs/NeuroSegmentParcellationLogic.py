@@ -1212,3 +1212,22 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         closestPoint[0] = pointOnLine[0]
         closestPoint[1] = pointOnLine[1]
         closestPoint[2] = pointOnLine[2]
+
+  def copyNode(self, sourceNode, destinationNode):
+    if sourceNode is None:
+      logging.error("Source node does not exist")
+      return
+    if destinationNode is None:
+      logging.error("Destination node does not exist")
+      return
+    if sourceNode == destinationNode:
+      logging.warning("Source and destination node are the same")
+      return
+
+    logging.debug("Copying " +
+      sourceNode.GetName() + " (" + sourceNode.GetID() + ") to " +
+      destinationNode.GetName() + " (" + destinationNode.GetID() + ")")
+
+    controlPoints = vtk.vtkPoints()
+    sourceNode.GetControlPointPositionsWorld(controlPoints)
+    destinationNode.SetControlPointPositionsWorld(controlPoints)

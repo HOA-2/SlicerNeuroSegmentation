@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>280</width>
-    <height>647</height>
+    <width>291</width>
+    <height>697</height>
    </rect>
   </property>
   <layout class="QFormLayout" name="formLayout">
@@ -153,7 +153,7 @@
      </layout>
     </widget>
    </item>
-   <item row="3" column="0" colspan="2">
+   <item row="4" column="0" colspan="2">
     <widget class="ctkCollapsibleButton" name="inputModelCollapsibleButton">
      <property name="text">
       <string>Input models</string>
@@ -240,7 +240,7 @@
      </layout>
     </widget>
    </item>
-   <item row="4" column="0" colspan="2">
+   <item row="5" column="0" colspan="2">
     <widget class="ctkCollapsibleButton" name="inputCurvesCollapsibleButton">
      <property name="text">
       <string>Input curves</string>
@@ -248,7 +248,7 @@
      <layout class="QVBoxLayout" name="verticalLayout"/>
     </widget>
    </item>
-   <item row="5" column="0" colspan="2">
+   <item row="6" column="0" colspan="2">
     <widget class="qMRMLCollapsibleButton" name="inputPlanesCollapsibleButton">
      <property name="text">
       <string>Input planes</string>
@@ -256,7 +256,7 @@
      <layout class="QVBoxLayout" name="verticalLayout_2"/>
     </widget>
    </item>
-   <item row="6" column="0" colspan="2">
+   <item row="7" column="0" colspan="2">
     <widget class="qMRMLCollapsibleButton" name="outputModelsCollapsibleButton">
      <property name="text">
       <string>Output models</string>
@@ -264,7 +264,7 @@
      <layout class="QFormLayout" name="formLayout_4"/>
     </widget>
    </item>
-   <item row="7" column="1">
+   <item row="8" column="1">
     <widget class="ctkCheckablePushButton" name="applyButton">
      <property name="text">
       <string>Apply</string>
@@ -286,7 +286,7 @@
      </property>
     </widget>
    </item>
-   <item row="8" column="0" colspan="2">
+   <item row="9" column="0" colspan="2">
     <widget class="qMRMLCollapsibleButton" name="exportSegmentationCollapsibleButton">
      <property name="text">
       <string>Export to segmentation</string>
@@ -341,7 +341,7 @@
      </layout>
     </widget>
    </item>
-   <item row="9" column="0">
+   <item row="10" column="0">
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -353,6 +353,69 @@
       </size>
      </property>
     </spacer>
+   </item>
+   <item row="3" column="0" colspan="2">
+    <widget class="qMRMLCollapsibleButton" name="importMarkupsCollapsibleButton">
+     <property name="text">
+      <string>Import markup</string>
+     </property>
+     <property name="collapsed">
+      <bool>true</bool>
+     </property>
+     <layout class="QFormLayout" name="formLayout_6">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_9">
+        <property name="text">
+         <string>Source:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>Destination:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="qMRMLNodeComboBox" name="importSourceComboBox">
+        <property name="nodeTypes">
+         <stringlist>
+          <string>vtkMRMLMarkupsNode</string>
+         </stringlist>
+        </property>
+        <property name="addEnabled">
+         <bool>false</bool>
+        </property>
+        <property name="removeEnabled">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="qMRMLNodeComboBox" name="importDestinationComboBox">
+        <property name="nodeTypes">
+         <stringlist>
+          <string>vtkMRMLMarkupsNode</string>
+         </stringlist>
+        </property>
+        <property name="addEnabled">
+         <bool>false</bool>
+        </property>
+        <property name="removeEnabled">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QPushButton" name="importButton">
+        <property name="text">
+         <string>Import</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
    </item>
   </layout>
  </widget>
@@ -476,6 +539,38 @@
     <hint type="destinationlabel">
      <x>154</x>
      <y>224</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>NeuroSegmentParcellation</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>importSourceComboBox</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>145</x>
+     <y>373</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>177</x>
+     <y>246</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>NeuroSegmentParcellation</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>importDestinationComboBox</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>145</x>
+     <y>373</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>177</x>
+     <y>272</y>
     </hint>
    </hints>
   </connection>

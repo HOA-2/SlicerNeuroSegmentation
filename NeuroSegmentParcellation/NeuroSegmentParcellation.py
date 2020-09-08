@@ -171,6 +171,11 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.exportButton.connect('clicked(bool)', self.onExportButton)
     self.ui.exportLabelButton.connect('clicked(bool)', self.onExportLabelButton)
 
+    self.ui.importSourceComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
+    self.ui.importDestinationComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
+    self.ui.importDestinationComboBox.addAttribute("vtkMRMLMarkupsNode", "NeuroSegmentParcellation.NodeType", "Orig")
+    self.ui.importButton.connect('clicked()', self.onImportButton)
+
     # These connections ensure that whenever user changes some settings on the GUI, that is saved in the MRML scene
     # (in the selected parameter node).
     self.ui.origModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
@@ -689,6 +694,18 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
         row = self.ui.structureSelector.findText(outputModel.GetName())
         index = self.ui.structureSelector.model().index(row, 0)
         self.ui.structureSelector.setCheckState(index, qt.Qt.Checked)
+
+  def updateImportWidget(self):
+    sourceNode = self.ui.importSourceComboBox.currentNode()
+    destinationNode = self.ui.importDestinationComboBox.currentNode()
+    if sourceNode is None or destinationNode is None or sourceNode == destinationNode:
+      self.ui.importButton.enabled = False
+    self.ui.importButton.enabled = True
+
+  def onImportButton(self):
+    sourceNode = self.ui.importSourceComboBox.currentNode()
+    destinationNode = self.ui.importDestinationComboBox.currentNode()
+    self.logic.copyNode(sourceNode, destinationNode)
 
 class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
   """
