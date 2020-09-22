@@ -41,6 +41,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   OUTPUT_MODEL_REFERENCE = "OutputModel"
   TOOL_NODE_REFERENCE = "ToolNode"
   EXPORT_SEGMENTATION_REFERENCE = "ExportSegmentation"
+  INTERSECTION_MODEL_REFERENCE = "PlaneIntersection"
 
   ORIG_NODE_ATTRIBUTE_VALUE = "Orig"
   PIAL_NODE_ATTRIBUTE_VALUE = "Pial"
@@ -48,6 +49,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   NODE_TYPE_ATTRIBUTE_NAME = "NeuroSegmentParcellation.NodeType"
   MANUALLY_PLACED_ATTRIBUTE_NAME = "NeuroSegmentParcellation.ManuallyPlaced"
   MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX = "MarkupSliceVisibility."
+
+  PLANE_INTERSECTION_VISIBILITY_NAME = "PlaneIntersection"
 
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
@@ -63,6 +66,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.updatingFromMasterMarkup = False
     self.updatingFromDerivedMarkup = False
     self.updatingSeedNodes = False
+
+    self.planeNodeActors = {}
 
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.updateParameterNodeObservers)
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
@@ -111,6 +116,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.updateInputModelNodes(parameterNode)
     self.updateInputModelPointLocators(parameterNode)
     self.updateAllModelViews(parameterNode)
+    self.updatePlaneIntersectionVisibility()
 
     self.removeInputMarkupObservers()
     self.updateInputMarkupDisplay(parameterNode)
@@ -1231,3 +1237,281 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     controlPoints = vtk.vtkPoints()
     sourceNode.GetControlPointPositionsWorld(controlPoints)
     destinationNode.SetControlPointPositionsWorld(controlPoints)
+
+
+  def getPlaneIntersectionVisible(self):
+    if self.parameterNode is None:
+      return False
+    return self.parameterNode.GetParameter(self.PLANE_INTERSECTION_VISIBILITY_NAME) == str(True)
+
+  def setPlaneIntersectionVisible(self, visible):
+    if self.parameterNode is None:
+      return
+    self.parameterNode.SetParameter(self.PLANE_INTERSECTION_VISIBILITY_NAME, str(visible))
+
+  def updatePlaneIntersectionVisibility(self):
+    visible = self.getPlaneIntersectionVisible()
+    inputMarkupNodes = self.getInputMarkupNodes()
+    for inputMarkupNode in inputMarkupNodes:
+      if not inputMarkupNode.IsA("vtkMRMLMarkupsPlaneNode"):
+        continue
+      intersectionModelNodes = self.getIntersectionModelNodes(inputMarkupNode)
+      for intersectionNode in intersectionModelNodes:
+        intersectionNode.SetDisplayVisibility(visible)
+
+  def getIntersectionModelNodes(self, planeNode):
+    if planeNode is None:
+      return []
+    
+    numberOfIntersectionNodes = planeNode.GetNumberOfNodeReferences(self.INTERSECTION_MODEL_REFERENCE)
+    if numberOfIntersectionNodes == 0:
+      return self.createIntersectionModelNodes(planeNode)
+
+    intersectionNodes = []
+    for i in range(numberOfIntersectionNodes):
+      intersectionNode = planeNode.GetNthNodeReference(self.INTERSECTION_MODEL_REFERENCE, i)
+      intersectionNodes.append(intersectionNode)
+    return intersectionNodes
+  
+  def createIntersectionModelNodes(self, planeNode):
+    if planeNode is None:
+      return []
+    
+    baseViewIds = ["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
+    intersectionNodes = []
+    for nodeType in [self.ORIG_NODE_ATTRIBUTE_VALUE, self.PIAL_NODE_ATTRIBUTE_VALUE, self.INFLATED_NODE_ATTRIBUTE_VALUE]:
+      nodeName = planeNode.GetName() + "_" + nodeType + "_Intersection"
+      intersectionNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", nodeName)
+      intersectionNode.SetAndObservePolyData(vtk.vtkPolyData())
+      intersectionNode.SetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME, nodeType)
+      intersectionNode.CreateDefaultDisplayNodes()
+      planeNode.AddNodeReferenceID(self.INTERSECTION_MODEL_REFERENCE, intersectionNode.GetID())
+      intersectionNodes.append(intersectionNode)
+      viewIds = baseViewIds[:]
+      if nodeType == self.ORIG_NODE_ATTRIBUTE_VALUE:
+        viewIds.append("vtkMRMLViewNodeO")
+      elif nodeType == self.PIAL_NODE_ATTRIBUTE_VALUE:
+        viewIds.append("vtkMRMLViewNodeP")
+      elif nodeType == self.INFLATED_NODE_ATTRIBUTE_VALUE:
+        viewIds.append("vtkMRMLViewNodeI")
+      intersectionNode.GetDisplayNode().SetViewNodeIDs(viewIds)
+    self.updatePlaneIntersection(self.parameterNode, planeNode)
+    return intersectionNodes
+
+  def updatePlaneIntersection(self, parameterNode, planeNode):
+    # Only interested in plane nodes
+    if not planeNode or not planeNode.IsA("vtkMRMLMarkupsPlaneNode"):
+      logging.error("Invalid plane node")
+      return
+
+    origModelNode = self.getOrigModelNode()
+    if origModelNode is None or origModelNode.GetPolyData() is None:
+      logging.error("Invalid orig model")
+      return
+
+    origIntersectionPolyData = vtk.vtkPolyData()
+    if planeNode.GetNumberOfControlPoints() >= 3:
+
+      self.initializePedigreeIds(self.parameterNode)
+  
+      planeExtractor = vtk.vtkExtractPolyDataGeometry()
+      planeExtractor.SetInputData(origModelNode.GetPolyData())
+      planeExtractor.ExtractInsideOff()
+      planeExtractor.ExtractBoundaryCellsOff()
+  
+      boundaryEdges = vtk.vtkFeatureEdges()
+      boundaryEdges.SetInputConnection(planeExtractor.GetOutputPort())
+      boundaryEdges.BoundaryEdgesOn()
+      boundaryEdges.FeatureEdgesOff()
+      boundaryEdges.NonManifoldEdgesOff()
+      boundaryEdges.ManifoldEdgesOff()
+  
+      boundaryStrips = vtk.vtkStripper()
+      boundaryStrips.SetInputConnection(boundaryEdges.GetOutputPort())  
+  
+      origin_World = [0.0, 0.0, 0.0]
+      planeNode.GetOriginWorld(origin_World)
+      normal_World = [0.0, 0.0, 0.0]
+      planeNode.GetNormalWorld(normal_World)
+      
+      plane = vtk.vtkPlane()
+      plane.SetOrigin(origin_World)
+      plane.SetNormal(normal_World)
+      planeExtractor.SetImplicitFunction(plane)
+      boundaryStrips.Update()
+      origIntersectionPolyData = vtk.vtkPolyData()
+      origIntersectionPolyData.DeepCopy(boundaryStrips.GetOutput())
+      self.convertToFreeSurferPointIds(origIntersectionPolyData)
+
+    origIntersectionNode = None
+    pialIntersectionNode = None
+    inflatedIntersectionNode = None
+    intersectionModelNodes = self.getIntersectionModelNodes(planeNode)
+    for intersectionNode in intersectionModelNodes:
+      intersectionNode.SetDisplayVisibility(self.getPlaneIntersectionVisible())
+      nodeType = intersectionNode.GetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME)
+      if nodeType == self.ORIG_NODE_ATTRIBUTE_VALUE:
+        origIntersectionNode = intersectionNode
+      elif nodeType == self.PIAL_NODE_ATTRIBUTE_VALUE:
+        pialIntersectionNode = intersectionNode
+      elif nodeType == self.INFLATED_NODE_ATTRIBUTE_VALUE:
+        inflatedIntersectionNode = intersectionNode
+
+    # if origModelNode and origIntersectionNode:
+    #   origIntersectionNode.SetAndObservePolyData(origIntersectionPolyData)
+
+      #self.origManager = PlaneIntersectionManager()
+      #self.origManager.setPolyData(origIntersectionPolyData)
+
+    pialModelNode = self.getPialModelNode()
+    inflatedModelNode = self.getInflatedModelNode()
+    modelAndIntersections = [(origModelNode, origIntersectionNode), (pialModelNode, pialIntersectionNode), (inflatedModelNode, inflatedIntersectionNode)]
+    for surfaceModelNode, intersectionModelNode in modelAndIntersections:
+      if not surfaceModelNode or not intersectionModelNode:
+        continue
+      intersectionPolyData = vtk.vtkPolyData()
+      intersectionPolyData.DeepCopy(origIntersectionPolyData)
+      points = vtk.vtkPoints()
+      points.DeepCopy(surfaceModelNode.GetPolyData().GetPoints())
+      intersectionPolyData.SetPoints(points)
+      intersectionModelNode.SetAndObservePolyData(intersectionPolyData)
+
+  def convertToFreeSurferPointIds(self, polyData):
+    
+    pointData = polyData.GetPointData()
+    pedigreeArray = pointData.GetArray("pointPedigree")
+    if pedigreeArray is None:
+      logging.error("Could not find pointPedigree array")
+      return
+
+    origModelNode = self.getOrigModelNode()  
+    if origModelNode is None or origModelNode.GetPolyData() is None:
+      logging.error("Could not find orig polydata")
+      return
+
+    # Iterate through all of the lines and find the corresponding pedigree point ids for the original surface.
+    # Restore the original point ids to the line cells.
+    newLines = vtk.vtkCellArray()
+    oldLines = polyData.GetLines()
+    oldLine = vtk.vtkIdList()
+    polyData.GetLines().InitTraversal()
+    while(polyData.GetLines().GetNextCell(oldLine)):
+      newLine = vtk.vtkIdList()
+      for pointIndex in range(oldLine.GetNumberOfIds()):
+        oldPointId = oldLine.GetId(pointIndex)
+        newPointId = pedigreeArray.GetValue(oldPointId)
+        newLine.InsertNextId(newPointId)
+      newLines.InsertNextCell(newLine)
+    polyData.Initialize()
+    polyData.SetPoints(origModelNode.GetPolyData().GetPoints())
+    polyData.SetLines(newLines)
+
+# class PlaneIntersectionManager(VTKObservationMixin):
+#   def __init__(self):
+#     VTKObservationMixin.__init__(self)
+
+#     self.pipelines = {}
+#     #self.planeNode = planeNode
+#     #if self.planeNode:
+#     #  self.addObserver(self.planeNode, vtk.vtkCommand.ModifiedEvent, self.onPlaneUpdated)
+#     self.polyData = None
+#     self.color = [0,0,0]
+#     self.visibility = True
+
+#     self.addPipelineToAllViews()
+
+#   def setPolyData(self, polyData):
+#     self.polyData = polyData
+#     for pipeline in self.pipelines.values():
+#       pipeline.setPolyData(self.polyData)
+
+#   def addPipelineToAllViews(self):
+#     self.removeAllPipelines()
+
+#     layoutManager = slicer.app.layoutManager()
+#     for i in range(layoutManager.threeDViewCount):
+#       viewWidget = layoutManager.threeDWidget(i)
+#       pipeline = PlaneIntersectionPipeline()
+#       #pipeline.setColor(self.color)
+#       #pipeline.setVisibility(self.visibility)
+#       pipeline.setPolyData(self.polyData)
+#       pipeline.setThreeDWidget(viewWidget)
+#       self.pipelines[viewWidget] = pipeline
+
+#   def removeAllPipelines(self):
+#     for pipeline in self.pipelines.values():
+#       pipeline.removeActor()
+#     self.pipelines = {}
+
+#   def setVisibility(self, visibility):
+#     self.visibility = visibility
+#     for pipeline in self.pipelines.values():
+#       pipeline.setVisibility(visibility)
+
+#   def onPlaneUpdated(self):
+#     print("Plane updated")
+
+
+# class PlaneIntersectionPipeline(VTKObservationMixin):
+#   def __init__(self):
+#     VTKObservationMixin.__init__(self)
+
+#     self.threeDWidget = None
+
+#     self.mapper = vtk.vtkPolyDataMapper()
+#     #self.mapper.SetInputData(vtk.vtkPolyData()) # Start with empty polydata to avoid errors/warnings
+#     self.actorProperty = vtk.vtkProperty()
+#     self.actorProperty.SetOpacity(1.0)
+#     self.actorProperty.SetColor(0.0, 0.0, 0.0)
+#     self.actor = vtk.vtkActor()
+#     self.actor.SetProperty(self.actorProperty)
+#     self.actor.SetMapper(self.mapper)
+#     self.actor.SetVisibility(True)
+
+#   def setThreeDWidget(self, threeDWidget):
+#     if self.threeDWidget is not None:
+#       self.removeActor()
+#     self.threeDWidget = threeDWidget
+#     if self.threeDWidget is not None:
+#       print("ThreeDWidget set")
+#       self.addActor()
+
+#   def addActor(self):
+#     renderer = self.getRenderer()
+#     if renderer is None:
+#       logging.error("Could not find renderer")
+#       return
+#     renderer.AddActor(self.actor)
+#     print("ACTOR ADDED")
+
+#   def removeActor(self):
+#     if self.actor is None:
+#       return
+#     renderer = self.getRenderer()
+#     if renderer is None:
+#       logging.error("Could not find renderer")
+#       return
+#     renderer.RemoveActor(self.actor)
+#     print("ACTOR REMOVED")
+
+#   def setVisibility(self, visibility):
+#     self.actor.SetVisibility(visibility)
+#     print("SET VISIBILITY " + str(visibility))
+
+#   def getRenderer(self):
+#     if self.threeDWidget is None:
+#       return None
+#     renderWindow = self.threeDWidget.threeDView().renderWindow()
+#     renderers = renderWindow.GetRenderers()
+#     return renderers.GetItemAsObject(0) # Get first renderer
+
+#   def __delete__(self_):
+#     self.setThreeDWidget(None)
+
+#   def setColor(self, color):
+#     self.actorProperty.SetColor(color)
+#     print("Set color")
+
+#   def setPolyData(self, polyData):
+#     self.mapper.SetInputData(polyData)
+#     print("PolyData set")

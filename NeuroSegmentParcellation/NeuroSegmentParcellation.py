@@ -196,6 +196,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     slicer.app.layoutManager().connect("layoutChanged(int)", self.onLayoutChanged)
     self.ui.parcellationViewLayoutButton.connect("clicked()", self.onParcellationViewLayoutButtonClicked)
 
+    self.ui.planeIntersectionCheckBox.connect("toggled(bool)", self.onPlaneCheckBox)
+
     self.oldLayout = slicer.app.layoutManager().layout
 
     # Initial GUI update
@@ -706,6 +708,11 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     sourceNode = self.ui.importSourceComboBox.currentNode()
     destinationNode = self.ui.importDestinationComboBox.currentNode()
     self.logic.copyNode(sourceNode, destinationNode)
+
+  def onPlaneCheckBox(self, checked):
+    if self.parameterNode is None:
+      return
+    self.logic.setPlaneIntersectionVisible(checked)
 
 class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
   """

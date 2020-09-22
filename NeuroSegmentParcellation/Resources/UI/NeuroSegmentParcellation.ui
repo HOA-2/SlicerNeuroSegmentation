@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>291</width>
-    <height>697</height>
+    <height>716</height>
    </rect>
   </property>
   <layout class="QFormLayout" name="formLayout">
@@ -145,6 +145,20 @@
          <widget class="QCheckBox" name="markupsProjectionCheckBox">
           <property name="text">
            <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QCheckBox" name="planeIntersectionCheckBox">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_11">
+          <property name="text">
+           <string>Plane intersection:</string>
           </property>
          </widget>
         </item>
