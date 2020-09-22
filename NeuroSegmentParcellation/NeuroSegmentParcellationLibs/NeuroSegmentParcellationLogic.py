@@ -116,9 +116,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.updateInputModelNodes(parameterNode)
     self.updateInputModelPointLocators(parameterNode)
     self.updateAllModelViews(parameterNode)
-    self.updatePlaneIntersectionVisibility()
 
     self.removeInputMarkupObservers()
+    self.updatePlaneIntersectionVisibility()
     self.updateInputMarkupDisplay(parameterNode)
     self.updateInputMarkupSurfaceCostFunction(parameterNode)
     self.updateInputMarkupObservers(parameterNode)
@@ -234,6 +234,12 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         self.inputMarkupObservers.append((inputMarkupNode, tag))
         inputMarkupNode.SetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME, self.ORIG_NODE_ATTRIBUTE_VALUE)
         self.onMarkupLockStateModified(inputMarkupNode)
+
+      if inputMarkupNode.IsA("vtkMRMLMarkupsPlaneNode"):
+        tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointModifiedEvent, self.onPlaneNodeModified)
+        self.inputMarkupObservers.append((inputMarkupNode, tag))
+        tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.DisplayModifiedEvent, self.onPlaneDisplayModified)
+        self.inputMarkupObservers.append((inputMarkupNode, tag))
 
       pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialControlPoints:
@@ -1296,7 +1302,22 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         viewIds.append("vtkMRMLViewNodeI")
       intersectionNode.GetDisplayNode().SetViewNodeIDs(viewIds)
     self.updatePlaneIntersection(self.parameterNode, planeNode)
+    self.updatePlaneIntersectionDisplay(planeNode)
     return intersectionNodes
+
+  def onPlaneNodeModified(self, planeNode, eventId=None, callData=None):
+    self.updatePlaneIntersection(self.parameterNode, planeNode)
+
+  def onPlaneDisplayModified(self, planeNode, eventId=None, callData=None):
+    self.updatePlaneIntersectionDisplay(planeNode)
+
+  def updatePlaneIntersectionDisplay(self, planeNode):
+    planeDisplayNode = planeNode.GetDisplayNode()
+    intersectionModelNodes = self.getIntersectionModelNodes(planeNode)
+    visible = self.getPlaneIntersectionVisible()
+    for intersectionModelNode in intersectionModelNodes:
+      intersectionModelNode.GetDisplayNode().SetColor(planeDisplayNode.GetSelectedColor())
+      intersectionModelNode.SetDisplayVisibility(visible)
 
   def updatePlaneIntersection(self, parameterNode, planeNode):
     # Only interested in plane nodes
@@ -1312,7 +1333,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     origIntersectionPolyData = vtk.vtkPolyData()
     if planeNode.GetNumberOfControlPoints() >= 3:
 
-      self.initializePedigreeIds(self.parameterNode)
+      self.initializePedigreeIds(parameterNode)
   
       planeExtractor = vtk.vtkExtractPolyDataGeometry()
       planeExtractor.SetInputData(origModelNode.GetPolyData())
