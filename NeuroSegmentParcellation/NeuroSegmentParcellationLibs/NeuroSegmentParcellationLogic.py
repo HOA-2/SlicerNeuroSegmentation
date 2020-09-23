@@ -431,6 +431,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       return
     if destinationModel and destinationModel.GetPolyData() and destinationModel.GetPolyData().GetPoints():
       with slicer.util.NodeModify(destinationModel):
+        destinationControlPoints_World = vtk.vtkPoints()
+        destinationControlPoints_World.SetNumberOfPoints(sourceMarkup.GetNumberOfControlPoints())
         destinationMarkup.RemoveAllControlPoints()
         for i in range(sourceMarkup.GetNumberOfControlPoints()):
           if not copyUndefinedControlPoints and sourceMarkup.GetNthControlPointPositionStatus(i) != sourceMarkup.PositionDefined:
@@ -439,45 +441,53 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
           sourceMarkup.GetNthControlPointPositionWorld(i, sourcePoint)
           sourceModel.TransformPointFromWorld(sourcePoint, sourcePoint)
           pointId = sourceLocator.FindClosestPoint(sourcePoint)
-          destinationPoint = list(destinationModel.GetPolyData().GetPoints().GetPoint(pointId))
-          destinationModel.TransformPointToWorld(destinationPoint, destinationPoint)
-          destinationMarkup.AddControlPoint(vtk.vtkVector3d(destinationPoint))
+          destinationPoint_World = list(destinationModel.GetPolyData().GetPoints().GetPoint(pointId))
+          destinationModel.TransformPointToWorld(destinationPoint_World, destinationPoint_World)
+
+          destinationControlPoints_World.SetPoint(i, destinationPoint_World)
+        destinationMarkup.SetControlPointPositionsWorld(destinationControlPoints_World)
 
   def onDerivedControlPointsModified(self, derivedMarkupNode, eventId=None, node=None):
     if self.updatingFromMasterMarkup or self.updatingFromDerivedMarkup:
       return
 
-    self.updatingFromDerivedMarkup = True
-    origMarkup = derivedMarkupNode.GetNodeReference("OrigMarkup")
-    origModel = self.parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
-    nodeType = derivedMarkupNode.GetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME)
-    locator = None
-    derivedModelNode = None
-    otherMarkupNode = None
-    otherModelNode = None
-    if nodeType == self.PIAL_NODE_ATTRIBUTE_VALUE:
-      locator = self.pialPointLocator
-      derivedModelNode = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
+    try:
+      slicer.app.pauseRender()
 
-      otherMarkupNode = self.getDerivedControlPointsNode(origMarkup, self.INFLATED_NODE_ATTRIBUTE_VALUE)
-      otherModelNode = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
-    elif nodeType == self.INFLATED_NODE_ATTRIBUTE_VALUE:
-      locator = self.inflatedPointLocator
-      derivedModelNode = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
+      self.updatingFromDerivedMarkup = True
+      origMarkup = derivedMarkupNode.GetNodeReference("OrigMarkup")
+      origModel = self.parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
+      nodeType = derivedMarkupNode.GetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME)
+      locator = None
+      derivedModelNode = None
+      otherMarkupNode = None
+      otherModelNode = None
+      if nodeType == self.PIAL_NODE_ATTRIBUTE_VALUE:
+        locator = self.pialPointLocator
+        derivedModelNode = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
 
-      otherMarkupNode = self.getDerivedControlPointsNode(origMarkup, self.PIAL_NODE_ATTRIBUTE_VALUE)
-      otherModelNode = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
-    if locator == None or derivedModelNode == None:
+        otherMarkupNode = self.getDerivedControlPointsNode(origMarkup, self.INFLATED_NODE_ATTRIBUTE_VALUE)
+        otherModelNode = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
+      elif nodeType == self.INFLATED_NODE_ATTRIBUTE_VALUE:
+        locator = self.inflatedPointLocator
+        derivedModelNode = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
+
+        otherMarkupNode = self.getDerivedControlPointsNode(origMarkup, self.PIAL_NODE_ATTRIBUTE_VALUE)
+        otherModelNode = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
+      if locator == None or derivedModelNode == None:
+        self.updatingFromDerivedMarkup = False
+        return
+
+      copyUndefinedControlPoints = True
+      interactionNode = slicer.mrmlScene.GetNodeByID("vtkMRMLInteractionNodeSingleton")
+      if interactionNode:
+        copyUndefinedControlPoints = (interactionNode.GetCurrentInteractionMode() == interactionNode.Place)
+      self.copyControlPoints(derivedMarkupNode, derivedModelNode, locator, origMarkup, origModel, copyUndefinedControlPoints)
+      self.copyControlPoints(derivedMarkupNode, derivedModelNode, locator, otherMarkupNode, otherModelNode, copyUndefinedControlPoints)
       self.updatingFromDerivedMarkup = False
-      return
 
-    copyUndefinedControlPoints = True
-    interactionNode = slicer.mrmlScene.GetNodeByID("vtkMRMLInteractionNodeSingleton")
-    if interactionNode:
-      copyUndefinedControlPoints = (interactionNode.GetCurrentInteractionMode() == interactionNode.Place)
-    self.copyControlPoints(derivedMarkupNode, derivedModelNode, locator, origMarkup, origModel, copyUndefinedControlPoints)
-    self.copyControlPoints(derivedMarkupNode, derivedModelNode, locator, otherMarkupNode, otherModelNode, copyUndefinedControlPoints)
-    self.updatingFromDerivedMarkup = False
+    finally:
+      slicer.app.resumeRender()
 
   @vtk.calldata_type(vtk.VTK_INT)
   def onDerivedCurvePointAdded(self, derivedCurveNode, eventId, controlPointIndex):
@@ -626,28 +636,32 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if nodeType != self.ORIG_NODE_ATTRIBUTE_VALUE:
       return
 
-    wasUpdatingFromMasterMarkup = self.updatingFromMasterMarkup
-    self.updatingFromMasterMarkup = True
+    try:
+      slicer.app.pauseRender()
+      wasUpdatingFromMasterMarkup = self.updatingFromMasterMarkup
+      self.updatingFromMasterMarkup = True
 
-    derivedNodes = [
-      self.getDerivedControlPointsNode(markupNode, self.PIAL_NODE_ATTRIBUTE_VALUE),
-      self.getDerivedCurveNode(markupNode,         self.PIAL_NODE_ATTRIBUTE_VALUE),
-      self.getDerivedControlPointsNode(markupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE),
-      self.getDerivedCurveNode(markupNode,         self.INFLATED_NODE_ATTRIBUTE_VALUE),
-    ]
+      derivedNodes = [
+        self.getDerivedControlPointsNode(markupNode, self.PIAL_NODE_ATTRIBUTE_VALUE),
+        self.getDerivedCurveNode(markupNode,         self.PIAL_NODE_ATTRIBUTE_VALUE),
+        self.getDerivedControlPointsNode(markupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE),
+        self.getDerivedCurveNode(markupNode,         self.INFLATED_NODE_ATTRIBUTE_VALUE),
+      ]
 
-    for derivedNode in derivedNodes:
-      if derivedNode is None:
-        continue
-      displayNode = derivedNode.GetDisplayNode()
-      if displayNode is None:
-        derivedNode.CreateDefaultDisplayNodes()
+      for derivedNode in derivedNodes:
+        if derivedNode is None:
+          continue
         displayNode = derivedNode.GetDisplayNode()
-      if displayNode is None:
-        continue
-      displayNode.CopyContent(markupNode.GetDisplayNode())
+        if displayNode is None:
+          derivedNode.CreateDefaultDisplayNodes()
+          displayNode = derivedNode.GetDisplayNode()
+        if displayNode is None:
+          continue
+        displayNode.CopyContent(markupNode.GetDisplayNode())
 
-    self.updatingFromMasterMarkup = wasUpdatingFromMasterMarkup
+      self.updatingFromMasterMarkup = wasUpdatingFromMasterMarkup
+    finally:
+      slicer.app.resumeRender()
 
   def getQueryNode(self):
     if self.parameterNode is None:
