@@ -91,12 +91,16 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def updateParameterNodeObservers(self, caller=None, eventId=None, callData=None):
-    scriptedModuleNodes = slicer.util.getNodesByClass("vtkMRMLScriptedModuleNode")
-    for node in scriptedModuleNodes:
-      if node.GetAttribute("ModuleName") == self.moduleName:
-        if not self.hasObserver(node, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified):
-          self.addObserver(node, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified)
-        self.onParameterNodeModified(node)
+    try:
+      slicer.app.pauseRender()
+      scriptedModuleNodes = slicer.util.getNodesByClass("vtkMRMLScriptedModuleNode")
+      for node in scriptedModuleNodes:
+        if node.GetAttribute("ModuleName") == self.moduleName:
+          if not self.hasObserver(node, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified):
+            self.addObserver(node, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified)
+          self.onParameterNodeModified(node)
+    finally:
+      slicer.app.resumeRender()
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeAdded(self, caller, eventId, node):
@@ -113,15 +117,19 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if parameterNode is None:
       return
 
-    self.updateInputModelNodes(parameterNode)
-    self.updateInputModelPointLocators(parameterNode)
-    self.updateAllModelViews(parameterNode)
+    try:
+      slicer.app.pauseRender()
+      self.updateInputModelNodes(parameterNode)
+      self.updateInputModelPointLocators(parameterNode)
+      self.updateAllModelViews(parameterNode)
 
-    self.removeInputMarkupObservers()
-    self.updatePlaneIntersectionVisibility()
-    self.updateInputMarkupDisplay(parameterNode)
-    self.updateInputMarkupSurfaceCostFunction(parameterNode)
-    self.updateInputMarkupObservers(parameterNode)
+      self.removeInputMarkupObservers()
+      self.updatePlaneIntersectionVisibility()
+      self.updateInputMarkupDisplay(parameterNode)
+      self.updateInputMarkupSurfaceCostFunction(parameterNode)
+      self.updateInputMarkupObservers(parameterNode)
+    finally:
+      slicer.app.resumeRender()
 
   def updateInputModelNodes(self, parameterNode):
     origModelNode = parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
@@ -1268,7 +1276,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   def getIntersectionModelNodes(self, planeNode):
     if planeNode is None:
       return []
-    
+
     numberOfIntersectionNodes = planeNode.GetNumberOfNodeReferences(self.INTERSECTION_MODEL_REFERENCE)
     if numberOfIntersectionNodes == 0:
       return self.createIntersectionModelNodes(planeNode)
@@ -1278,11 +1286,11 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       intersectionNode = planeNode.GetNthNodeReference(self.INTERSECTION_MODEL_REFERENCE, i)
       intersectionNodes.append(intersectionNode)
     return intersectionNodes
-  
+
   def createIntersectionModelNodes(self, planeNode):
     if planeNode is None:
       return []
-    
+
     baseViewIds = ["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
     intersectionNodes = []
     for nodeType in [self.ORIG_NODE_ATTRIBUTE_VALUE, self.PIAL_NODE_ATTRIBUTE_VALUE, self.INFLATED_NODE_ATTRIBUTE_VALUE]:
@@ -1334,27 +1342,27 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if planeNode.GetNumberOfControlPoints() >= 3:
 
       self.initializePedigreeIds(parameterNode)
-  
+
       planeExtractor = vtk.vtkExtractPolyDataGeometry()
       planeExtractor.SetInputData(origModelNode.GetPolyData())
       planeExtractor.ExtractInsideOff()
       planeExtractor.ExtractBoundaryCellsOff()
-  
+
       boundaryEdges = vtk.vtkFeatureEdges()
       boundaryEdges.SetInputConnection(planeExtractor.GetOutputPort())
       boundaryEdges.BoundaryEdgesOn()
       boundaryEdges.FeatureEdgesOff()
       boundaryEdges.NonManifoldEdgesOff()
       boundaryEdges.ManifoldEdgesOff()
-  
+
       boundaryStrips = vtk.vtkStripper()
-      boundaryStrips.SetInputConnection(boundaryEdges.GetOutputPort())  
-  
+      boundaryStrips.SetInputConnection(boundaryEdges.GetOutputPort())
+
       origin_World = [0.0, 0.0, 0.0]
       planeNode.GetOriginWorld(origin_World)
       normal_World = [0.0, 0.0, 0.0]
       planeNode.GetNormalWorld(normal_World)
-      
+
       plane = vtk.vtkPlane()
       plane.SetOrigin(origin_World)
       plane.SetNormal(normal_World)
@@ -1392,14 +1400,14 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       intersectionModelNode.SetAndObservePolyData(intersectionPolyData)
 
   def convertToFreeSurferPointIds(self, polyData):
-    
+
     pointData = polyData.GetPointData()
     pedigreeArray = pointData.GetArray("pointPedigree")
     if pedigreeArray is None:
       logging.error("Could not find pointPedigree array")
       return
 
-    origModelNode = self.getOrigModelNode()  
+    origModelNode = self.getOrigModelNode()
     if origModelNode is None or origModelNode.GetPolyData() is None:
       logging.error("Could not find orig polydata")
       return
