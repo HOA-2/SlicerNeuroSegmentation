@@ -1357,8 +1357,14 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
       self.initializePedigreeIds(parameterNode)
 
+      transformFilter = vtk.vtkTransformPolyDataFilter()
+      transformFilter.SetInputData(origModelNode.GetPolyData())
+      modelToWorldTransform = vtk.vtkGeneralTransform()
+      slicer.vtkMRMLTransformNode.GetTransformBetweenNodes(origModelNode.GetParentTransformNode(), None, modelToWorldTransform);
+      transformFilter.SetTransform(modelToWorldTransform)
+
       planeExtractor = vtk.vtkExtractPolyDataGeometry()
-      planeExtractor.SetInputData(origModelNode.GetPolyData())
+      planeExtractor.SetInputConnection(transformFilter.GetOutputPort())
       planeExtractor.ExtractInsideOff()
       planeExtractor.ExtractBoundaryCellsOff()
 
@@ -1412,6 +1418,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       points.DeepCopy(surfaceModelNode.GetPolyData().GetPoints())
       intersectionPolyData.SetPoints(points)
       intersectionModelNode.SetAndObservePolyData(intersectionPolyData)
+      if surfaceModelNode.GetParentTransformNode():
+        intersectionModelNode.SetAndObserveTransformNodeID(surfaceModelNode.GetParentTransformNode().GetID())
+      else:
+        intersectionModelNode.SetAndObserveTransformNodeID(None)
 
   def convertToFreeSurferPointIds(self, polyData):
 
