@@ -466,12 +466,11 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       colorPicker.displayColorName = False
       colorPicker.connect('colorChanged(QColor)', lambda color, id=outputModelNode.GetID(): self.onColorChanged(color, id))
 
+      nodeID = outputModelNode.GetID()
       visibilityButton = qt.QToolButton()
-      if outputModelDisplayNode.GetVisibility():
-        visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerVisible.png"))
-      else:
-        visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerInvisible.png"))
-      visibilityButton.connect('clicked(bool)', lambda visibility, id=outputModelNode.GetID(): self.onVisibilityClicked(id))
+      visibilityButton.setObjectName("visibilityButton")
+      visibilityButton.setProperty("ID", nodeID)
+      visibilityButton.connect('clicked(bool)', lambda visibility, id=nodeID: self.onVisibilityClicked(id))
 
       seedNode = toolNode.GetNodeReference("BoundaryCut.InputSeed")
       seedPlaceWidget = slicer.qSlicerMarkupsPlaceWidget()
@@ -502,6 +501,29 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.outputModelsCollapsibleButton.layout().addWidget(self.outputModelsWidget)
 
     self.updateOutputStructures()
+    self.updateDisplayVisibilityButtons()
+
+  def updateDisplayVisibilityButtons(self):
+    logging.debug("updateDisplayVisibilityButtons: Start")
+    containerWidgets = [self.outputModelsWidget, self.inputCurvesWidget, self.inputPlanesWidget]
+    visibilityButtons = []
+    for containerWidget in containerWidgets:
+      visibilityButtons += slicer.util.findChildren(containerWidget, name="visibilityButton")
+
+    for visibilityButton in visibilityButtons:
+      nodeID = visibilityButton.property("ID")
+      node = slicer.mrmlScene.GetNodeByID(nodeID)
+      if node is None:
+        logging.error("updateDisplayVisibilityButtons: Could not find node with ID " + str(nodeID))
+        continue
+      if node.GetDisplayVisibility():
+        visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerVisible.png"))
+      else:
+        visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerInvisible.png"))
+    logging.debug("updateDisplayVisibilityButtons: End")
+
+
+
 
   def createInputMarkupsWidget(self, markupNodeClass):
     markupsLayout = qt.QFormLayout()
@@ -514,13 +536,16 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
         placeWidget.setCurrentNode(inputNode)
 
         visibilityButton = qt.QToolButton()
+        visibilityButton.setObjectName("visibilityButton")
         inputNode.CreateDefaultDisplayNodes()
         displayNode = inputNode.GetDisplayNode()
         if displayNode.GetVisibility():
           visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerVisible.png"))
         else:
           visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerInvisible.png"))
-        visibilityButton.connect('clicked(bool)', lambda visibility, id=inputNode.GetID(): self.onVisibilityClicked(id))
+        nodeID = inputNode.GetID()
+        visibilityButton.setProperty("ID", nodeID)
+        visibilityButton.connect('clicked(bool)', lambda visibility, id=nodeID: self.onVisibilityClicked(id))
 
         lockButton = qt.QToolButton()
         inputNode.CreateDefaultDisplayNodes()
@@ -541,23 +566,29 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     return markupsWidget
 
   def onColorChanged(self, color, id):
+    logging.info("onColorChanged: ID = " + str(id))
     modelNode = slicer.mrmlScene.GetNodeByID(id)
     if modelNode is None:
       return
     displayNode = modelNode.GetDisplayNode()
     if displayNode is None:
       return
-    displayNode.SetColor(color.red()/255.0, color.green()/255.0, color.blue()/255.0)
+    newColor = [color.red()/255.0, color.green()/255.0, color.blue()/255.0]
+    logging.info("onColorChanged: Color changed: " + str(newColor))
+    displayNode.SetColor(newColor[0], newColor[1], newColor[2])
 
   def onVisibilityClicked(self, id):
+    logging.info("onVisibilityClicked: ID = " + str(id))
     modelNode = slicer.mrmlScene.GetNodeByID(id)
     if modelNode is None:
       return
     displayNode = modelNode.GetDisplayNode()
     if displayNode is None:
       return
-    displayNode.SetVisibility(not displayNode.GetVisibility())
-    self.updateGUIFromParameterNode()
+    newVisibility = not displayNode.GetVisibility()
+    displayNode.SetVisibility(newVisibility)
+    logging.info("onVisibilityClicked: New visibility = " + str(newVisibility))
+    self.updateDisplayVisibilityButtons()
 
   def onLockClicked(self, id):
     markupNode = slicer.mrmlScene.GetNodeByID(id)
