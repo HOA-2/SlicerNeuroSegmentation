@@ -462,6 +462,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
       colorPicker = ctk.ctkColorPickerButton()
       colorPicker.setColor(qt.QColor(color[0]*255, color[1]*255, color[2]*255))
+      colorPicker.setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Expanding)
       colorPicker.setProperty("NodeID", outputModelNode.GetID())
       colorPicker.displayColorName = False
       colorPicker.connect('colorChanged(QColor)', lambda color, id=outputModelNode.GetID(): self.onColorChanged(color, id))
@@ -481,6 +482,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       seedPlaceWidget.setCurrentNode(seedNode)
 
       computeButton = qt.QPushButton("Compute")
+      computeButton.setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Expanding)
       computeButton.connect('clicked(bool)', lambda visibility, id=outputModelNode.GetID(): self.onComputeClicked(id))
 
       outputModelLayout = qt.QHBoxLayout()
@@ -551,6 +553,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       if inputNode.IsA(markupNodeClass):
         placeWidget = slicer.qSlicerMarkupsPlaceWidget()
         placeWidget.findChild("QToolButton", "MoreButton").setVisible(False)
+        placeWidget.findChild("ctkColorPickerButton", "ColorButton").setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Expanding)
         placeWidget.setMRMLScene(slicer.mrmlScene)
         placeWidget.setCurrentNode(inputNode)
 
