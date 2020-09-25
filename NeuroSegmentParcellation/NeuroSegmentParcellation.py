@@ -502,6 +502,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     self.updateOutputStructures()
     self.updateDisplayVisibilityButtons()
+    self.updateLockButtons()
 
   def updateDisplayVisibilityButtons(self):
     logging.debug("updateDisplayVisibilityButtons: Start")
@@ -516,14 +517,32 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       if node is None:
         logging.error("updateDisplayVisibilityButtons: Could not find node with ID " + str(nodeID))
         continue
+
       if node.GetDisplayVisibility():
         visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerVisible.png"))
       else:
         visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerInvisible.png"))
     logging.debug("updateDisplayVisibilityButtons: End")
 
+  def updateLockButtons(self):
+    logging.debug("updateLockButtons: Start")
+    containerWidgets = [self.inputCurvesWidget, self.inputPlanesWidget]
+    lockButtons = []
+    for containerWidget in containerWidgets:
+      lockButtons += slicer.util.findChildren(containerWidget, name="lockButton")
 
+    for lockButton in lockButtons:
+      nodeID = lockButton.property("ID")
+      node = slicer.mrmlScene.GetNodeByID(nodeID)
+      if node is None:
+        logging.error("updateLockButtons: Could not find node with ID " + str(nodeID))
+        continue
 
+      if node.GetLocked():
+        lockButton.setIcon(qt.QIcon(":/Icons/Small/SlicerLock.png"))
+      else:
+        lockButton.setIcon(qt.QIcon(":/Icons/Small/SlicerUnlock.png"))
+    logging.debug("updateLockButtons: End")
 
   def createInputMarkupsWidget(self, markupNodeClass):
     markupsLayout = qt.QFormLayout()
@@ -535,24 +554,16 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
         placeWidget.setMRMLScene(slicer.mrmlScene)
         placeWidget.setCurrentNode(inputNode)
 
+        nodeID = inputNode.GetID()
+
         visibilityButton = qt.QToolButton()
         visibilityButton.setObjectName("visibilityButton")
-        inputNode.CreateDefaultDisplayNodes()
-        displayNode = inputNode.GetDisplayNode()
-        if displayNode.GetVisibility():
-          visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerVisible.png"))
-        else:
-          visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerInvisible.png"))
-        nodeID = inputNode.GetID()
         visibilityButton.setProperty("ID", nodeID)
         visibilityButton.connect('clicked(bool)', lambda visibility, id=nodeID: self.onVisibilityClicked(id))
 
         lockButton = qt.QToolButton()
-        inputNode.CreateDefaultDisplayNodes()
-        if inputNode.GetLocked():
-          lockButton.setIcon(qt.QIcon(":/Icons/Small/SlicerLock.png"))
-        else:
-          lockButton.setIcon(qt.QIcon(":/Icons/Small/SlicerUnlock.png"))
+        lockButton.setObjectName("lockButton")
+        lockButton.setProperty("ID", nodeID)
         lockButton.connect('clicked(bool)', lambda visibility, id=inputNode.GetID(): self.onLockClicked(id))
 
         markupWidget = qt.QWidget()
@@ -595,7 +606,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if markupNode is None:
       return
     markupNode.SetLocked(not markupNode.GetLocked())
-    self.updateGUIFromParameterNode()
+    self.updateLockButtons()
 
   def updateParameterNodeFromGUI(self, caller=None, event=None):
     """
