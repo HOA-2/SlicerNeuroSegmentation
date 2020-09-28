@@ -961,6 +961,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     """
     Add Pedigree Ids to Orig model cell data and point data
     """
+    logging.debug("Initializing pedigree IDs")
+
     if parameterNode is None:
       logging.error("initializePedigreeIds: Invalid parameter node")
       return
@@ -993,12 +995,16 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       origModelNode.AddPointScalars(pointPedigreeIds)
 
   def exportOutputToSurfaceLabel(self, parameterNode, surfacesToExport=[]):
+    logging.debug("Starting export to surface label")
+
     origSurfaceNode = parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
     pialSurfaceNode = parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
     inflatedSurfaceNode = parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
     if origSurfaceNode is None or (origSurfaceNode is None and pialSurfaceNode is None and inflatedSurfaceNode is None):
       logging.error("exportOutputToSurfaceLabel: Invalid surface node")
       return
+
+    self.initializePedigreeIds(parameterNode)
 
     cellCount = origSurfaceNode.GetPolyData().GetNumberOfCells()
     labelArray = origSurfaceNode.GetPolyData().GetCellData().GetArray("labels")
@@ -1012,16 +1018,18 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     numberOfOutputModels = parameterNode.GetNumberOfNodeReferences(self.OUTPUT_MODEL_REFERENCE)
     for modelIndex in range(numberOfOutputModels):
       outputSurfaceNode = parameterNode.GetNthNodeReference(self.OUTPUT_MODEL_REFERENCE, modelIndex)
-      if len(surfacesToExport) != 0 and not outputSurfaceNode.GetName() in surfacesToExport:
+      if outputSurfaceNode and len(surfacesToExport) != 0 and not outputSurfaceNode.GetName() in surfacesToExport:
         continue
 
       polyData = outputSurfaceNode.GetPolyData()
       if polyData is None:
+        logging.debug(str(outputSurfaceNode.GetName()) + " polydata is empty")
         continue
 
       cellData = polyData.GetCellData()
       cellPedigreeArray = cellData.GetArray("cellPedigree")
       if cellPedigreeArray is None:
+        logging.debug(str(outputSurfaceNode.GetName()) + " cell pedigree is missing")
         continue
 
       for cellIndex in range(cellPedigreeArray.GetNumberOfValues()):
@@ -1036,6 +1044,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     # Update color table
     self.updateParcellationColorNode()
+    logging.debug("Ending export to surface label")
+
 
   def getParcellationColorNode(self):
     parcellationColorNode = self.parameterNode.GetNodeReference("ParcellationColorNode")
