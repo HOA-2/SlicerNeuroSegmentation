@@ -1462,3 +1462,46 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     polyData.Initialize()
     polyData.SetPoints(origModelNode.GetPolyData().GetPoints())
     polyData.SetLines(newLines)
+
+  def convertOverlayToModelNode(self, overlayModelNode, importOverlay, destinationNode):
+    """
+    Convert a scalar overlay from a model node to a new model node
+    Uses the "label" overlay from FreeSurfer (3 inside, 1000 outside)
+    Replaces the contents of the destination node polydata
+    """
+    if overlayModelNode and overlayModelNode.GetPolyData() and overlayModelNode.GetPolyData().GetPointData():
+      importArray = overlayModelNode.GetPolyData().GetPointData().GetArray(importOverlay)
+    if importArray is None:
+      logging.error("convertOverlayToModelNode: Could not find array " + str(importOverlay))
+      return
+
+    freeSurferInsideLabelValue = 3
+
+    origModel = origModelNode.GetPolyData()
+    cellIds = vtk.vtkIdList()
+    for cellId in range(origModel.GetNumberOfPolys()):
+      pointIds = vtk.vtkIdList()
+      origModel.GetCellPoints(cellId, pointIds)
+      includedCell = True
+      for pointIndex in range(pointIds.GetNumberOfIds()):
+        pointId = pointIds.GetId(pointIndex)
+        labelValue = importArray.GetValue(pointId)
+        if labelValue != freeSurferInsideLabelValue:
+          includedCell = False
+          break
+
+      if includedCell:
+        cellIds.InsertNextId(cellId)
+
+    extractCells = vtk.vtkExtractCells()
+    extractCells.SetInputData(origModel)
+    extractCells.SetCellList(cellIds)
+    geometryFilter = vtk.vtkGeometryFilter()
+    geometryFilter.SetInputConnection(extractCells.GetOutputPort())
+    geometryFilter.Update()
+    destinationPolyData = geometryFilter.GetOutput()
+
+    cleanFilter = vtk.vtkCleanPolyData()
+    cleanFilter.SetInputData(destinationPolyData)
+    cleanFilter.Update()
+    destinationNode.SetAndObservePolyData(cleanFilter.GetOutput())

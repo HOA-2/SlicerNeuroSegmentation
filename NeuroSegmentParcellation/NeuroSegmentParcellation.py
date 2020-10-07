@@ -171,9 +171,12 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.exportButton.connect('clicked(bool)', self.onExportButton)
     self.ui.exportLabelButton.connect('clicked(bool)', self.onExportLabelButton)
 
-    self.ui.importSourceComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
-    self.ui.importDestinationComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
-    self.ui.importDestinationComboBox.addAttribute("vtkMRMLMarkupsNode", "NeuroSegmentParcellation.NodeType", "Orig")
+    self.ui.curveRadioButton.connect("toggled(bool)", self.updateImportWidget)
+    self.ui.overlayRadioButton.connect("toggled(bool)", self.updateImportWidget)
+
+    self.ui.importMarkupComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
+    self.ui.destinationMarkupComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
+    self.ui.destinationMarkupComboBox.addAttribute("vtkMRMLMarkupsNode", "NeuroSegmentParcellation.NodeType", "Orig")
     self.ui.importButton.connect('clicked()', self.onImportButton)
 
     # These connections ensure that whenever user changes some settings on the GUI, that is saved in the MRML scene
@@ -204,6 +207,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.updateGUIFromParameterNode()
     self.updateOutputStructures()
     self.onLayoutChanged()
+    self.updateImportWidget()
 
   def enter(self):
     parcellationViewLayoutOpen = slicer.app.layoutManager().layout == NeuroSegmentParcellation.NEURO_PARCELLATION_LAYOUT_ID
@@ -711,7 +715,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
   def onLoadQuery(self):
     """
-    Setup nodes
+    Load the query information from file.
+    If an error occurs, change the query button icon and display an error message.
     """
     if self.parameterNode is None:
       return
@@ -724,10 +729,11 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       icon = self.ui.loadQueryButton.style().standardIcon(qt.QStyle.SP_MessageBoxCritical)
       self.ui.loadQueryButton.setIcon(icon)
       self.ui.loadQueryButton.setToolTip(message)
-    self.updateOutputStructures()
 
   def  updateOutputStructures(self):
     """
+    Update the contents of the structure selector.
+    Ensure that the same structures are selected before and after update if possible.
     """
     checkedItems = []
     checkedIndexes = self.ui.structureSelector.checkedIndexes()
@@ -743,16 +749,51 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
         self.ui.structureSelector.setCheckState(index, qt.Qt.Checked)
 
   def updateImportWidget(self):
-    sourceNode = self.ui.importSourceComboBox.currentNode()
-    destinationNode = self.ui.importDestinationComboBox.currentNode()
-    if sourceNode is None or destinationNode is None or sourceNode == destinationNode:
-      self.ui.importButton.enabled = False
-    self.ui.importButton.enabled = True
+    """
+    Update the appearance of the import/export widget.
+    This enables/disables the import button depending on the validity of the input, and shows/hides/populates the
+    comboboxes for the input/output nodes and overlays.
+    """
+
+    self.ui.importMarkupComboBox.setVisible(False)
+    self.ui.destinationMarkupComboBox.setVisible(False)
+    self.ui.importOverlayComboBox.setVisible(False)
+    self.ui.destinationModelComboBox.setVisible(False)
+
+    importEnabled = False
+    if self.ui.curveRadioButton.isChecked():
+      self.ui.importMarkupComboBox.setVisible(True)
+      self.ui.destinationMarkupComboBox.setVisible(True)
+      
+      importNode = self.ui.importMarkupComboBox.currentNode()
+      destinationNode = self.ui.destinationMarkupComboBox.currentNode()
+      importEnabled = not importNode is None and not destinationNode is None and importNode != destinationNode
+
+    elif self.ui.overlayRadioButton.isChecked():
+      self.ui.importOverlayComboBox.setVisible(True)
+      self.ui.destinationModelComboBox.setVisible(True)
+
+      importOverlay = self.ui.importOverlayComboBox.currentText()
+      destinationNode = self.ui.destinationModelComboBox.currentNode()
+      importEnabled = importOverlay != ""  and not destinationNode is None
+
+    self.ui.importButton.enabled = importEnabled
 
   def onImportButton(self):
-    sourceNode = self.ui.importSourceComboBox.currentNode()
-    destinationNode = self.ui.importDestinationComboBox.currentNode()
-    self.logic.copyNode(sourceNode, destinationNode)
+    if self.ui.curveRadioButton.isChecked():
+      self.importMarkupNode()
+    elif self.ui.overlayRadioButton.isChecked():
+      self.importOverlay()
+
+  def importMarkupNode(self):
+    importNode = self.ui.importMarkupComboBox.currentNode()
+    destinationNode = self.ui.destinationMarkupComboBox.currentNode()
+    self.logic.copyNode(importNode, destinationNode)
+
+  def importOverlay(self):
+    importOverlay = self.ui.importOverlayComboBox.currentText()
+    destinationNode = self.ui.destinationMarkupComboBox.currentNode()
+    self.logic.convertOverlayToModelNode(self.logic.getOrigModelNode(), importOverlay, destinationNode)
 
   def onPlaneCheckBox(self, checked):
     if self.parameterNode is None:

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>291</width>
-    <height>716</height>
+    <height>876</height>
    </rect>
   </property>
   <layout class="QFormLayout" name="formLayout">
@@ -371,57 +371,121 @@
    <item row="3" column="0" colspan="2">
     <widget class="qMRMLCollapsibleButton" name="importMarkupsCollapsibleButton">
      <property name="text">
-      <string>Import markup</string>
+      <string>Import</string>
      </property>
      <property name="collapsed">
-      <bool>true</bool>
+      <bool>false</bool>
      </property>
      <layout class="QFormLayout" name="formLayout_6">
       <item row="0" column="0">
+       <widget class="QLabel" name="label_12">
+        <property name="text">
+         <string>Type:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QRadioButton" name="curveRadioButton">
+          <property name="text">
+           <string>Curve</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="overlayRadioButton">
+          <property name="text">
+           <string>Overlay</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="1">
+       <layout class="QVBoxLayout" name="verticalLayout_6">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="qMRMLNodeComboBox" name="importMarkupComboBox">
+          <property name="nodeTypes">
+           <stringlist>
+            <string>vtkMRMLMarkupsNode</string>
+           </stringlist>
+          </property>
+          <property name="addEnabled">
+           <bool>false</bool>
+          </property>
+          <property name="removeEnabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="ctkComboBox" name="importOverlayComboBox">
+          <property name="defaultText">
+           <string>Select an Overlay</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="0">
        <widget class="QLabel" name="label_9">
         <property name="text">
          <string>Source:</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="0">
+      <item row="2" column="0">
        <widget class="QLabel" name="label_10">
         <property name="text">
          <string>Destination:</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="1">
-       <widget class="qMRMLNodeComboBox" name="importSourceComboBox">
-        <property name="nodeTypes">
-         <stringlist>
-          <string>vtkMRMLMarkupsNode</string>
-         </stringlist>
-        </property>
-        <property name="addEnabled">
-         <bool>false</bool>
-        </property>
-        <property name="removeEnabled">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="qMRMLNodeComboBox" name="importDestinationComboBox">
-        <property name="nodeTypes">
-         <stringlist>
-          <string>vtkMRMLMarkupsNode</string>
-         </stringlist>
-        </property>
-        <property name="addEnabled">
-         <bool>false</bool>
-        </property>
-        <property name="removeEnabled">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
       <item row="2" column="1">
+       <layout class="QVBoxLayout" name="verticalLayout_7">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="qMRMLNodeComboBox" name="destinationMarkupComboBox">
+          <property name="nodeTypes">
+           <stringlist>
+            <string>vtkMRMLMarkupsNode</string>
+           </stringlist>
+          </property>
+          <property name="addEnabled">
+           <bool>false</bool>
+          </property>
+          <property name="removeEnabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="qMRMLNodeComboBox" name="destinationModelComboBox">
+          <property name="nodeTypes">
+           <stringlist>
+            <string>vtkMRMLModelNode</string>
+           </stringlist>
+          </property>
+          <property name="addEnabled">
+           <bool>false</bool>
+          </property>
+          <property name="removeEnabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="3" column="1">
        <widget class="QPushButton" name="importButton">
         <property name="text">
          <string>Import</string>
@@ -467,6 +531,11 @@
    <extends>QWidget</extends>
    <header>ctkCollapsibleButton.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ctkComboBox</class>
+   <extends>QComboBox</extends>
+   <header>ctkComboBox.h</header>
   </customwidget>
   <customwidget>
    <class>ctkPushButton</class>
@@ -559,7 +628,7 @@
   <connection>
    <sender>NeuroSegmentParcellation</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
-   <receiver>importSourceComboBox</receiver>
+   <receiver>importMarkupComboBox</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -575,7 +644,7 @@
   <connection>
    <sender>NeuroSegmentParcellation</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
-   <receiver>importDestinationComboBox</receiver>
+   <receiver>destinationMarkupComboBox</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -585,6 +654,22 @@
     <hint type="destinationlabel">
      <x>177</x>
      <y>272</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>NeuroSegmentParcellation</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>destinationModelComboBox</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>145</x>
+     <y>437</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>177</x>
+     <y>359</y>
     </hint>
    </hints>
   </connection>
