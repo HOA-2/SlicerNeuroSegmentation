@@ -1065,7 +1065,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     # Update color table
     self.updateParcellationColorNode()
-    logging.debug("Ending export to surface label")
+    logging.debug("Finish export to surface label")
 
 
   def getParcellationColorNode(self):

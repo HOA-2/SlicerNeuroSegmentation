@@ -593,6 +593,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     newColor = [color.red()/255.0, color.green()/255.0, color.blue()/255.0]
     logging.info("onColorChanged: Color changed: " + str(newColor))
     displayNode.SetColor(newColor[0], newColor[1], newColor[2])
+    self.logic.updateParcellationColorNode()
 
   def onVisibilityClicked(self, id):
     logging.info("onVisibilityClicked: ID = " + str(id))
