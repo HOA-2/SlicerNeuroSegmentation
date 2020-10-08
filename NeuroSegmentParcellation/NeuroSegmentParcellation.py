@@ -176,7 +176,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     self.ui.importMarkupComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
     self.ui.destinationMarkupComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
-    self.ui.destinationMarkupComboBox.addAttribute("vtkMRMLMarkupsNode", "NeuroSegmentParcellation.NodeType", "Orig")
+    self.ui.destinationMarkupComboBox.addAttribute("vtkMRMLMarkupsNode", self.logic.NODE_TYPE_ATTRIBUTE_NAME, self.logic.ORIG_NODE_ATTRIBUTE_VALUE)
     self.ui.importOverlayComboBox.connect('currentIndexChanged(int)', self.updateImportWidget)
     self.ui.destinationModelComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
     self.ui.destinationModelComboBox.addAttribute("vtkMRMLModelNode", self.logic.NEUROSEGMENT_OUTPUT_ATTRIBUTE_VALUE, str(True))
@@ -188,7 +188,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.pialModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.inflatedModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.exportSegmentationSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
-    self.ui.applyButton.connect('checkBoxToggled(bool)', self.updateParameterNodeFromGUI)
 
     self.ui.curvRadioButton.connect("toggled(bool)", self.updateScalarOverlay)
     self.ui.sulcRadioButton.connect("toggled(bool)", self.updateScalarOverlay)
@@ -450,15 +449,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.inputPlanesWidget = self.createInputMarkupsWidget("vtkMRMLMarkupsPlaneNode")
     self.ui.inputPlanesCollapsibleButton.layout().addWidget(self.inputPlanesWidget)
 
-    continuousUpdate = True
-    for toolNode in self.logic.getToolNodes():
-      if not toolNode.GetContinuousUpdate():
-        continuousUpdate = False
-        break
-    wasBlocking = self.ui.applyButton.blockSignals(True)
-    self.ui.applyButton.setChecked(continuousUpdate)
-    self.ui.applyButton.blockSignals(wasBlocking)
-
     #
     outputModelsLayout = qt.QFormLayout()
     for toolNode in self.logic.getToolNodes():
@@ -631,7 +621,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       self.logic.setPialModelNode(self.ui.pialModelSelector.currentNode())
       self.logic.setInflatedModelNode(self.ui.inflatedModelSelector.currentNode())
       self.logic.setExportSegmentation(self.ui.exportSegmentationSelector.currentNode())
-      self.logic.setToolNodesContinuousUpdate(self.ui.applyButton.checked)
 
   def updateScalarOverlay(self):
     scalarName = None

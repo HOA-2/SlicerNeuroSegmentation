@@ -278,28 +278,6 @@
      <layout class="QFormLayout" name="formLayout_4"/>
     </widget>
    </item>
-   <item row="8" column="1">
-    <widget class="ctkCheckablePushButton" name="applyButton">
-     <property name="text">
-      <string>Apply</string>
-     </property>
-     <property name="checkable">
-      <bool>false</bool>
-     </property>
-     <property name="checked">
-      <bool>false</bool>
-     </property>
-     <property name="checkState">
-      <enum>Qt::Unchecked</enum>
-     </property>
-     <property name="checkBoxControlsButton">
-      <bool>true</bool>
-     </property>
-     <property name="checkBoxControlsButtonToggleState">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
    <item row="9" column="0" colspan="2">
     <widget class="qMRMLCollapsibleButton" name="exportSegmentationCollapsibleButton">
      <property name="text">
@@ -428,7 +406,7 @@
         <item>
          <widget class="ctkComboBox" name="importOverlayComboBox">
           <property name="defaultText">
-           <string>Select an Overlay</string>
+           <string>Select an overlay</string>
           </property>
          </widget>
         </item>
@@ -495,6 +473,19 @@
      </layout>
     </widget>
    </item>
+   <item row="8" column="1">
+    <widget class="QPushButton" name="applyButton">
+     <property name="text">
+      <string>Compute all</string>
+     </property>
+     <property name="checkable">
+      <bool>false</bool>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <customwidgets>
@@ -522,11 +513,6 @@
    <header>ctkCheckableComboBox.h</header>
   </customwidget>
   <customwidget>
-   <class>ctkCheckablePushButton</class>
-   <extends>ctkPushButton</extends>
-   <header>ctkCheckablePushButton.h</header>
-  </customwidget>
-  <customwidget>
    <class>ctkCollapsibleButton</class>
    <extends>QWidget</extends>
    <header>ctkCollapsibleButton.h</header>
@@ -536,11 +522,6 @@
    <class>ctkComboBox</class>
    <extends>QComboBox</extends>
    <header>ctkComboBox.h</header>
-  </customwidget>
-  <customwidget>
-   <class>ctkPushButton</class>
-   <extends>QPushButton</extends>
-   <header>ctkPushButton.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
