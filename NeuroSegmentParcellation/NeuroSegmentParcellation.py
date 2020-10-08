@@ -177,6 +177,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.importMarkupComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
     self.ui.destinationMarkupComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
     self.ui.destinationMarkupComboBox.addAttribute("vtkMRMLMarkupsNode", "NeuroSegmentParcellation.NodeType", "Orig")
+    self.ui.importOverlayComboBox.connect('currentIndexChanged(int)', self.updateImportWidget)
+    self.ui.destinationModelComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
     self.ui.importButton.connect('clicked()', self.onImportButton)
 
     # These connections ensure that whenever user changes some settings on the GUI, that is saved in the MRML scene
@@ -760,6 +762,18 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.importOverlayComboBox.setVisible(False)
     self.ui.destinationModelComboBox.setVisible(False)
 
+    wasBlocking = self.ui.importOverlayComboBox.blockSignals(True)
+    currentOverlayText = self.ui.importOverlayComboBox.currentText
+    self.ui.importOverlayComboBox.clear()
+    origModelNode = self.logic.getOrigModelNode()
+    if origModelNode:
+      overlays = self.logic.getPointScalarOverlays(origModelNode)
+      for overlay in overlays:
+        self.ui.importOverlayComboBox.addItem(overlay.GetName())
+    currentOverlayIndex = self.ui.importOverlayComboBox.findText(currentOverlayText)
+    self.ui.importOverlayComboBox.currentIndex = currentOverlayIndex
+    self.ui.importOverlayComboBox.blockSignals(wasBlocking)
+
     importEnabled = False
     if self.ui.curveRadioButton.isChecked():
       self.ui.importMarkupComboBox.setVisible(True)
@@ -773,7 +787,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       self.ui.importOverlayComboBox.setVisible(True)
       self.ui.destinationModelComboBox.setVisible(True)
 
-      importOverlay = self.ui.importOverlayComboBox.currentText()
+      importOverlay = self.ui.importOverlayComboBox.currentText
       destinationNode = self.ui.destinationModelComboBox.currentNode()
       importEnabled = importOverlay != ""  and not destinationNode is None
 
@@ -791,8 +805,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.logic.copyNode(importNode, destinationNode)
 
   def importOverlay(self):
-    importOverlay = self.ui.importOverlayComboBox.currentText()
-    destinationNode = self.ui.destinationMarkupComboBox.currentNode()
+    importOverlay = self.ui.importOverlayComboBox.currentText
+    destinationNode = self.ui.destinationModelComboBox.currentNode()
     self.logic.convertOverlayToModelNode(self.logic.getOrigModelNode(), importOverlay, destinationNode)
 
   def onPlaneCheckBox(self, checked):

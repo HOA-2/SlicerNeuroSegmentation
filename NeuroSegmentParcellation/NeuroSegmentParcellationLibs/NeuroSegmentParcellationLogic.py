@@ -787,6 +787,20 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     for toolNode in self.getToolNodes():
       toolNode.SetContinuousUpdate(continuousUpdate)
 
+  def getPointScalarOverlays(self, modelNode):
+    """
+    Returns the list of point scalars in the polydata
+    """
+    if modelNode is None or modelNode.GetPolyData() is None:
+      return []
+
+    scalarOverlays = []
+    polyData = modelNode.GetPolyData()
+    pointData = polyData.GetPointData()
+    for i in range(pointData.GetNumberOfArrays()):
+      scalarOverlays.append(pointData.GetArray(i))
+    return scalarOverlays
+
   def setScalarOverlay(self, scalarName):
     if scalarName is None:
       return
@@ -1477,11 +1491,11 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     freeSurferInsideLabelValue = 3
 
-    origModel = origModelNode.GetPolyData()
+    overlayModel = overlayModelNode.GetPolyData()
     cellIds = vtk.vtkIdList()
-    for cellId in range(origModel.GetNumberOfPolys()):
+    for cellId in range(overlayModel.GetNumberOfPolys()):
       pointIds = vtk.vtkIdList()
-      origModel.GetCellPoints(cellId, pointIds)
+      overlayModel.GetCellPoints(cellId, pointIds)
       includedCell = True
       for pointIndex in range(pointIds.GetNumberOfIds()):
         pointId = pointIds.GetId(pointIndex)
@@ -1494,7 +1508,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         cellIds.InsertNextId(cellId)
 
     extractCells = vtk.vtkExtractCells()
-    extractCells.SetInputData(origModel)
+    extractCells.SetInputData(overlayModel)
     extractCells.SetCellList(cellIds)
     geometryFilter = vtk.vtkGeometryFilter()
     geometryFilter.SetInputConnection(extractCells.GetOutputPort())
