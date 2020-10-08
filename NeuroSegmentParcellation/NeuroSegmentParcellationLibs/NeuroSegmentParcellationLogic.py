@@ -49,6 +49,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   NODE_TYPE_ATTRIBUTE_NAME = "NeuroSegmentParcellation.NodeType"
   MANUALLY_PLACED_ATTRIBUTE_NAME = "NeuroSegmentParcellation.ManuallyPlaced"
   MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX = "MarkupSliceVisibility."
+  NEUROSEGMENT_OUTPUT_ATTRIBUTE_VALUE = "NeuroSegmentParcellation.Output"
 
   PLANE_INTERSECTION_VISIBILITY_NAME = "PlaneIntersection"
 
@@ -128,8 +129,14 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       self.updateInputMarkupDisplay(parameterNode)
       self.updateInputMarkupSurfaceCostFunction(parameterNode)
       self.updateInputMarkupObservers(parameterNode)
+      self.updateOutputModelAttributes(parameterNode)
     finally:
       slicer.app.resumeRender()
+
+  def updateOutputModelAttributes(self, parameterNode):
+    outputModelNodes = self.getOutputModelNodes()
+    for outputModelNode in self.getOutputModelNodes():
+      outputModelNode.SetAttribute(self.NEUROSEGMENT_OUTPUT_ATTRIBUTE_VALUE, str(True))
 
   def updateInputModelNodes(self, parameterNode):
     origModelNode = parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)

@@ -179,6 +179,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.destinationMarkupComboBox.addAttribute("vtkMRMLMarkupsNode", "NeuroSegmentParcellation.NodeType", "Orig")
     self.ui.importOverlayComboBox.connect('currentIndexChanged(int)', self.updateImportWidget)
     self.ui.destinationModelComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
+    self.ui.destinationModelComboBox.addAttribute("vtkMRMLModelNode", self.logic.NEUROSEGMENT_OUTPUT_ATTRIBUTE_VALUE, str(True))
     self.ui.importButton.connect('clicked()', self.onImportButton)
 
     # These connections ensure that whenever user changes some settings on the GUI, that is saved in the MRML scene
