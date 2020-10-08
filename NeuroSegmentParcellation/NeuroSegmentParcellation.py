@@ -778,7 +778,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if self.ui.curveRadioButton.isChecked():
       self.ui.importMarkupComboBox.setVisible(True)
       self.ui.destinationMarkupComboBox.setVisible(True)
-      
+
       importNode = self.ui.importMarkupComboBox.currentNode()
       destinationNode = self.ui.destinationMarkupComboBox.currentNode()
       importEnabled = not importNode is None and not destinationNode is None and importNode != destinationNode
@@ -805,6 +805,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.logic.copyNode(importNode, destinationNode)
 
   def importOverlay(self):
+    self.logic.initializePedigreeIds(self.parameterNode)
     importOverlay = self.ui.importOverlayComboBox.currentText
     destinationNode = self.ui.destinationModelComboBox.currentNode()
     self.logic.convertOverlayToModelNode(self.logic.getOrigModelNode(), importOverlay, destinationNode)
