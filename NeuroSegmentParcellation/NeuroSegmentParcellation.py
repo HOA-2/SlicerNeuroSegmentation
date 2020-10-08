@@ -786,7 +786,10 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if origModelNode:
       overlays = self.logic.getPointScalarOverlays(origModelNode)
       for overlay in overlays:
-        self.ui.importOverlayComboBox.addItem(overlay.GetName())
+        overlayName = overlay.GetName()
+        if overlayName[-5:].lower() != "label":
+          continue
+        self.ui.importOverlayComboBox.addItem(overlayName)
     currentOverlayIndex = self.ui.importOverlayComboBox.findText(currentOverlayText)
     self.ui.importOverlayComboBox.currentIndex = currentOverlayIndex
     self.ui.importOverlayComboBox.blockSignals(wasBlocking)
