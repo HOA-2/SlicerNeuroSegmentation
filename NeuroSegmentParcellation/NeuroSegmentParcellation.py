@@ -478,16 +478,22 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       seedPlaceWidget.findChild("ctkColorPickerButton", "ColorButton").setVisible(False)
       seedPlaceWidget.setCurrentNode(seedNode)
 
-      computeButton = qt.QPushButton("Compute")
-      computeButton.setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Expanding)
-      computeButton.connect('clicked(bool)', lambda visibility, id=outputModelNode.GetID(): self.onComputeClicked(id))
-
       outputModelLayout = qt.QHBoxLayout()
       outputModelLayout.setContentsMargins(6, 0, 0, 0)
       outputModelLayout.addWidget(colorPicker)
       outputModelLayout.addWidget(seedPlaceWidget)
-      outputModelLayout.addWidget(computeButton)
       outputModelLayout.addWidget(visibilityButton)
+
+      if outputModelNode.GetPolyData() is None:
+        computeButton = qt.QPushButton("Compute")
+        computeButton.setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Expanding)
+        computeButton.connect('clicked(bool)', lambda visibility, id=outputModelNode.GetID(): self.onComputeClicked(id))
+        outputModelLayout.addWidget(computeButton)
+      else:
+        deleteButton = qt.QPushButton("Delete")
+        deleteButton.setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Expanding)
+        deleteButton.connect('clicked(bool)', lambda visibility, id=outputModelNode.GetID(): self.onDeleteClicked(id))
+        outputModelLayout.addWidget(deleteButton)
 
       outputModelWidget = qt.QWidget()
       outputModelWidget.setLayout(outputModelLayout)
@@ -680,6 +686,27 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       return
     self.logic.runDynamicModelerTool(toolNode)
     self.logic.exportOutputToSurfaceLabel(self.parameterNode)
+    self.updateGUIFromParameterNode()
+
+  def onDeleteClicked(self, id):
+    if self.parameterNode is None:
+      logging.error("onComputeClicked: Invalid parameter node")
+      return
+    outputModelNode = None
+    for currentToolNode in self.logic.getToolNodes():
+      toolNode = currentToolNode
+      outputModelNode = toolNode.GetNodeReference("BoundaryCut.OutputModel")
+      if outputModelNode is None:
+        continue
+      if outputModelNode.GetID() == id:
+        break
+      outputModelNode = None
+
+    if outputModelNode is None:
+      logging.error("onComputeClicked: Could not find output model node with ID: " + id)
+      return
+    outputModelNode.SetAndObservePolyData(None)
+    self.updateGUIFromParameterNode()
 
   def onExportButton(self):
     """
@@ -788,6 +815,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       self.importMarkupNode()
     elif self.ui.overlayRadioButton.isChecked():
       self.importOverlay()
+    self.updateGUIFromParameterNode()
 
   def importMarkupNode(self):
     importNode = self.ui.importMarkupComboBox.currentNode()

@@ -319,7 +319,7 @@
          <string>Run the algorithm.</string>
         </property>
         <property name="text">
-         <string>Export</string>
+         <string>Export to segmentation</string>
         </property>
        </widget>
       </item>
