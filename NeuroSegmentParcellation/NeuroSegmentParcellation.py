@@ -370,24 +370,37 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       # No change
       return
 
+    self.parameterNode = inputParameterNode
+
     try:
       slicer.app.pauseRender()
 
       # Remove observers on previously selected parameter node and add an observer to the newly selected.
       # Changes of parameter node are observed so that whenever parameters are changed by a script or any other module
       # those are reflected immediately in the GUI.
+      self.removeObservers(self.onParameterNodeModified)
       if self.parameterNode is not None:
-        self.removeObserver(self.parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
-      if inputParameterNode is not None:
-        self.addObserver(inputParameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
-      self.parameterNode = inputParameterNode
+        self.addObserver(self.parameterNode, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified)
+        self.onParameterNodeModified(self.parameterNode)
 
       # Initial GUI update
-      self.logic.setParameterNode(inputParameterNode)
+      self.logic.setParameterNode(self.parameterNode)
       self.updateGUIFromParameterNode()
 
     finally:
       slicer.app.resumeRender()
+
+  @vtk.calldata_type(vtk.VTK_OBJECT)
+  def onParameterNodeModified(self, caller=None, event=None, callData=None):
+    self.removeObservers(self.onOrigModelNodeModified)
+    origModelNode = self.logic.getOrigModelNode(self.parameterNode)
+    if origModelNode:
+      self.addObserver(origModelNode, vtk.vtkCommand.ModifiedEvent, self.onOrigModelNodeModified)
+    self.updateGUIFromParameterNode()
+
+  @vtk.calldata_type(vtk.VTK_OBJECT)
+  def onOrigModelNodeModified(self, caller=None, event=None, callData=None):
+    self.updateImportWidget()
 
   def updateGUIFromParameterNode(self, caller=None, event=None):
     """
@@ -421,15 +434,15 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     # GUI update, which triggers MRML node update, which triggers GUI update, ...)
 
     wasBlocked = self.ui.origModelSelector.blockSignals(True)
-    self.ui.origModelSelector.setCurrentNode(self.logic.getOrigModelNode())
+    self.ui.origModelSelector.setCurrentNode(self.logic.getOrigModelNode(self.parameterNode))
     self.ui.origModelSelector.blockSignals(wasBlocked)
 
     wasBlocked = self.ui.pialModelSelector.blockSignals(True)
-    self.ui.pialModelSelector.setCurrentNode(self.logic.getPialModelNode())
+    self.ui.pialModelSelector.setCurrentNode(self.logic.getPialModelNode(self.parameterNode))
     self.ui.pialModelSelector.blockSignals(wasBlocked)
 
     wasBlocked = self.ui.inflatedModelSelector.blockSignals(True)
-    self.ui.inflatedModelSelector.setCurrentNode(self.logic.getInflatedModelNode())
+    self.ui.inflatedModelSelector.setCurrentNode(self.logic.getInflatedModelNode(self.parameterNode))
     self.ui.inflatedModelSelector.blockSignals(wasBlocked)
 
     wasBlocked = self.ui.exportSegmentationSelector.blockSignals(True)
@@ -438,7 +451,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     # Update buttons states and tooltips
     if (self.logic.getNumberOfOutputModels() > 0 and self.logic.getExportSegmentation() and
-      self.logic.getOrigModelNode() and self.logic.getPialModelNode()):
+      self.logic.getOrigModelNode(self.parameterNode) and self.logic.getPialModelNode(self.parameterNode)):
       self.ui.exportButton.enabled = True
     else:
       self.ui.exportButton.enabled = False
@@ -624,9 +637,9 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       return
 
     with slicer.util.NodeModify(self.parameterNode):
-      self.logic.setOrigModelNode(self.ui.origModelSelector.currentNode())
-      self.logic.setPialModelNode(self.ui.pialModelSelector.currentNode())
-      self.logic.setInflatedModelNode(self.ui.inflatedModelSelector.currentNode())
+      self.logic.setOrigModelNode(self.parameterNode, self.ui.origModelSelector.currentNode())
+      self.logic.setPialModelNode(self.parameterNode, self.ui.pialModelSelector.currentNode())
+      self.logic.setInflatedModelNode(self.parameterNode, self.ui.inflatedModelSelector.currentNode())
       self.logic.setExportSegmentation(self.ui.exportSegmentationSelector.currentNode())
 
   def updateScalarOverlay(self):
@@ -638,7 +651,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     elif self.ui.labelsRadioButton.isChecked():
       scalarName = "labels"
       colorNode = self.logic.getParcellationColorNode()
-    self.logic.setScalarOverlay(scalarName)
+    self.logic.setScalarOverlay(self.parameterNode, scalarName)
 
   def updateMarkupDisplay(self):
     """
@@ -783,7 +796,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     wasBlocking = self.ui.importOverlayComboBox.blockSignals(True)
     currentOverlayText = self.ui.importOverlayComboBox.currentText
     self.ui.importOverlayComboBox.clear()
-    origModelNode = self.logic.getOrigModelNode()
+    origModelNode = self.logic.getOrigModelNode(self.parameterNode)
     if origModelNode:
       overlays = self.logic.getPointScalarOverlays(origModelNode)
       for overlay in overlays:
@@ -824,7 +837,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.logic.initializePedigreeIds(self.parameterNode)
     importOverlay = self.ui.importOverlayComboBox.currentText
     destinationNode = self.ui.destinationModelComboBox.currentNode()
-    self.logic.convertOverlayToModelNode(self.logic.getOrigModelNode(), importOverlay, destinationNode)
+    self.logic.convertOverlayToModelNode(self.logic.getOrigModelNode(self.parameterNode), importOverlay, destinationNode)
 
   def onPlaneCheckBox(self, checked):
     if self.parameterNode is None:
@@ -873,8 +886,8 @@ class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
     pialModelNode = self.setupSphere(75.0)
     pialModelNode.GetDisplayNode().SetVisibility(False)
 
-    logic.setOrigModelNode(origModelNode)
-    logic.setPialModelNode(pialModelNode)
+    logic.setOrigModelNode(self.parameterNode, origModelNode)
+    logic.setPialModelNode(self.parameterNode, pialModelNode)
 
     parcellationQueryNode = slicer.vtkMRMLTextNode()
     parcellationQueryNode.SetName("ParcellationQuery")

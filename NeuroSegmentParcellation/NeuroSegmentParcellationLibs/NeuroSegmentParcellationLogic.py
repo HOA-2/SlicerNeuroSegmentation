@@ -79,6 +79,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.parameterNode==parameterNode:
       return
     self.parameterNode = parameterNode
+    if self.parameterNode is None:
+      return
     self.onParameterNodeModified(parameterNode)
 
   def getParameterNode(self):
@@ -582,12 +584,12 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       logging.error("exportOutputToSegmentation: Invalid segmentation node")
       return
 
-    origModelNode = self.getOrigModelNode()
+    origModelNode = self.getOrigModelNode(parameterNode)
     if origModelNode is None:
       logging.error("exportOutputToSegmentation: Invalid orig node")
       return
 
-    pialModelNode = self.getPialModelNode()
+    pialModelNode = self.getPialModelNode(parameterNode)
     if pialModelNode is None:
       logging.error("exportOutputToSegmentation: Invalid pial node")
       return
@@ -699,53 +701,53 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       id = segmentationNode.GetID()
     self.parameterNode.SetNodeReferenceID(self.EXPORT_SEGMENTATION_REFERENCE, id)
 
-  def getOrigModelNode(self):
+  def getOrigModelNode(self, parameterNode):
     """
     TODO
     """
-    if self.parameterNode is None:
+    if parameterNode is None:
       return None
-    return self.parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
+    return parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
 
-  def setOrigModelNode(self, modelNode):
-    if self.parameterNode is None:
+  def setOrigModelNode(self, parameterNode, modelNode):
+    if parameterNode is None:
       return
     id = None
     if modelNode:
       id = modelNode.GetID()
-    self.parameterNode.SetNodeReferenceID(self.ORIG_MODEL_REFERENCE, id)
+    parameterNode.SetNodeReferenceID(self.ORIG_MODEL_REFERENCE, id)
 
-  def getPialModelNode(self):
+  def getPialModelNode(self, parameterNode):
     """
     TODO
     """
-    if self.parameterNode is None:
+    if parameterNode is None:
       return None
-    return self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
+    return parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
 
-  def setPialModelNode(self, modelNode):
-    if self.parameterNode is None:
+  def setPialModelNode(self, parameterNode, modelNode):
+    if parameterNode is None:
       return
     id = None
     if modelNode:
       id = modelNode.GetID()
-    self.parameterNode.SetNodeReferenceID(self.PIAL_MODEL_REFERENCE, id)
+    parameterNode.SetNodeReferenceID(self.PIAL_MODEL_REFERENCE, id)
 
-  def getInflatedModelNode(self):
+  def getInflatedModelNode(self, parameterNode):
     """
     TODO
     """
-    if self.parameterNode is None:
+    if parameterNode is None:
       return None
-    return self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
+    return parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
 
-  def setInflatedModelNode(self, modelNode):
-    if self.parameterNode is None:
+  def setInflatedModelNode(self, parameterNode, modelNode):
+    if parameterNode is None:
       return
     id = None
     if modelNode:
       id = modelNode.GetID()
-    self.parameterNode.SetNodeReferenceID(self.INFLATED_MODEL_REFERENCE, id)
+    parameterNode.SetNodeReferenceID(self.INFLATED_MODEL_REFERENCE, id)
 
   def getNumberOfOutputModels(self):
     if self.parameterNode is None:
@@ -808,7 +810,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       scalarOverlays.append(pointData.GetArray(i))
     return scalarOverlays
 
-  def setScalarOverlay(self, scalarName):
+  def setScalarOverlay(self, parameterNode, scalarName):
     if scalarName is None:
       return
 
@@ -829,9 +831,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       return
 
     modelNodes = [
-      self.getOrigModelNode(),
-      self.getPialModelNode(),
-      self.getInflatedModelNode()
+      self.getOrigModelNode(parameterNode),
+      self.getPialModelNode(parameterNode),
+      self.getInflatedModelNode(parameterNode)
       ]
     for modelNode in modelNodes:
       if modelNode is None:
@@ -1378,7 +1380,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       logging.error("Invalid plane node")
       return
 
-    origModelNode = self.getOrigModelNode()
+    origModelNode = self.getOrigModelNode(parameterNode)
     if origModelNode is None or origModelNode.GetPolyData() is None:
       logging.error("Invalid orig model")
       return
@@ -1421,7 +1423,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       boundaryStrips.Update()
       origIntersectionPolyData = vtk.vtkPolyData()
       origIntersectionPolyData.DeepCopy(boundaryStrips.GetOutput())
-      self.convertToFreeSurferPointIds(origIntersectionPolyData)
+      self.convertToFreeSurferPointIds(parameterNode, origIntersectionPolyData)
 
     origIntersectionNode = None
     pialIntersectionNode = None
@@ -1437,8 +1439,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       elif nodeType == self.INFLATED_NODE_ATTRIBUTE_VALUE:
         inflatedIntersectionNode = intersectionNode
 
-    pialModelNode = self.getPialModelNode()
-    inflatedModelNode = self.getInflatedModelNode()
+    pialModelNode = self.getPialModelNode(parameterNode)
+    inflatedModelNode = self.getInflatedModelNode(parameterNode)
     modelAndIntersections = [(origModelNode, origIntersectionNode), (pialModelNode, pialIntersectionNode), (inflatedModelNode, inflatedIntersectionNode)]
     for surfaceModelNode, intersectionModelNode in modelAndIntersections:
       if not surfaceModelNode or not intersectionModelNode:
@@ -1454,7 +1456,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       else:
         intersectionModelNode.SetAndObserveTransformNodeID(None)
 
-  def convertToFreeSurferPointIds(self, polyData):
+  def convertToFreeSurferPointIds(self, parameterNode, polyData):
+    if parameterNode is None:
+      logging.error("Invalid parameter node")
 
     pointData = polyData.GetPointData()
     pedigreeArray = pointData.GetArray("pointPedigree")
@@ -1462,7 +1466,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       logging.error("Could not find pointPedigree array")
       return
 
-    origModelNode = self.getOrigModelNode()
+    origModelNode = self.getOrigModelNode(parameterNode)
     if origModelNode is None or origModelNode.GetPolyData() is None:
       logging.error("Could not find orig polydata")
       return
