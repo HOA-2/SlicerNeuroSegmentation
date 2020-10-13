@@ -1313,12 +1313,22 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   def updatePlaneIntersectionVisibility(self):
     visible = self.getPlaneIntersectionVisible()
     inputMarkupNodes = self.getInputMarkupNodes()
+    baseViewIds = ["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
     for inputMarkupNode in inputMarkupNodes:
       if not inputMarkupNode.IsA("vtkMRMLMarkupsPlaneNode"):
         continue
       intersectionModelNodes = self.getIntersectionModelNodes(inputMarkupNode)
       for intersectionNode in intersectionModelNodes:
         intersectionNode.SetDisplayVisibility(visible)
+        viewIds = baseViewIds[:]
+        nodeType = intersectionNode.GetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME)
+        if nodeType == self.ORIG_NODE_ATTRIBUTE_VALUE:
+          viewIds.append("vtkMRMLViewNodeO")
+        elif nodeType == self.PIAL_NODE_ATTRIBUTE_VALUE:
+          viewIds.append("vtkMRMLViewNodeP")
+        elif nodeType == self.INFLATED_NODE_ATTRIBUTE_VALUE:
+          viewIds.append("vtkMRMLViewNodeI")
+        intersectionNode.GetDisplayNode().SetViewNodeIDs(viewIds)
 
   def getIntersectionModelNodes(self, planeNode):
     if planeNode is None:
@@ -1338,7 +1348,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if planeNode is None:
       return []
 
-    baseViewIds = ["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
     intersectionNodes = []
     for nodeType in [self.ORIG_NODE_ATTRIBUTE_VALUE, self.PIAL_NODE_ATTRIBUTE_VALUE, self.INFLATED_NODE_ATTRIBUTE_VALUE]:
       nodeName = planeNode.GetName() + "_" + nodeType + "_Intersection"
@@ -1348,14 +1357,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       intersectionNode.CreateDefaultDisplayNodes()
       planeNode.AddNodeReferenceID(self.INTERSECTION_MODEL_REFERENCE, intersectionNode.GetID())
       intersectionNodes.append(intersectionNode)
-      viewIds = baseViewIds[:]
-      if nodeType == self.ORIG_NODE_ATTRIBUTE_VALUE:
-        viewIds.append("vtkMRMLViewNodeO")
-      elif nodeType == self.PIAL_NODE_ATTRIBUTE_VALUE:
-        viewIds.append("vtkMRMLViewNodeP")
-      elif nodeType == self.INFLATED_NODE_ATTRIBUTE_VALUE:
-        viewIds.append("vtkMRMLViewNodeI")
-      intersectionNode.GetDisplayNode().SetViewNodeIDs(viewIds)
     self.updatePlaneIntersection(self.parameterNode, planeNode)
     self.updatePlaneIntersectionDisplay(planeNode)
     return intersectionNodes
