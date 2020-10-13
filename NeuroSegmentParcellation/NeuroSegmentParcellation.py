@@ -775,10 +775,10 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     comboboxes for the input/output nodes and overlays.
     """
 
-    self.ui.importMarkupComboBox.setVisible(False)
-    self.ui.destinationMarkupComboBox.setVisible(False)
-    self.ui.importOverlayComboBox.setVisible(False)
-    self.ui.destinationModelComboBox.setVisible(False)
+    self.ui.importMarkupComboBox.setVisible(self.ui.curveRadioButton.isChecked())
+    self.ui.destinationMarkupComboBox.setVisible(self.ui.curveRadioButton.isChecked())
+    self.ui.importOverlayComboBox.setVisible(self.ui.overlayRadioButton.isChecked())
+    self.ui.destinationModelComboBox.setVisible(self.ui.overlayRadioButton.isChecked())
 
     wasBlocking = self.ui.importOverlayComboBox.blockSignals(True)
     currentOverlayText = self.ui.importOverlayComboBox.currentText
@@ -797,17 +797,11 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     importEnabled = False
     if self.ui.curveRadioButton.isChecked():
-      self.ui.importMarkupComboBox.setVisible(True)
-      self.ui.destinationMarkupComboBox.setVisible(True)
-
       importNode = self.ui.importMarkupComboBox.currentNode()
       destinationNode = self.ui.destinationMarkupComboBox.currentNode()
       importEnabled = not importNode is None and not destinationNode is None and importNode != destinationNode
 
     elif self.ui.overlayRadioButton.isChecked():
-      self.ui.importOverlayComboBox.setVisible(True)
-      self.ui.destinationModelComboBox.setVisible(True)
-
       importOverlay = self.ui.importOverlayComboBox.currentText
       destinationNode = self.ui.destinationModelComboBox.currentNode()
       importEnabled = importOverlay != ""  and not destinationNode is None
