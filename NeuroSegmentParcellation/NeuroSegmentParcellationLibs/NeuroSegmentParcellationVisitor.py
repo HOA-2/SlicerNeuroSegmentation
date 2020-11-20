@@ -10,9 +10,9 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
 
   Basic format uses the following syntax:
     _DistanceWeightingFunction = "func" # Set the distance weighting function to use for all curve markups following this point
-    _Planes = [...] # Create or retrieve all vtkMRMLMarkupPlaneNode with the speicified names in the scene
-    _Curves = [...] # Create or retrieve all vtkMRMLMarkupsCurveNode with the speicified names in the scene
-    _ClosedCurves = [...] # Create or retrieve all vtkMRMLMarkupsClosedCurveNode with the speicified names in the scene
+    _Planes = [...] # Create or retrieve all vtkMRMLMarkupPlaneNode with the specified names in the scene
+    _Curves = [...] # Create or retrieve all vtkMRMLMarkupsCurveNode with the specified names in the scene
+    _ClosedCurves = [...] # Create or retrieve all vtkMRMLMarkupsClosedCurveNode with the specified names in the scene
     XYZ = A || B || C # Create a vtkMRMLDynamicModelerNode using the "BoundaryCut" tool, and output vtkMRMLModelNode with the name "XYZ", using markups A, B and C
   """
 
