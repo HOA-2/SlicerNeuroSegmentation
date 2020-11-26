@@ -21,12 +21,15 @@ _Planes = [
   Seuptum,
 ]
 
-_DistanceWeightingFunction = "1.0"
+#                          [   d,   c,   h,  dc,  dh,  ch, dch,   p ]
+_DistanceWeightingValues = [ 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+
+#                             [    c,    h,   dc,   dh,   ch,  dch ]
+_DistanceWeightingPenalties = [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ]
 
 _Curves = [HemisphericMargin]
 
-# Distance weighting function is applied using this formula: cost = distance / _DistanceWeightingFunction
-_DistanceWeightingFunction = "(sulc - sulcMin) + (curv - curvMin)"
+_DistanceWeightingValues = [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]
 
 _Curves = [
   Inferior45DegreeLine,

@@ -9,9 +9,10 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
   All input/output/tool nodes are added to the parameter node references, and existing input/output/tool node references are removed.
 
   Basic format uses the following syntax:
-    _DistanceWeightingFunction = "func" # Set the distance weighting function to use for all curve markups following this point
+    _DistanceWeightingValues = [d, c, h, dc, dh, ch, dch, p] # Weighting for pathfinding (d=distance, c=curvature, h=sulcal height, p=direction)
+    _DistanceWeightingPenalties = [c, h, dc, dh, ch, dch] # Penalties applied when c or s are < 0.
     _Planes = [...] # Create or retrieve all vtkMRMLMarkupPlaneNode with the specified names in the scene
-    _Curves = [...] # Create or retrieve all vtkMRMLMarkupsCurveNode with the specified names in the scene
+    _Curves = [...] # Create or retrieve all vtkMRMLFreeSurferMarkupsCurveNode with the specified names in the scene
     _ClosedCurves = [...] # Create or retrieve all vtkMRMLMarkupsClosedCurveNode with the specified names in the scene
     XYZ = A || B || C # Create a vtkMRMLDynamicModelerNode using the "BoundaryCut" tool, and output vtkMRMLModelNode with the name "XYZ", using markups A, B and C
   """
@@ -20,6 +21,24 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     self.parameterNode = None
     self.logic = logic
     self.currentSeedNode = None
+    self.weights = [
+      1.0, # d,
+      0,   # c
+      0,   # h
+      0,   # dc
+      0,   # dh
+      0,   # ch
+      0,   # dch
+      0,   # p
+    ]
+    self.penalties = [
+      10.0, # c
+      10.0, # h
+      10.0, # dc
+      10.0, # dh
+      10.0, # ch
+      10.0, # dch
+    ]
 
   def setParameterNode(self, parameterNode):
     self.parameterNode = parameterNode
@@ -52,7 +71,7 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       self.process_InputNodes(node.value, "vtkMRMLMarkupsPlaneNode")
       return
     elif target.id == "_Curves":
-      curveNodes = self.process_InputNodes(node.value, "vtkMRMLMarkupsCurveNode")
+      curveNodes = self.process_InputNodes(node.value, "vtkMRMLFreeSurferMarkupsCurveNode")
       for curveNode in curveNodes:
         curveNode.SetCurveTypeToShortestDistanceOnSurface()
       return
@@ -61,8 +80,11 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       for curveNode in curveNodes:
         curveNode.SetCurveTypeToShortestDistanceOnSurface()
       return
-    elif target.id == "_DistanceWeightingFunction":
-      self.distanceWeightingFunction = node.value.s
+    elif target.id == "_DistanceWeightingValues":
+      self.process_DistanceWeightingValues(node.value)
+      return
+    elif target.id == "_DistanceWeightingPenalties":
+      self.process__DistanceWeightingPenalties(node.value)
       return
 
     outputModel = slicer.util.getFirstNodeByClassByName("vtkMRMLModelNode", target.id)
@@ -154,11 +176,51 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
             displayNode.HandlesInteractiveOn()
 
       # Update the distance weighting parameter based on the current distance weighting function
-      if inputNode.IsA("vtkMRMLMarkupsCurveNode"):
-        inputNode.SetAttribute("DistanceWeightingFunction", self.distanceWeightingFunction)
+      if inputNode.IsA("vtkMRMLFreeSurferMarkupsCurveNode"):
+        weightFunctions = [
+          inputNode.SetDistanceWeight,
+          inputNode.SetCurvatureWeight,
+          inputNode.SetSulcalHeightWeight,
+          inputNode.SetDistanceCurvatureWeight,
+          inputNode.SetDistanceSulcalHeightWeight,
+          inputNode.SetCurvatureSulcalHeightWeight,
+          inputNode.SetDistanceCurvatureSulcalHeightWeight,
+          inputNode.SetDirectionWeight
+          ]
+        for i in range(len(weightFunctions)):
+          weightFunctions[i](self.weights[i])
+        penaltyFunctions = [
+          inputNode.SetCurvaturePenalty,
+          inputNode.SetSulcalHeightPenalty,
+          inputNode.SetDistanceCurvaturePenalty,
+          inputNode.SetDistanceSulcalHeightPenalty,
+          inputNode.SetCurvatureSulcalHeightPenalty,
+          inputNode.SetDistanceCurvatureSulcalHeightPenalty
+          ]
+        for i in range(len(penaltyFunctions)):
+          penaltyFunctions[i](self.penalties[i])
+
       inputNodes.append(inputNode)
       self.parameterNode.AddNodeReferenceID(self.logic.INPUT_MARKUPS_REFERENCE, inputNode.GetID())
     return inputNodes
+
+  def process_DistanceWeightingValues(self, node):
+    """
+    Process the distance weighting values used for FreeSurfer pathfinding
+    """
+    distanceWeightingValues = [e.n for e in node.elts]
+    if len(distanceWeightingValues) != len(self.weights):
+      return
+    self.weights = distanceWeightingValues
+
+  def process__DistanceWeightingPenalties(self, node):
+    """
+    Process the distance weighting penalties used for FreeSurfer pathfinding
+    """
+    distanceWeightingPenalties = [e.n for e in node.elts]
+    if len(distanceWeightingPenalties) != len(self.penalties):
+      return
+    self.penalties = distanceWeightingPenalties
 
   def visit_Name(self, node):
     """
