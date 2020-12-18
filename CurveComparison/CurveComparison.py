@@ -38,8 +38,17 @@ class CurveComparisonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
     self.ui.computeButton.connect('clicked(bool)', self.onComputeButtonClicked)
+    self.ui.outputTableNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.updateComputeButton)
+    self.ui.inputCurveNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.updateComputeButton)
+    self.updateComputeButton()
 
     self.logic = CurveComparisonLogic()
+
+  def updateComputeButton(self):
+    currentTableNode = self.ui.outputTableNodeSelector.currentNode()
+    currentCurveNode = self.ui.inputCurveNodeSelector.currentNode()
+    self.ui.computeButton.enabled = (not currentTableNode is None and not currentCurveNode is None and
+      not currentCurveNode.GetShortestDistanceSurfaceNode() is None and currentCurveNode.GetNumberOfControlPoints() >= 2)
 
   def onComputeButtonClicked(self):
     try:
