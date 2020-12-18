@@ -41,8 +41,6 @@ class CurveComparisonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.logic = CurveComparisonLogic()
 
-  def 
-
   def onComputeButtonClicked(self):
     inputCurveNode = self.ui.inputCurveNodeSelector.currentNode()
     outputTableNode = self.ui.outputTableNodeSelector.currentNode()
@@ -57,17 +55,8 @@ class CurveComparisonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     weight, overlap = self.logic.getHightestOverlapPercentWeight(outputTableNode)
     self.ui.hightestOverlapLineEdit.text = str(weight)
 
-class CurveComparisonMetrics():
-  averageDistance = 0.0
-  maxDistance = 0.0
-  overlapPercent = 0.0
-  weights = []
-
-  def __init__(self, averageDistance, maxDistance, overlapPercent, weights):
-    self.averageDistance = averageDistance
-    self.maxDistance = maxDistance
-    self.overlapPercent = overlapPercent
-    self.weights = weights
+    weight, overlap = self.logic.getHightestISOOverlapWeight(outputTableNode)
+    self.ui.hightestISOOverlapLineEdit.text = str(weight)
 
 class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
@@ -75,6 +64,7 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   AVERAGE_DISTANCE_COLUMN_NAME = "Average distance (mm)"
   MAX_DISTANCE_COLUMN_NAME = "Max distance (mm)"
   OVERLAP_PERCENT_COLUMN_NAME = "Overlap percent (%)"
+  ISO_OVERLAP_COLUMN_NAME = "ISO overlap"
 
   def __init__(self):
     ScriptedLoadableModuleLogic.__init__(self)
@@ -93,6 +83,12 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     inputPointLocator.SetDataSet(inputCurvePolyData)
     inputPointLocator.BuildLocator()
 
+    inputPolyDataLocator = vtk.vtkPointLocator()
+    inputPolyDataLocator.SetDataSet(inputCurveNode.GetShortestDistanceSurfaceNode().GetPolyData())
+    inputPolyDataLocator.BuildLocator()
+
+    self.createISORegionOverlay(inputCurveNode)
+
     weightArray = vtk.vtkStringArray()
     weightArray.SetName(self.WEIGHTS_COLUMN_NAME)
 
@@ -105,11 +101,17 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     overlapPercentArray = vtk.vtkDoubleArray()
     overlapPercentArray.SetName(self.OVERLAP_PERCENT_COLUMN_NAME)
 
+    isoOverlapArray = vtk.vtkDoubleArray()
+    isoOverlapArray.SetName(self.ISO_OVERLAP_COLUMN_NAME)
+
+    
+
     table = vtk.vtkTable()
     table.AddColumn(weightArray)
     table.AddColumn(averageDistanceArray)
     table.AddColumn(maxDistanceArray)
     table.AddColumn(overlapPercentArray)
+    table.AddColumn(isoOverlapArray)
     outputTableNode.SetAndObserveTable(table)
 
     optimizerCurve = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLFreeSurferMarkupsCurveNode")
@@ -129,7 +131,7 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
     for i in range(1, pow(2, 8)):
       weights = self.binaryArray(i, 8)
-      self.evaluateWeights(inputCurveNode, optimizerCurve, weights, inputPointLocator, outputTableNode)
+      self.evaluateWeights(inputCurveNode, optimizerCurve, weights, inputPointLocator, inputPolyDataLocator, outputTableNode)
     table.Modified()
 
     slicer.mrmlScene.RemoveNode(optimizerCurve)
@@ -163,13 +165,12 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     weight = weightsArray.GetValue(lowestMaxDistanceIndex)
     return weight, lowestMaxDistanceIndex
 
-
   def getHightestOverlapPercentWeight(self, tableNode):
     weightsArray = tableNode.GetTable().GetColumnByName(self.WEIGHTS_COLUMN_NAME)
     overlapPercentArray = tableNode.GetTable().GetColumnByName(self.OVERLAP_PERCENT_COLUMN_NAME)
 
     highestOverlapPercentIndex = -1
-    highestOverlapPercent = 0.0
+    highestOverlapPercent = vtk.VTK_DOUBLE_MIN
     for i in range(weightsArray.GetNumberOfValues()):
       overlapPercent = overlapPercentArray.GetValue(i)
       if overlapPercent > highestOverlapPercent:
@@ -178,7 +179,21 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     weight = weightsArray.GetValue(highestOverlapPercentIndex)
     return weight, highestOverlapPercent
 
-  def evaluateWeights(self, inputCurveNode, optimizerCurveNode, weights, inputPointLocator, outputTableNode):
+  def getHightestISOOverlapWeight(self, tableNode):
+    weightsArray = tableNode.GetTable().GetColumnByName(self.WEIGHTS_COLUMN_NAME)
+    isoOverlapArray = tableNode.GetTable().GetColumnByName(self.ISO_OVERLAP_COLUMN_NAME)
+
+    highestISOOverlapIndex = -1
+    highestISOOverlap = vtk.VTK_DOUBLE_MIN
+    for i in range(weightsArray.GetNumberOfValues()):
+      isoOverlap = isoOverlapArray.GetValue(i)
+      if isoOverlap > highestISOOverlap:
+        highestISOOverlap = isoOverlap
+        highestISOOverlapIndex = i
+    weight = weightsArray.GetValue(highestISOOverlapIndex)
+    return weight, highestISOOverlap
+
+  def evaluateWeights(self, inputCurveNode, optimizerCurveNode, weights, inputCurveLocator, inputPolyDataLocator, outputTableNode):
     # [d,   c,   h,  dc,  dh,  ch, dch,   p]
     optimizerCurveNode.SetDistanceWeight(weights[0])
     optimizerCurveNode.SetCurvatureWeight(weights[1])
@@ -189,13 +204,20 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     optimizerCurveNode.SetDistanceCurvatureSulcalHeightWeight(weights[6])
     optimizerCurveNode.SetDirectionWeight(weights[7])
 
+    polyData = inputCurveNode.GetShortestDistanceSurfaceNode().GetPolyData()
+    isoRegionsArrayName = "ISO-Regions"
+    pointData = polyData.GetPointData()
+    isoRegionsArray = pointData.GetArray(isoRegionsArrayName)
+
+    isoRegionSum = {}
+
     optimizerPoints = optimizerCurveNode.GetCurvePointsWorld()
     averageDistance2 = 0.0
     maxDistance2 = 0.0
     overlapPercent = 0.0
     for i in range(optimizerPoints.GetNumberOfPoints()):
       optimizerPoint_World = optimizerPoints.GetPoint(i)
-      closestInputPointID = inputPointLocator.FindClosestPoint(optimizerPoint_World)
+      closestInputPointID = inputCurveLocator.FindClosestPoint(optimizerPoint_World)
       closestPoint_World = inputCurveNode.GetCurvePointsWorld().GetPoint(closestInputPointID)
       distance2 = vtk.vtkMath.Distance2BetweenPoints(optimizerPoint_World, closestPoint_World)
       averageDistance2 += (distance2/optimizerPoints.GetNumberOfPoints())
@@ -203,6 +225,13 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
         maxDistance2 = distance2
       if distance2 == 0.0:
         overlapPercent += 1.0 / optimizerPoints.GetNumberOfPoints()
+
+      polyDataPointID = inputPolyDataLocator.FindClosestPoint(optimizerPoint_World)
+      isoRegion = isoRegionsArray.GetValue(polyDataPointID)
+      if isoRegion >= 0:
+        isoRegion = max(1, isoRegion)
+        isoRegionSum[isoRegion] = isoRegionSum.get(isoRegion, 0) + 1
+
     import math
 
     weightsArray = outputTableNode.GetTable().GetColumnByName(self.WEIGHTS_COLUMN_NAME)
@@ -216,6 +245,75 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
     overlapPercentArray = outputTableNode.GetTable().GetColumnByName(self.OVERLAP_PERCENT_COLUMN_NAME)
     overlapPercentArray.InsertNextTuple1(overlapPercent)
+
+    isoOverlap = 0.0
+    for isoRegion, regionSum in isoRegionSum.items():
+      fr = regionSum / optimizerPoints.GetNumberOfPoints()
+      penalty = -0.2
+      isoOverlap += (1 - (fr * (1 + (penalty * (isoRegion - 1)))))
+    isoOverlap /= 6
+    isoOverlapArray = outputTableNode.GetTable().GetColumnByName(self.ISO_OVERLAP_COLUMN_NAME)
+    isoOverlapArray.InsertNextTuple1(isoOverlap)
+      
+
+  def createISORegionOverlay(self, curveNode):
+    """
+    :param curve: The curve that the overlay will be created from (vtkMRMLMarkupsCurveNode)
+    """
+    polyData = curveNode.GetShortestDistanceSurfaceNode().GetPolyData()
+    if polyData is None:
+      #TODO
+      return
+
+    pointLocator = vtk.vtkPointLocator()
+    pointLocator.SetDataSet(polyData)
+    pointLocator.BuildLocator()
+
+    curvePoints = curveNode.GetCurvePointsWorld()
+
+    isoRegionsArrayName = "ISO-Regions"
+    pointData = polyData.GetPointData()
+    isoRegionsArray = pointData.GetArray(isoRegionsArrayName)
+    if isoRegionsArray  is None:
+      isoRegionsArray = vtk.vtkIdTypeArray()
+      isoRegionsArray.SetName(isoRegionsArrayName)
+    isoRegionsArray.SetNumberOfValues(polyData.GetNumberOfPoints())
+    isoRegionsArray.Fill(-1)
+    curveNode.GetShortestDistanceSurfaceNode().AddPointScalars(isoRegionsArray)
+
+    visitedPoints = []
+    previousISORegion = []
+    for regionIndex in range(7):
+      currentISORegion = []
+      if regionIndex == 0:
+        for i in range(curvePoints.GetNumberOfPoints()):
+          curvePoint_World = curvePoints.GetPoint(i)
+          currentISORegion.append(pointLocator.FindClosestPoint(curvePoint_World))
+      else:      
+        currentISORegion = self.getAdjacentPoints(polyData, previousISORegion)
+
+      for isoPointID in currentISORegion:
+        if isoPointID in visitedPoints:
+          continue
+        isoRegionsArray.SetValue(isoPointID, regionIndex)
+
+      visitedPoints += currentISORegion
+      previousISORegion = currentISORegion
+
+  def getAdjacentPoints(self, inputPolydata, inputPointIDs):
+    pointIDs = []
+    cellIdList = vtk.vtkIdList()
+    pointIdList = vtk.vtkIdList()
+    for pointID in inputPointIDs:
+      inputPolydata.GetPointCells(pointID, cellIdList)
+      for cellIndex in range(cellIdList.GetNumberOfIds()):
+        inputPolydata.GetCellPoints(cellIdList.GetId(cellIndex), pointIdList)
+        for pointIndex in range(pointIdList.GetNumberOfIds()):
+          pointID = pointIdList.GetId(pointIndex)
+          if pointID in inputPointIDs or pointID in pointIDs:
+            continue
+          pointIDs.append(pointID)
+    return pointIDs
 
   def binaryArray(self, num, m):
     """
