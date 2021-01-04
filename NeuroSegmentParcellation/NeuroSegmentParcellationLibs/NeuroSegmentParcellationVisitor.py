@@ -12,7 +12,7 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     _DistanceWeightingValues = [d, c, h, dc, dh, ch, dch, p] # Weighting for pathfinding (d=distance, c=curvature, h=sulcal height, p=direction)
     _DistanceWeightingPenalties = [c, h, dc, dh, ch, dch] # Penalties applied when c or s are < 0.
     _Planes = [...] # Create or retrieve all vtkMRMLMarkupPlaneNode with the specified names in the scene
-    _Curves = [...] # Create or retrieve all vtkMRMLFreeSurferMarkupsCurveNode with the specified names in the scene
+    _Curves = [...] # Create or retrieve all vtkMRMLMarkupsFreeSurferCurveNode with the specified names in the scene
     _ClosedCurves = [...] # Create or retrieve all vtkMRMLMarkupsClosedCurveNode with the specified names in the scene
     XYZ = A || B || C # Create a vtkMRMLDynamicModelerNode using the "BoundaryCut" tool, and output vtkMRMLModelNode with the name "XYZ", using markups A, B and C
   """
@@ -71,7 +71,7 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       self.process_InputNodes(node.value, "vtkMRMLMarkupsPlaneNode")
       return
     elif target.id == "_Curves":
-      curveNodes = self.process_InputNodes(node.value, "vtkMRMLFreeSurferMarkupsCurveNode")
+      curveNodes = self.process_InputNodes(node.value, "vtkMRMLMarkupsFreeSurferCurveNode")
       for curveNode in curveNodes:
         curveNode.SetCurveTypeToShortestDistanceOnSurface()
       return
@@ -176,7 +176,7 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
             displayNode.HandlesInteractiveOn()
 
       # Update the distance weighting parameter based on the current distance weighting function
-      if inputNode.IsA("vtkMRMLFreeSurferMarkupsCurveNode"):
+      if inputNode.IsA("vtkMRMLMarkupsFreeSurferCurveNode"):
         weightFunctions = [
           inputNode.SetDistanceWeight,
           inputNode.SetCurvatureWeight,

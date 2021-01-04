@@ -141,7 +141,7 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
     optimizerCurve = slicer.mrmlScene.GetFirstNodeByName("CurveComparisonPreview")
     if optimizerCurve is None:
-      optimizerCurve = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLFreeSurferMarkupsCurveNode", "CurveComparisonPreview")
+      optimizerCurve = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFreeSurferCurveNode", "CurveComparisonPreview")
     optimizerCurve.SetAndObserveShortestDistanceSurfaceNode(inputCurveNode.GetShortestDistanceSurfaceNode())
     optimizerCurve.SetCurveTypeToShortestDistanceOnSurface()
 
