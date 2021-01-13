@@ -18,6 +18,8 @@ _Planes = [
   PlaneN,
   PlaneO,
   PlaneP,
+  PlaneQ,
+  PlaneR,
   Seuptum,
 ]
 
@@ -32,6 +34,7 @@ _Curves = [HemisphericMargin]
 _DistanceWeightingValues = [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]
 
 _Curves = [
+  AHR_Line,
   Inferior45DegreeLine,
   OlfactorySulcus,
   PrecentralSulcus,
@@ -63,36 +66,63 @@ _Curves = [
   HippocampalFissue,
   CollateralSulcus,
   Bf_line,
+  TransH,
+  AntOrbS,
+  LatHS,
+  CentralSulcusofInsula,
+  SupPreCenLine,
+  InfPreCenLine,
+  SupPostCenLine,
+  InfPostCenLine,
+  PAL,
+  Test1,
+  Test2,
 ]
 
 _ClosedCurves = [
   CircularSulcusOfTheInsula,
 ]
 
-FP_l = PlaneA & HemisphericMargin & OlfactorySulcus & anterior_of(PlaneA) & posterior_of(OlfactorySulcus) & medial_of(OlfactorySulcus) & lateral_of(HemisphericMargin)
-F1_l = PlaneA & PrecentralSulcus & HemisphericMargin & SuperiorFrontalSulcus
-F2 = PlaneA & SuperiorFrontalSulcus & InferiorFrontalSulcus & PrecentralSulcus
-F3t = PlaneA & Superior45DegreeLine & AnteriorAscendingRamusOfTheSylvian & InferiorFrontalSulcus
-F3o = PlaneA & Superior45DegreeLine & AnteriorAscendingRamusOfTheSylvian & InferiorFrontalSulcus & PrecentralSulcus
-FOC = PlaneA & BASFRBRN & AnteriorAscendingRamusOfTheSylvian & OlfactorySulcus & CircularSulcusOfTheInsula
+FP_l = PlaneQ & HemisphericMargin & anterior_of(PlaneA) & lateral_of(HemisphericMargin)
+F1_l_a = PlaneQ & PlaneI & HemisphericMargin & SuperiorFrontalSulcus & anterior_of(PlaneI) & posterior_of(PlaneQ)
+F1_l_m = PlaneI & PlaneO & HemisphericMargin & SuperiorFrontalSulcus & anterior_of(PlaneO) & posterior_of(PlaneI)
+F1_l_p = PlaneO & PrecentralSulcus & HemisphericMargin & SuperiorFrontalSulcus & anterior_of(PrecentralSulcus) & posterior_of(PlaneO)
+F2a = PlaneQ & PlaneI & SuperiorFrontalSulcus & InferiorFrontalSulcus & anterior_of(PlaneI) & posterior_of(PlaneQ)
+F2m = PlaneI & PlaneO & SuperiorFrontalSulcus & InferiorFrontalSulcus & anterior_of(PlaneO) & posterior_of(PlaneI) 
+F2p = PlaneI & PrecentralSulcus & SuperiorFrontalSulcus & InferiorFrontalSulcus & anterior_of(PrecentralSulcus) & posterior_of(PlaneO)
+F3a = PlaneQ & PlaneA & AHR_Line & InferiorFrontalSulcus
+F3t = PlaneA & AnteriorAscendingRamusOfTheSylvian & Superior45DegreeLine & InferiorFrontalSulcus
+F3o = AnteriorAscendingRamusOfTheSylvian & PrecentralSulcus & Superior45DegreeLine & InferiorFrontalSulcus 
+F3orb = PlaneQ & PlaneA & Superior45DegreeLine & AHR_Line
+FOC_a = PlaneQ & TransH &AntOrbS & LatHS
+FOC_l = PlaneQ & CircularSulcusOfTheInsula & Superior45DegreeLine & LatHS
+FOC_m = PlaneQ & Bf_line & OlfactorySulcus & AntOrbS
+FOC_p = TransH & Bf_line & CircularSulcusOfTheInsula & LatHS & AntOrbS
 FO = PlaneO & Superior45DegreeLine & CircularSulcusOfTheInsula
-CO = PlaneO & PlaneP & Superior45DegreeLine & CircularSulcusOfTheInsula
+COa = PlaneO & PlaneR & Superior45DegreeLine & CircularSulcusOfTheInsula
+COp = PlaneR & PlaneP &	Superior45DegreeLine & CircularSulcusOfTheInsula
 PO = PlaneP & PlaneD & Superior45DegreeLine & CircularSulcusOfTheInsula
 PP = PlaneB & FirstTransverseSulcus & Inferior45DegreeLine & CircularSulcusOfTheInsula
 H1 = FirstTransverseSulcus & HeschlsSulcus & Inferior45DegreeLine & CircularSulcusOfTheInsula
 PT = PlaneD & HeschlsSulcus & Inferior45DegreeLine & CircularSulcusOfTheInsula
-INS = CircularSulcusOfTheInsula
-PRG_l = HemisphericMargin & PrecentralSulcus & CentralSulcus & Superior45DegreeLine
-POG_l = HemisphericMargin & CentralSulcus & PostcentralSulcus & Superior45DegreeLine
+INSa = CircularSulcusOfTheInsula & CentralSulcusofInsula & anterior_of(CentralSulcusofInsula)
+INSp = CircularSulcusOfTheInsula & CentralSulcusofInsula & posterior_of(CentralSulcusofInsula)
+PRG_ls = CentralSulcus & PrecentralSulcus & SupPreCenLine & HemisphericMargin
+PRG_lm = CentralSulcus & PrecentralSulcus & InfPreCenLine & SupPreCenLine
+PRG_li = CentralSulcus & PrecentralSulcus & Superior45DegreeLine & InfPreCenLine
+POG_ls = CentralSulcus & PostcentralSulcus & SupPostCenLine & HemisphericMargin
+POG_lm = CentralSulcus & PostcentralSulcus & InfPostCenLine & SupPostCenLine
+POG_li = CentralSulcus & PostcentralSulcus & InfPostCenLine & Superior45DegreeLine
 SGa = PlaneD & PostcentralSulcus & IntraparietalSulcus & Superior45DegreeLine
-SGp_a = PlaneD & PlaneE & IntraparietalSulcus & SuperiorTemporalSulcus
-SGp_p = PlaneE & IntraparietalSulcus & IntermediateSulcusOfJensen
-SPL = PlaneF & PostcentralSulcus & IntraparietalSulcus & HemisphericMargin
-AG = PlaneE & PlaneF & SuperiorTemporalSulcus & IntraparietalSulcus & LateralOccipitalSulcus & IntermediateSulcusOfJensen
-OLs = PlaneF & PlaneG & LateralOccipitalSulcus & HemisphericMargin & PostcentralSulcus
+SGp = PlaneD & PlaneE & IntraparietalSulcus & IntermediateSulcusOfJensen & SuperiorTemporalSulcus
+SPLa = PlaneF & PostcentralSulcus & IntraparietalSulcus & HemisphericMargin
+SPLp = PlaneF & PAL & HemisphericMargin & IntraparietalSulcus
+AGa = PlaneE & PlaneF & SuperiorTemporalSulcus & IntraparietalSulcus & LateralOccipitalSulcus & IntermediateSulcusOfJensen
+AGp = PlaneF & PAL & SuperiorTemporalSulcus & LateralOccipitalSulcus & IntraparietalSulcus
+OLs = PAL & PlaneG & LateralOccipitalSulcus & HemisphericMargin 
 OLi = PlaneF & PlaneG & LateralOccipitalSulcus & OccipitotemporalSulcus
-OP = PlaneG
-TP = PlaneB
+OP = PlaneG & posterior_of(PlaneG)
+TP = PlaneB & anterior_of(PlaneB)
 T1a = PlaneB & PlaneC & SuperiorTemporalSulcus & Inferior45DegreeLine
 T1p = PlaneC & PlaneD & SuperiorTemporalSulcus & Inferior45DegreeLine
 T2a = PlaneB & PlaneC & InferiorTemporalSulcus & SuperiorTemporalSulcus
@@ -101,22 +131,22 @@ TO2 = PlaneD & PlaneF & InferiorTemporalSulcus & SuperiorTemporalSulcus & Latera
 T3a = PlaneB & PlaneC & InferiorTemporalSulcus & OccipitotemporalSulcus
 T3p = PlaneC & PlaneD & InferiorTemporalSulcus & OccipitotemporalSulcus
 TO3 = PlaneD & PlaneF & InferiorTemporalSulcus & OccipitotemporalSulcus
-FP_m = PlaneH & HemisphericMargin
-F1_m = PlaneH & PlaneJ & ParacingulateSulcus & HemisphericMargin
-FMC = PlaneH & PlaneI & OlfactorySulcus & ParacingulateSulcus
-PAC_a = PlaneI & ParacingulateSulcus & CingulateSulcus
-PAC_p = PlaneI & PlaneJ & ParacingulateSulcus & CingulateSulcus
+FP_m = PlaneH & HemisphericMargin & anterior_of(PlaneH)
+F1_m = PlaneH & PlaneI & ParacingulateSulcus & HemisphericMargin
+FMC = PlaneQ & PlaneI & OlfactorySulcus & ParacingulateSulcus
+PAC = PlaneI & ParacingulateSulcus & CingulateSulcus
 SC = PlaneI & Seuptum & OlfactorySulcus & CallosalSulcus
 CGa_a = PlaneI & CingulateSulcus
 CGa_p = PlaneI & PlaneK & CingulateSulcus & CallosalSulcus
 CGp = PlaneK & CallosalSulcus & CalcarineSulcus & SubparietalSulcus
 SMC = PlaneJ & PlaneK & CingulateSulcus & HemisphericMargin
+PreSMC = PlaneI & PlaneJ & CingulateSulcus & HemisphericMargin
 PRG_m = PlaneK & PlaneL & CingulateSulcus & HemisphericMargin
 POG_m = PlaneL & HemisphericMargin & CingulateSulcus
-PCN = PlaneG & CingulateSulcus & SubparietalSulcus & CalcarineSulcus & ParietooccipitalSulcus & HemisphericMargin
-CN = CunPo & PlaneG & ParietooccipitalSulcus & CunealSulcus & HemisphericMargin
-CALC = CunPnt & PlaneG & CalcarineSulcus & CalcarineSuperiorLine & ParietooccipitalSulcus
-SCLC = CunPnt & PlaneG & CalcarineSuperiorLine & ParietooccipitalSulcus & CunealSulcus
+PCN = CingulateSulcus & SubparietalSulcus & CalcarineSulcus & ParietooccipitalSulcus & HemisphericMargin
+CN =  PlaneG & ParietooccipitalSulcus & CunealSulcus & HemisphericMargin
+CALC = PlaneG & CalcarineSulcus & CalcarineSuperiorLine & ParietooccipitalSulcus
+SCLC = PlaneG & CalcarineSuperiorLine & ParietooccipitalSulcus & CunealSulcus
 PHa = PlaneB & PlaneM & HippocampalFissue & CollateralSulcus
 PHp = PlaneM & PlaneN & HippocampalFissue & CollateralSulcus & CalcarineSulcus
 LG =  PlaneN & PlaneG & CollateralSulcus & CalcarineSulcus
@@ -124,15 +154,11 @@ TFa = PlaneB & PlaneC & OccipitotemporalSulcus & CollateralSulcus
 TFp = PlaneC & PlaneD & OccipitotemporalSulcus & CollateralSulcus
 TOF = PlaneD & PlaneF & OccipitotemporalSulcus & CollateralSulcus
 OF = PlaneF & PlaneG & OccipitotemporalSulcus & CollateralSulcus
+Test1 = PlaneA
+Test2 = PlaneF
 BFsbcmp = BASFRBRN & OlfactorySulcus & Bf_line & CircularSulcusOfTheInsula
 
 FP_l.color = [0,0,0]
 F1_l.color = [0,0,0]
 PlaneA.color = [0,0,0]
 
-# Additional Parcellation Units
-#AGa
-#AGp
-#OLsProper
-#SPLa
-#SPLp
