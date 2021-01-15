@@ -365,9 +365,9 @@
       <item row="0" column="1">
        <layout class="QHBoxLayout" name="horizontalLayout_3">
         <item>
-         <widget class="QRadioButton" name="curveRadioButton">
+         <widget class="QRadioButton" name="markupRadioButton">
           <property name="text">
-           <string>Curve</string>
+           <string>Markup</string>
           </property>
           <property name="checked">
            <bool>true</bool>

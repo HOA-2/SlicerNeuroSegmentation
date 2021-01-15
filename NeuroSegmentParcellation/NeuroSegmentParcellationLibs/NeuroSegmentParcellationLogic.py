@@ -257,6 +257,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         self.inputMarkupObservers.append((inputMarkupNode, tag))
         tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.DisplayModifiedEvent, self.onPlaneDisplayModified)
         self.inputMarkupObservers.append((inputMarkupNode, tag))
+        inputMarkupNode.SetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME, self.ORIG_NODE_ATTRIBUTE_VALUE)
 
       pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialControlPoints:

@@ -171,7 +171,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.exportButton.connect('clicked(bool)', self.onExportButton)
     self.ui.exportLabelButton.connect('clicked(bool)', self.onExportLabelButton)
 
-    self.ui.curveRadioButton.connect("toggled(bool)", self.updateImportWidget)
+    self.ui.markupRadioButton.connect("toggled(bool)", self.updateImportWidget)
     self.ui.overlayRadioButton.connect("toggled(bool)", self.updateImportWidget)
 
     self.ui.importMarkupComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
@@ -788,8 +788,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     comboboxes for the input/output nodes and overlays.
     """
 
-    self.ui.importMarkupComboBox.setVisible(self.ui.curveRadioButton.isChecked())
-    self.ui.destinationMarkupComboBox.setVisible(self.ui.curveRadioButton.isChecked())
+    self.ui.importMarkupComboBox.setVisible(self.ui.markupRadioButton.isChecked())
+    self.ui.destinationMarkupComboBox.setVisible(self.ui.markupRadioButton.isChecked())
     self.ui.importOverlayComboBox.setVisible(self.ui.overlayRadioButton.isChecked())
     self.ui.destinationModelComboBox.setVisible(self.ui.overlayRadioButton.isChecked())
 
@@ -809,7 +809,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.importOverlayComboBox.blockSignals(wasBlocking)
 
     importEnabled = False
-    if self.ui.curveRadioButton.isChecked():
+    if self.ui.markupRadioButton.isChecked():
       importNode = self.ui.importMarkupComboBox.currentNode()
       destinationNode = self.ui.destinationMarkupComboBox.currentNode()
       importEnabled = not importNode is None and not destinationNode is None and importNode != destinationNode
@@ -822,7 +822,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.importButton.enabled = importEnabled
 
   def onImportButton(self):
-    if self.ui.curveRadioButton.isChecked():
+    if self.ui.markupRadioButton.isChecked():
       self.importMarkupNode()
     elif self.ui.overlayRadioButton.isChecked():
       self.importOverlay()
