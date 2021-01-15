@@ -275,7 +275,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     currentPlaceId = selectionNode.GetActivePlaceNodeID()
     currentPlaceNode = slicer.mrmlScene.GetNodeByID(selectionNode.GetActivePlaceNodeID())
-    nodeType = currentPlaceNode.GetAttribute("NeuroSegmentParcellation.NodeType")
+    nodeType = currentPlaceNode.GetAttribute(self.logic.NODE_TYPE_ATTRIBUTE_NAME)
     if nodeType is None:
       return
 
@@ -310,7 +310,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     currentPlaceId = selectionNode.GetActivePlaceNodeID()
     currentPlaceNode = slicer.mrmlScene.GetNodeByID(selectionNode.GetActivePlaceNodeID())
-    nodeType = currentPlaceNode.GetAttribute("NeuroSegmentParcellation.NodeType")
+    nodeType = currentPlaceNode.GetAttribute(self.logic.NODE_TYPE_ATTRIBUTE_NAME)
     if nodeType is None:
       return
 
