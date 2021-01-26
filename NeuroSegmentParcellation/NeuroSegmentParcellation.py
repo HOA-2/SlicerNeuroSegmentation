@@ -203,6 +203,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     self.ui.planeIntersectionCheckBox.connect("toggled(bool)", self.onPlaneCheckBox)
 
+    self.ui.labelOutlineCheckBox.connect("toggled(bool)", self.onLabelOutlineCheckBox)
+
     self.oldLayout = slicer.app.layoutManager().layout
 
     # Initial GUI update
@@ -838,11 +840,17 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     importOverlay = self.ui.importOverlayComboBox.currentText
     destinationNode = self.ui.destinationModelComboBox.currentNode()
     self.logic.convertOverlayToModelNode(self.logic.getOrigModelNode(self.parameterNode), importOverlay, destinationNode)
+    self.logic.exportOutputToSurfaceLabel(self.parameterNode)
 
   def onPlaneCheckBox(self, checked):
     if self.parameterNode is None:
       return
     self.logic.setPlaneIntersectionVisible(checked)
+
+  def onLabelOutlineCheckBox(self, checked):
+    if self.parameterNode is None:
+      return
+    self.logic.setLabelOutlineVisible(checked)
 
 class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
   """

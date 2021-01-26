@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>291</width>
-    <height>876</height>
+    <height>938</height>
    </rect>
   </property>
   <layout class="QFormLayout" name="formLayout">
@@ -148,6 +148,13 @@
           </property>
          </widget>
         </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_11">
+          <property name="text">
+           <string>Plane intersection:</string>
+          </property>
+         </widget>
+        </item>
         <item row="3" column="1">
          <widget class="QCheckBox" name="planeIntersectionCheckBox">
           <property name="text">
@@ -155,10 +162,17 @@
           </property>
          </widget>
         </item>
-        <item row="3" column="0">
-         <widget class="QLabel" name="label_11">
+        <item row="4" column="0">
+         <widget class="QLabel" name="label_13">
           <property name="text">
-           <string>Plane intersection:</string>
+           <string>Label outline:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QCheckBox" name="labelOutlineCheckBox">
+          <property name="text">
+           <string/>
           </property>
          </widget>
         </item>

@@ -42,6 +42,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   TOOL_NODE_REFERENCE = "ToolNode"
   EXPORT_SEGMENTATION_REFERENCE = "ExportSegmentation"
   INTERSECTION_MODEL_REFERENCE = "PlaneIntersection"
+  LABEL_OUTLINE_MODEL_REFERENCE = "LabelOutline"
 
   ORIG_NODE_ATTRIBUTE_VALUE = "Orig"
   PIAL_NODE_ATTRIBUTE_VALUE = "Pial"
@@ -51,7 +52,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX = "MarkupSliceVisibility."
   NEUROSEGMENT_OUTPUT_ATTRIBUTE_VALUE = "NeuroSegmentParcellation.Output"
 
-  PLANE_INTERSECTION_VISIBILITY_NAME = "PlaneIntersection"
+  PLANE_INTERSECTION_VISIBILITY_NAME = "PlaneIntersectionVisibility"
+
+  LABEL_OUTLINE_VISIBILITY_NAME = "LabelOutlineVisibility"
 
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
@@ -1070,6 +1073,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.updateParcellationColorNode()
     logging.debug("Finish export to surface label")
 
+    # Update outline polydata
+    labelOutlineNode = self.getLabelOutlineNode()
+    if labelOutlineNode and labelOutlineNode.GetDisplayVisibility():
+      self.updateLabelOutlinePolyData()
 
   def getParcellationColorNode(self):
     parcellationColorNode = self.parameterNode.GetNodeReference("ParcellationColorNode")
@@ -1310,6 +1317,92 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.parameterNode is None:
       return
     self.parameterNode.SetParameter(self.PLANE_INTERSECTION_VISIBILITY_NAME, str(visible))
+
+  def getLabelOutlineVisible(self):
+    if self.parameterNode is None:
+      return False
+    return self.parameterNode.GetParameter(self.LABEL_OUTLINE_VISIBILITY_NAME) == str(True)
+
+  def setLabelOutlineVisible(self, visible):
+    if self.parameterNode is None:
+      return
+    self.parameterNode.SetParameter(self.LABEL_OUTLINE_VISIBILITY_NAME, str(visible))
+    self.updateLabelOutlineVisibility()
+
+  def updateLabelOutlineVisibility(self):
+    visible = self.getLabelOutlineVisible()
+    outlineNode = self.getLabelOutlineNode()
+    outlineNode.SetDisplayVisibility(visible)
+    if not visible:
+      return
+    displayNode = outlineNode.GetDisplayNode()
+    displayNode.SetActiveScalar("labels", vtk.vtkDataObject.POINT)
+    displayNode.SetAndObserveColorNodeID(self.getParcellationColorNode().GetID())
+    displayNode.SetScalarRangeFlag(slicer.vtkMRMLDisplayNode.UseColorNodeScalarRange)
+    displayNode.SetScalarVisibility(True)
+    displayNode.SetInterpolation(slicer.vtkMRMLDisplayNode.FlatInterpolation)
+    displayNode.SetLineWidth(4.0)
+    self.updateLabelOutlinePolyData()
+
+  def updateLabelOverlay(self):
+    labelValue = 0
+    outputModelNodes = self.getOutputModelNodes()
+    for outputModelNode in outputModelNodes:
+      labelValue += 1
+      outputPolyData = outputModelNode.GetPolyData()
+      if outputPolyData is None:
+        continue
+
+      pointData = outputPolyData.GetPointData()
+      if pointData is None:
+        continue
+
+      labelArray = pointData.GetArray("labels")
+      if labelArray is None:
+        labelArray = vtk.vtkIntArray()
+        labelArray.SetName("labels")
+        labelArray.SetNumberOfValues(outputPolyData.GetNumberOfPoints())
+        labelArray.Fill(labelValue)
+        pointData.AddArray(labelArray)
+
+  def updateLabelOutlinePolyData(self):
+    self.updateLabelOverlay()
+    outputModelNodes = self.getOutputModelNodes()
+    appendFilter = vtk.vtkAppendPolyData()
+    for outputModelNode in outputModelNodes:
+      outputPolyData = outputModelNode.GetPolyData()
+      if not outputPolyData or outputPolyData.GetNumberOfPoints() == 0:
+        continue
+
+      boundaryEdges = vtk.vtkFeatureEdges()
+      boundaryEdges.SetInputData(outputPolyData)
+      boundaryEdges.BoundaryEdgesOn()
+      boundaryEdges.FeatureEdgesOff()
+      boundaryEdges.NonManifoldEdgesOff()
+      boundaryEdges.ManifoldEdgesOff()
+
+      boundaryStrips = vtk.vtkStripper()
+      boundaryStrips.SetInputConnection(boundaryEdges.GetOutputPort())
+
+      appendFilter.AddInputConnection(boundaryStrips.GetOutputPort())
+    appendFilter.Update()
+
+    outlineNode = self.getLabelOutlineNode()
+    outlineNode.SetAndObservePolyData(appendFilter.GetOutput())
+    origNode = self.getOrigModelNode()
+    if origNode.GetParentTransformNode():
+      outlineNode.SetAndObserveTransformNodeID(origNode.GetParentTransformNode().GetID())
+
+  def getLabelOutlineNode(self):
+    if self.parameterNode is None:
+      return
+    outlineModelNode = self.parameterNode.GetNodeReference(self.LABEL_OUTLINE_MODEL_REFERENCE)
+    if outlineModelNode is None:
+      outlineModelNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", "LabelOutline")
+      outlineModelNode.CreateDefaultDisplayNodes()
+      outlineModelNode.SetDisplayVisibility(False)
+      self.parameterNode.SetNodeReferenceID(self.LABEL_OUTLINE_MODEL_REFERENCE, outlineModelNode.GetID())
+    return outlineModelNode
 
   def updatePlaneIntersectionVisibility(self):
     visible = self.getPlaneIntersectionVisible()
