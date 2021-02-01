@@ -47,6 +47,12 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   ORIG_NODE_ATTRIBUTE_VALUE = "Orig"
   PIAL_NODE_ATTRIBUTE_VALUE = "Pial"
   INFLATED_NODE_ATTRIBUTE_VALUE = "Inflated"
+  NODE_TYPES = [
+    ORIG_NODE_ATTRIBUTE_VALUE,
+    PIAL_NODE_ATTRIBUTE_VALUE,
+    INFLATED_NODE_ATTRIBUTE_VALUE,
+  ]
+
   NODE_TYPE_ATTRIBUTE_NAME = "NeuroSegmentParcellation.NodeType"
   MANUALLY_PLACED_ATTRIBUTE_NAME = "NeuroSegmentParcellation.ManuallyPlaced"
   MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX = "MarkupSliceVisibility."
@@ -1074,9 +1080,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     logging.debug("Finish export to surface label")
 
     # Update outline polydata
-    labelOutlineNode = self.getLabelOutlineNode()
-    if labelOutlineNode and labelOutlineNode.GetDisplayVisibility():
-      self.updateLabelOutlinePolyData()
+    self.updateLabelOutlinePolyData()
 
   def getParcellationColorNode(self):
     parcellationColorNode = self.parameterNode.GetNodeReference("ParcellationColorNode")
@@ -1331,18 +1335,30 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
   def updateLabelOutlineVisibility(self):
     visible = self.getLabelOutlineVisible()
-    outlineNode = self.getLabelOutlineNode()
-    outlineNode.SetDisplayVisibility(visible)
-    if not visible:
-      return
-    displayNode = outlineNode.GetDisplayNode()
-    displayNode.SetActiveScalar("labels", vtk.vtkDataObject.POINT)
-    displayNode.SetAndObserveColorNodeID(self.getParcellationColorNode().GetID())
-    displayNode.SetScalarRangeFlag(slicer.vtkMRMLDisplayNode.UseColorNodeScalarRange)
-    displayNode.SetScalarVisibility(True)
-    displayNode.SetInterpolation(slicer.vtkMRMLDisplayNode.FlatInterpolation)
-    displayNode.SetLineWidth(4.0)
-    self.updateLabelOutlinePolyData()
+    if visible:
+      self.updateLabelOutlinePolyData()
+
+    baseViewIds = ["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
+    outlineNodes = self.getLabelOutlineNodes(self.parameterNode) #TODO: Update parameter node
+    for outlineNode in outlineNodes:
+      outlineNode.SetDisplayVisibility(visible)
+      displayNode = outlineNode.GetDisplayNode()
+      displayNode.SetActiveScalar("labels", vtk.vtkDataObject.POINT)
+      displayNode.SetAndObserveColorNodeID(self.getParcellationColorNode().GetID())
+      displayNode.SetScalarRangeFlag(slicer.vtkMRMLDisplayNode.UseColorNodeScalarRange)
+      displayNode.SetScalarVisibility(True)
+      displayNode.SetInterpolation(slicer.vtkMRMLDisplayNode.FlatInterpolation)
+      displayNode.SetLineWidth(4.0)
+
+      viewIds = baseViewIds[:]
+      nodeType = outlineNode.GetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME)
+      if nodeType == self.ORIG_NODE_ATTRIBUTE_VALUE:
+        viewIds.append("vtkMRMLViewNodeO")
+      elif nodeType == self.PIAL_NODE_ATTRIBUTE_VALUE:
+        viewIds.append("vtkMRMLViewNodeP")
+      elif nodeType == self.INFLATED_NODE_ATTRIBUTE_VALUE:
+        viewIds.append("vtkMRMLViewNodeI")
+      displayNode.SetViewNodeIDs(viewIds)
 
   def updateLabelOverlay(self):
     labelValue = 0
@@ -1387,22 +1403,124 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       appendFilter.AddInputConnection(boundaryStrips.GetOutputPort())
     appendFilter.Update()
 
-    outlineNode = self.getLabelOutlineNode()
-    outlineNode.SetAndObservePolyData(appendFilter.GetOutput())
-    origNode = self.getOrigModelNode()
-    if origNode.GetParentTransformNode():
-      outlineNode.SetAndObserveTransformNodeID(origNode.GetParentTransformNode().GetID())
+    parameterNode = self.parameterNode #TODO: Update parameter node
+    outlinePolyData = appendFilter.GetOutput()
 
-  def getLabelOutlineNode(self):
+    origOutlinePolyData = vtk.vtkPolyData()
+    origOutlinePolyData.DeepCopy(outlinePolyData)
+    self.convertToFreeSurferPointIds(parameterNode, origOutlinePolyData)
+
+    labelArray = outlinePolyData.GetPointData().GetArray("labels")
+    pointPedigreeArray = outlinePolyData.GetPointData().GetArray("pointPedigree")
+    newLabelArray = vtk.vtkIntArray()
+    newLabelArray.SetName("labels")
+    newLabelArray.SetNumberOfValues(origOutlinePolyData.GetNumberOfPoints())
+    newLabelArray.Fill(0)
+    for i in range(pointPedigreeArray.GetNumberOfValues()):
+      pointID = pointPedigreeArray.GetValue(i)
+      labelValue = labelArray.GetValue(i)
+      newLabelArray.SetValue(pointID, labelValue)
+
+    origOutlineNode = None
+    pialOutlineNode = None
+    inflatedOutlineNode = None
+
+    self.createLabelOutlineNodes(parameterNode)
+    outlineNodes = self.getLabelOutlineNodes(parameterNode)
+    for outlineNode in outlineNodes:
+      outlineNode.SetDisplayVisibility(self.getPlaneIntersectionVisible())
+      nodeType = outlineNode.GetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME)
+      if nodeType == self.ORIG_NODE_ATTRIBUTE_VALUE:
+        origOutlineNode = outlineNode
+      elif nodeType == self.PIAL_NODE_ATTRIBUTE_VALUE:
+        pialOutlineNode = outlineNode
+      elif nodeType == self.INFLATED_NODE_ATTRIBUTE_VALUE:
+        inflatedOutlineNode = outlineNode
+
+    origModelNode = self.getOrigModelNode(parameterNode)
+    pialModelNode = self.getPialModelNode(parameterNode)
+    inflatedModelNode = self.getInflatedModelNode(parameterNode)
+    modelAndOutlines = [(origModelNode, origOutlineNode), (pialModelNode, pialOutlineNode), (inflatedModelNode, inflatedOutlineNode)]
+    for surfaceModelNode, outlineModelNode in modelAndOutlines:
+      if not surfaceModelNode or not outlineModelNode:
+        continue
+      outlinePolyData = vtk.vtkPolyData()
+      outlinePolyData.DeepCopy(origOutlinePolyData)
+      points = vtk.vtkPoints()
+      points.DeepCopy(surfaceModelNode.GetPolyData().GetPoints())
+      outlinePolyData.SetPoints(points)
+      outlinePolyData.GetPointData().AddArray(newLabelArray)
+      outlineModelNode.SetAndObservePolyData(outlinePolyData)
+      if surfaceModelNode.GetParentTransformNode():
+        outlineModelNode.SetAndObserveTransformNodeID(surfaceModelNode.GetParentTransformNode().GetID())
+      else:
+        outlineModelNode.SetAndObserveTransformNodeID(None)
+
+  def getIntersectionModelNodes(self, planeNode):
+    if planeNode is None:
+      return []
+
+    numberOfIntersectionNodes = planeNode.GetNumberOfNodeReferences(self.INTERSECTION_MODEL_REFERENCE)
+    if numberOfIntersectionNodes == 0:
+      return self.createIntersectionModelNodes(planeNode)
+
+    intersectionNodes = []
+    for i in range(numberOfIntersectionNodes):
+      intersectionNode = planeNode.GetNthNodeReference(self.INTERSECTION_MODEL_REFERENCE, i)
+      intersectionNodes.append(intersectionNode)
+    return intersectionNodes
+
+  def getInputModelNodes(self, parameterNode):
     if self.parameterNode is None:
+      return []
+
+    nodeReferences = [
+      self.ORIG_MODEL_REFERENCE,
+      self.PIAL_MODEL_REFERENCE,
+      self.INFLATED_MODEL_REFERENCE,
+      ]
+    inputModelNodes = []
+    for nodeReference in nodeReferences:
+      inputModelNode = parameterNode.GetNodeReference(nodeReference)
+      if inputModelNode is None:
+        continue
+      inputModelNodes.append(inputModelNode)
+    return inputModelNodes
+
+  def createLabelOutlineNodes(self, parameterNode):
+    if not parameterNode:
       return
-    outlineModelNode = self.parameterNode.GetNodeReference(self.LABEL_OUTLINE_MODEL_REFERENCE)
-    if outlineModelNode is None:
-      outlineModelNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", "LabelOutline")
-      outlineModelNode.CreateDefaultDisplayNodes()
-      outlineModelNode.SetDisplayVisibility(False)
-      self.parameterNode.SetNodeReferenceID(self.LABEL_OUTLINE_MODEL_REFERENCE, outlineModelNode.GetID())
-    return outlineModelNode
+
+    outlineNodes = self.getLabelOutlineNodes(parameterNode)
+
+    for nodeType in self.NODE_TYPES:
+      currentOutlineNode = None
+      for outlineNode in outlineNodes:
+        if outlineNode and outlineNode.GetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME) == nodeType:
+          currentOutlineNode = outlineNode
+          break
+
+      if not currentOutlineNode is None:
+        continue
+
+      currentOutlineNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", "LabelOutline_{0}".format(nodeType))
+      currentOutlineNode.CreateDefaultDisplayNodes()
+      currentOutlineNode.SetDisplayVisibility(False)
+      currentOutlineNode.SetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME, nodeType)
+      parameterNode.AddNodeReferenceID(self.LABEL_OUTLINE_MODEL_REFERENCE, currentOutlineNode.GetID())
+
+  def getLabelOutlineNodes(self, parameterNode):
+    if parameterNode is None:
+      return []
+
+    outlineModelNodes = []
+    numberOfOutlineNodes = parameterNode.GetNumberOfNodeReferences(self.LABEL_OUTLINE_MODEL_REFERENCE)
+    for i in range(numberOfOutlineNodes):
+      outlineNode = parameterNode.GetNthNodeReference(self.LABEL_OUTLINE_MODEL_REFERENCE, i)
+      if outlineNode is None:
+        continue
+      outlineModelNodes.append(outlineNode)
+    return outlineModelNodes
 
   def updatePlaneIntersectionVisibility(self):
     visible = self.getPlaneIntersectionVisible()
@@ -1472,12 +1590,12 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   def updatePlaneIntersection(self, parameterNode, planeNode):
     # Only interested in plane nodes
     if not planeNode or not planeNode.IsA("vtkMRMLMarkupsPlaneNode"):
-      logging.error("Invalid plane node")
+      logging.error("updatePlaneIntersection: Invalid plane node")
       return
 
     origModelNode = self.getOrigModelNode(parameterNode)
     if origModelNode is None or origModelNode.GetPolyData() is None:
-      logging.error("Invalid orig model")
+      logging.error("updatePlaneIntersection: Invalid orig model")
       return
 
     origIntersectionPolyData = vtk.vtkPolyData()
