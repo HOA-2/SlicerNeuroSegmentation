@@ -726,6 +726,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if modelNode:
       id = modelNode.GetID()
     parameterNode.SetNodeReferenceID(self.ORIG_MODEL_REFERENCE, id)
+    self.initializePedigreeIds(parameterNode)
 
   def getPialModelNode(self, parameterNode):
     """
@@ -994,8 +995,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     """
     Add Pedigree Ids to Orig model cell data and point data
     """
-    logging.debug("Initializing pedigree IDs")
-
     if parameterNode is None:
       logging.error("initializePedigreeIds: Invalid parameter node")
       return
@@ -1010,7 +1009,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     cellData = polyData.GetCellData()
     cellPedigreeArray = cellData.GetArray("cellPedigree")
     if cellPedigreeArray is None:
-      cellPedigreeIds = vtk.vtkIdTypeArray()
+      logging.debug("Initializing cell pedigree IDs")
+      cellPedigreeIds = vtk.vtkIntArray()
       cellPedigreeIds.SetName("cellPedigree")
       cellPedigreeIds.SetNumberOfValues(polyData.GetNumberOfCells())
       for i in range(polyData.GetNumberOfCells()):
@@ -1019,8 +1019,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     pointData = polyData.GetPointData()
     pointPedigreeArray = pointData.GetArray("pointPedigree")
-    if pointPedigreeArray  is None:
-      pointPedigreeIds = vtk.vtkIdTypeArray()
+    if pointPedigreeArray is None or pointPedigreeArray.GetClassName() != "vtkDoubleArray":
+      logging.debug("Initializing point pedigree IDs")
+      pointPedigreeIds = vtk.vtkDoubleArray()
       pointPedigreeIds.SetName("pointPedigree")
       pointPedigreeIds.SetNumberOfValues(polyData.GetNumberOfPoints())
       for i in range(polyData.GetNumberOfPoints()):
@@ -1382,6 +1383,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         pointData.AddArray(labelArray)
 
   def updateLabelOutlinePolyData(self):
+    parameterNode = self.parameterNode #TODO: Update parameter node
+
+    self.initializePedigreeIds(parameterNode)
     self.updateLabelOverlay()
     outputModelNodes = self.getOutputModelNodes()
     appendFilter = vtk.vtkAppendPolyData()
@@ -1403,7 +1407,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       appendFilter.AddInputConnection(boundaryStrips.GetOutputPort())
     appendFilter.Update()
 
-    parameterNode = self.parameterNode #TODO: Update parameter node
     outlinePolyData = appendFilter.GetOutput()
 
     origOutlinePolyData = vtk.vtkPolyData()
@@ -1417,7 +1420,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     newLabelArray.SetNumberOfValues(origOutlinePolyData.GetNumberOfPoints())
     newLabelArray.Fill(0)
     for i in range(pointPedigreeArray.GetNumberOfValues()):
-      pointID = pointPedigreeArray.GetValue(i)
+      pointID = round(pointPedigreeArray.GetValue(i))
       labelValue = labelArray.GetValue(i)
       newLabelArray.SetValue(pointID, labelValue)
 
@@ -1694,7 +1697,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       newLine = vtk.vtkIdList()
       for pointIndex in range(oldLine.GetNumberOfIds()):
         oldPointId = oldLine.GetId(pointIndex)
-        newPointId = pedigreeArray.GetValue(oldPointId)
+        newPointId = round(pedigreeArray.GetValue(oldPointId))
         newLine.InsertNextId(newPointId)
       newLines.InsertNextCell(newLine)
     polyData.Initialize()

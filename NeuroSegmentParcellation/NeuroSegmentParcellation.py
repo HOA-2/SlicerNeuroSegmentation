@@ -894,8 +894,8 @@ class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
     pialModelNode = self.setupSphere(75.0)
     pialModelNode.GetDisplayNode().SetVisibility(False)
 
-    logic.setOrigModelNode(self.parameterNode, origModelNode)
-    logic.setPialModelNode(self.parameterNode, pialModelNode)
+    logic.setOrigModelNode(parameterNode, origModelNode)
+    logic.setPialModelNode(parameterNode, pialModelNode)
 
     parcellationQueryNode = slicer.vtkMRMLTextNode()
     parcellationQueryNode.SetName("ParcellationQuery")
@@ -949,7 +949,7 @@ class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
       i+=1
 
     logic.exportOutputToSurfaceLabel(parameterNode)
-    logic.setScalarOverlay("labels")
+    logic.setScalarOverlay(parameterNode, "labels")
 
     testDuration = time.time() - startTime
     logging.info("Test duration: %f", testDuration)
