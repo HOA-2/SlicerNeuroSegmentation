@@ -586,30 +586,114 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     return [success, errorMessage]
 
   def exportOutputToSegmentation(self, parameterNode, surfacesToExport=[]):
+    """
+    Export the contents of the specified surfaces to a segmentation
+    :param parameterNode: Parameter node referencing the surfaces to export.
+    :param surfacesToExport: List of surfaces to export. If empty, all surfaces will be exported
+    :return: True if successful, otherwise false
+    """
     if parameterNode is None:
-      return
+      return False
 
     exportSegmentationNode = self.getExportSegmentation()
     if exportSegmentationNode is None:
       logging.error("exportOutputToSegmentation: Invalid segmentation node")
-      return
+      return False
 
     origModelNode = self.getOrigModelNode(parameterNode)
     if origModelNode is None:
       logging.error("exportOutputToSegmentation: Invalid orig node")
-      return
+      return False
 
     pialModelNode = self.getPialModelNode(parameterNode)
     if pialModelNode is None:
       logging.error("exportOutputToSegmentation: Invalid pial node")
-      return
+      return False
 
-    with slicer.util.NodeModify(exportSegmentationNode):
-      for outputModelNode in self.getOutputModelNodes():
+    self.updateLabelOverlay()
+    outputModelNodes = self.getOutputModelNodes()
+
+    wasModifying = exportSegmentationNode.StartModify()
+    slicer.app.pauseRender()
+    try:
+      outputOrigPolyData = vtk.vtkPolyData()
+      tempModelNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode")
+      tempModelNode.SetAndObservePolyData(outputOrigPolyData)
+      tempModelNode.CreateDefaultDisplayNodes()
+      for i in range(self.getNumberOfOutputModels()):
+        outputModelNode = outputModelNodes[i]
         if len(surfacesToExport) > 0 and not outputModelNode.GetName() in surfacesToExport:
           continue
-        self.exportMeshToSegmentation(outputModelNode, origModelNode, pialModelNode, exportSegmentationNode)
-      exportSegmentationNode.CreateDefaultDisplayNodes()
+        tempModelNode.GetDisplayNode().CopyContent(outputModelNode.GetDisplayNode())
+        tempModelNode.SetName(outputModelNode.GetName())
+        self.getOrigPolyDataForLabel(parameterNode, i+1, outputOrigPolyData)
+        self.exportMeshToSegmentation(tempModelNode, origModelNode, pialModelNode, exportSegmentationNode)
+        exportSegmentationNode.CreateDefaultDisplayNodes()
+    finally:
+      slicer.mrmlScene.RemoveNode(tempModelNode.GetDisplayNode())
+      slicer.mrmlScene.RemoveNode(tempModelNode)
+      exportSegmentationNode.EndModify(wasModifying)
+      slicer.app.resumeRender()
+
+    return True
+
+  def exportOrigSurfaceToSegmentation(self, parameterNode, surfacePatchNode, polydata):
+    exportSegmentationNode = self.getExportSegmentation()
+    if exportSegmentationNode is None:
+      logging.error("exportOutputToSegmentation: Invalid segmentation node")
+      return False
+    segmentName = surfacePatchNode.GetName()
+    segmentColor = surfacePatchNode.GetDisplayNode().GetColor()
+    segmentation = exportSegmentationNode.GetSegmentation()
+    segmentation.SetMasterRepresentationName(slicer.vtkSegmentationConverter.GetClosedSurfaceRepresentationName())
+    segmentId = segmentation.GetSegmentIdBySegmentName(segmentName)
+    segment = segmentation.GetSegment(segmentId)
+    segmentIndex = segmentation.GetSegmentIndex(segmentId)
+    if not segment is None:
+      segmentation.RemoveSegment(segment)
+
+    cleanFilter = vtk.vtkCleanPolyData()
+    cleanFilter.SetInputData(polydata)
+    cleanFilter.Update()
+
+    segment = slicer.vtkSegment()
+    segment.SetName(segmentName)
+    segment.SetColor(segmentColor)
+    segment.AddRepresentation(slicer.vtkSegmentationConverter.GetClosedSurfaceRepresentationName(), cleanFilter.GetOutput())
+    segmentation.AddSegment(segment)
+
+  def getOrigPolyDataForLabel(self, parameterNode, labelValue, outputOrigPolyData):
+    origModelNode = self.getOrigModelNode(parameterNode)
+    if origModelNode is None:
+      logging.error("exportOutputToSegmentation: Invalid orig node")
+      return
+    pialModelNode = self.getPialModelNode(parameterNode)
+    if pialModelNode is None:
+      logging.error("exportOutputToSegmentation: Invalid orig node")
+      return
+
+    overlayModel = origModelNode.GetPolyData()
+    pointData = overlayModel.GetPointData()
+    cellData = overlayModel.GetCellData()
+    polys = overlayModel.GetPolys()
+    labelArray = cellData.GetArray("labels")
+    if labelArray is None:
+      logging.error("exportOutputToSegmentation: Invalid label array")
+      return
+
+    cellIds = vtk.vtkIdList()
+    for cellId in range(overlayModel.GetNumberOfPolys()):
+      if labelValue != labelArray.GetValue(cellId):
+        continue
+      cellIds.InsertNextId(cellId)
+
+    extractCells = vtk.vtkExtractCells()
+    extractCells.SetInputData(overlayModel)
+    extractCells.SetCellList(cellIds)
+    geometryFilter = vtk.vtkGeometryFilter()
+    geometryFilter.SetInputConnection(extractCells.GetOutputPort())
+    geometryFilter.Update()
+    outputOrigPolyData.DeepCopy(geometryFilter.GetOutput())
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onMarkupLockStateModified(self, markupNode, eventId=None, callData=None):
