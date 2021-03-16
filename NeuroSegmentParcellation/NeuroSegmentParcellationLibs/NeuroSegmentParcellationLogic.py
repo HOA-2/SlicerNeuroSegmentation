@@ -1788,19 +1788,13 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     polyData.SetPoints(origModelNode.GetPolyData().GetPoints())
     polyData.SetLines(newLines)
 
-  def convertOverlayToModelNode(self, overlayModelNode, importOverlay, destinationNode):
-    """
-    Convert a scalar overlay from a model node to a new model node
-    Uses the "label" overlay from FreeSurfer (3 inside, 1000 outside)
-    Replaces the contents of the destination node polydata
-    """
+  def convertPointDataOverlayToModelNode(self, overlayModelNode, importOverlay, destinationNode, insideLabelValue=3):
+    logging.debug("Convert point data to model node")
     if overlayModelNode and overlayModelNode.GetPolyData() and overlayModelNode.GetPolyData().GetPointData():
       importArray = overlayModelNode.GetPolyData().GetPointData().GetArray(importOverlay)
     if importArray is None:
       logging.error("convertOverlayToModelNode: Could not find array " + str(importOverlay))
       return
-
-    freeSurferInsideLabelValue = 3
 
     overlayModel = overlayModelNode.GetPolyData()
     cellIds = vtk.vtkIdList()
@@ -1811,7 +1805,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       for pointIndex in range(pointIds.GetNumberOfIds()):
         pointId = pointIds.GetId(pointIndex)
         labelValue = importArray.GetValue(pointId)
-        if labelValue != freeSurferInsideLabelValue:
+        if labelValue != insideLabelValue:
           includedCell = False
           break
 
@@ -1830,3 +1824,47 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     cleanFilter.SetInputData(destinationPolyData)
     cleanFilter.Update()
     destinationNode.SetAndObservePolyData(cleanFilter.GetOutput())
+
+  def convertCellDataOverlayToModelNode(self, overlayModelNode, importOverlay, destinationNode, insideLabelValue=3):
+    logging.debug("Convert cell data to model node")
+    if overlayModelNode and overlayModelNode.GetPolyData() and overlayModelNode.GetPolyData().GetPointData():
+      importArray = overlayModelNode.GetPolyData().GetCellData().GetArray(importOverlay)
+    if importArray is None:
+      logging.error("convertOverlayToModelNode: Could not find array " + str(importOverlay))
+      return
+
+    overlayModel = overlayModelNode.GetPolyData()
+    cellIds = vtk.vtkIdList()
+    for cellId in range(overlayModel.GetNumberOfPolys()):
+      if importArray.GetValue(cellId) == insideLabelValue:
+        cellIds.InsertNextId(cellId)
+
+    extractCells = vtk.vtkExtractCells()
+    extractCells.SetInputData(overlayModel)
+    extractCells.SetCellList(cellIds)
+    geometryFilter = vtk.vtkGeometryFilter()
+    geometryFilter.SetInputConnection(extractCells.GetOutputPort())
+    geometryFilter.Update()
+    destinationPolyData = geometryFilter.GetOutput()
+
+    cleanFilter = vtk.vtkCleanPolyData()
+    cleanFilter.SetInputData(destinationPolyData)
+    cleanFilter.Update()
+    destinationNode.SetAndObservePolyData(cleanFilter.GetOutput())
+
+  def convertOverlayToModelNode(self, overlayModelNode, importOverlay, destinationNode, insideLabelValue=3):
+    """
+    Convert a scalar overlay from a model node to a new model node
+    Uses the "label" overlay from FreeSurfer (default, 3 inside, 1000 outside)
+    Replaces the contents of the destination node polydata
+    """
+
+    if overlayModelNode and overlayModelNode.GetPolyData() and overlayModelNode.GetPolyData().GetCellData():
+      if overlayModelNode.GetPolyData().GetCellData().GetArray(importOverlay):
+        self.convertCellDataOverlayToModelNode(overlayModelNode, importOverlay, destinationNode, insideLabelValue)
+        return
+
+    if overlayModelNode and overlayModelNode.GetPolyData() and overlayModelNode.GetPolyData().GetPointData():
+      if overlayModelNode.GetPolyData().GetPointData().GetArray(importOverlay):
+        self.convertPointDataOverlayToModelNode(overlayModelNode, importOverlay, destinationNode, insideLabelValue)
+        return

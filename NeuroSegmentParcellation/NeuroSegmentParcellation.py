@@ -151,6 +151,14 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
 
+    self.importTypeButtonGroup = qt.QButtonGroup()
+    self.importTypeButtonGroup.addButton(self.ui.markupRadioButton)
+    self.importTypeButtonGroup.addButton(self.ui.overlayRadioButton)
+
+    self.importCountButtonGroup = qt.QButtonGroup()
+    self.importCountButtonGroup.addButton(self.ui.singleOverlayRadioButton)
+    self.importCountButtonGroup.addButton(self.ui.multipleOverlayRadioButton)
+
     # Set scene in MRML widgets. Make sure that in Qt designer
     # "mrmlSceneChanged(vtkMRMLScene*)" signal in is connected to each MRML widget's.
     # "setMRMLScene(vtkMRMLScene*)" slot.
@@ -173,6 +181,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     self.ui.markupRadioButton.connect("toggled(bool)", self.updateImportWidget)
     self.ui.overlayRadioButton.connect("toggled(bool)", self.updateImportWidget)
+    self.ui.singleOverlayRadioButton.connect("toggled(bool)", self.updateImportWidget)
+    self.ui.multipleOverlayRadioButton.connect("toggled(bool)", self.updateImportWidget)
 
     self.ui.importMarkupComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
     self.ui.destinationMarkupComboBox.connect('currentNodeChanged(vtkMRMLNode*)', self.updateImportWidget)
@@ -524,6 +534,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.updateDisplayVisibilityButtons()
     self.updateLockButtons()
 
+    self.updateImportWidget()
+
   def updateDisplayVisibilityButtons(self):
     logging.debug("updateDisplayVisibilityButtons: Start")
     containerWidgets = [self.outputModelsWidget, self.inputCurvesWidget, self.inputPlanesWidget]
@@ -794,6 +806,10 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.destinationMarkupComboBox.setVisible(self.ui.markupRadioButton.isChecked())
     self.ui.importOverlayComboBox.setVisible(self.ui.overlayRadioButton.isChecked())
     self.ui.destinationModelComboBox.setVisible(self.ui.overlayRadioButton.isChecked())
+    self.ui.destinationModelComboBox.setEnabled(self.ui.singleOverlayRadioButton.isChecked())
+
+    self.ui.singleOverlayRadioButton.setVisible(self.ui.overlayRadioButton.isChecked())
+    self.ui.multipleOverlayRadioButton.setVisible(self.ui.overlayRadioButton.isChecked())
 
     wasBlocking = self.ui.importOverlayComboBox.blockSignals(True)
     currentOverlayText = self.ui.importOverlayComboBox.currentText
@@ -803,8 +819,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       overlays = self.logic.getPointScalarOverlays(origModelNode)
       for overlay in overlays:
         overlayName = overlay.GetName()
-        if overlayName[-5:].lower() != "label":
-          continue
         self.ui.importOverlayComboBox.addItem(overlayName)
     currentOverlayIndex = self.ui.importOverlayComboBox.findText(currentOverlayText)
     self.ui.importOverlayComboBox.currentIndex = currentOverlayIndex
@@ -819,7 +833,9 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     elif self.ui.overlayRadioButton.isChecked():
       importOverlay = self.ui.importOverlayComboBox.currentText
       destinationNode = self.ui.destinationModelComboBox.currentNode()
-      importEnabled = importOverlay != ""  and not destinationNode is None
+      importEnabled = importOverlay != ""
+      if destinationNode is None and self.ui.singleOverlayRadioButton.isChecked():
+        importEnabled = False
 
     self.ui.importButton.enabled = importEnabled
 
@@ -827,8 +843,59 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if self.ui.markupRadioButton.isChecked():
       self.importMarkupNode()
     elif self.ui.overlayRadioButton.isChecked():
-      self.importOverlay()
+      if self.ui.singleOverlayRadioButton.isChecked():
+        self.importOverlay()
+      else:
+        self.importMultipleStructures()
     self.updateGUIFromParameterNode()
+
+  def importMultipleStructures(self):
+    
+    origModelNode = self.logic.getOrigModelNode(self.parameterNode)
+    colorTableNode = origModelNode.GetDisplayNode().GetColorNode()
+
+    layout = qt.QFormLayout()
+    widget = qt.QWidget()
+    widget.setLayout(layout)
+    comboBoxes = []
+    for i in range(colorTableNode.GetNumberOfColors()):
+      colorName = colorTableNode.GetColorName(i)
+      destinationComboBox = slicer.qMRMLNodeComboBox()
+      destinationComboBox.nodeTypes = ["vtkMRMLModelNode"]
+      destinationComboBox.addAttribute("vtkMRMLModelNode", self.logic.NEUROSEGMENT_OUTPUT_ATTRIBUTE_VALUE, str(True))
+      destinationComboBox.removeEnabled = False
+      destinationComboBox.renameEnabled = False
+      destinationComboBox.noneEnabled = True
+      destinationComboBox.setMRMLScene(slicer.mrmlScene)
+      destinationComboBox.setCurrentNode(None)
+      layout.addRow(qt.QLabel(colorName), destinationComboBox)
+      comboBoxes.append(destinationComboBox)
+
+    scrollArea = qt.QScrollArea()
+    scrollArea.setWidget(widget)
+
+    importMultipleDialog = qt.QDialog()
+    importMultipleDialog.setLayout(qt.QVBoxLayout())
+    importMultipleDialog.layout().addWidget(scrollArea)
+    importButton = qt.QPushButton("Import")
+    qt.QObject.connect(importButton, "clicked()", importMultipleDialog, "accept()")
+    importMultipleDialog.layout().addWidget(importButton)
+    result = importMultipleDialog.exec()
+    if result != qt.QDialog.Accepted:
+      return
+
+    importOverlay = self.ui.importOverlayComboBox.currentText
+    for i in range(colorTableNode.GetNumberOfColors()):
+      comboBox = comboBoxes[i]
+      destinationNode = comboBox.currentNode()
+      if destinationNode is None:
+        continue
+      self.logic.convertOverlayToModelNode(self.logic.getOrigModelNode(self.parameterNode), importOverlay, destinationNode, i)
+
+      color = [0.0, 0.0, 0.0, 1.0]
+      colorTableNode.GetColor(i, color)
+      destinationNode.GetDisplayNode().SetColor(color[:3])
+    self.logic.exportOutputToSurfaceLabel(self.parameterNode)
 
   def importMarkupNode(self):
     importNode = self.ui.importMarkupComboBox.currentNode()
