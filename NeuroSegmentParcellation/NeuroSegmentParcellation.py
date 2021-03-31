@@ -850,7 +850,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.updateGUIFromParameterNode()
 
   def importMultipleStructures(self):
-    
+
     origModelNode = self.logic.getOrigModelNode(self.parameterNode)
     colorTableNode = origModelNode.GetDisplayNode().GetColorNode()
 
@@ -858,16 +858,20 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     widget = qt.QWidget()
     widget.setLayout(layout)
     comboBoxes = []
+
+    outputModelNodes = self.logic.getOutputModelNodes()
+    outputModelNames = []
+    outputModelIds = []
+    for outputModelNode in outputModelNodes:
+      outputModelNames.append(outputModelNode.GetName())
+      outputModelIds.append(outputModelNode.GetID())
+
     for i in range(colorTableNode.GetNumberOfColors()):
       colorName = colorTableNode.GetColorName(i)
-      destinationComboBox = slicer.qMRMLNodeComboBox()
-      destinationComboBox.nodeTypes = ["vtkMRMLModelNode"]
-      destinationComboBox.addAttribute("vtkMRMLModelNode", self.logic.NEUROSEGMENT_OUTPUT_ATTRIBUTE_VALUE, str(True))
-      destinationComboBox.removeEnabled = False
-      destinationComboBox.renameEnabled = False
-      destinationComboBox.noneEnabled = True
-      destinationComboBox.setMRMLScene(slicer.mrmlScene)
-      destinationComboBox.setCurrentNode(None)
+      destinationComboBox = qt.QComboBox()
+      destinationComboBox.addItem(str(None), None)
+      for i in range(len(outputModelNodes)):
+        destinationComboBox.addItem(outputModelNames[i], outputModelIds[i])
       layout.addRow(qt.QLabel(colorName), destinationComboBox)
       comboBoxes.append(destinationComboBox)
 
@@ -887,9 +891,15 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     importOverlay = self.ui.importOverlayComboBox.currentText
     for i in range(colorTableNode.GetNumberOfColors()):
       comboBox = comboBoxes[i]
-      destinationNode = comboBox.currentNode()
+
+      desintationId = comboBox.currentData
+      if desintationId is None:
+        continue
+
+      destinationNode = slicer.mrmlScene.GetNodeByID(desintationId)
       if destinationNode is None:
         continue
+
       self.logic.convertOverlayToModelNode(self.logic.getOrigModelNode(self.parameterNode), importOverlay, destinationNode, i)
 
       color = [0.0, 0.0, 0.0, 1.0]
