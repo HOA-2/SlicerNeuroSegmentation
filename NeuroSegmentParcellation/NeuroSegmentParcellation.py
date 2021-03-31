@@ -852,6 +852,16 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
   def importMultipleStructures(self):
 
     origModelNode = self.logic.getOrigModelNode(self.parameterNode)
+    importOverlay = self.ui.importOverlayComboBox.currentText
+    
+    originalScalarName = None
+    displayNode = origModelNode.GetDisplayNode()
+    if displayNode:
+      originalScalarName = displayNode.GetActiveScalarName()
+
+    # In order to populate the overlay correctly, we need to change the color table to match the label
+    self.logic.setScalarOverlay(self.parameterNode, importOverlay)
+
     colorTableNode = origModelNode.GetDisplayNode().GetColorNode()
 
     layout = qt.QFormLayout()
@@ -886,9 +896,10 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     importMultipleDialog.layout().addWidget(importButton)
     result = importMultipleDialog.exec()
     if result != qt.QDialog.Accepted:
+      if originalScalarName:
+        self.logic.setScalarOverlay(self.parameterNode, originalScalarName)
       return
 
-    importOverlay = self.ui.importOverlayComboBox.currentText
     for i in range(colorTableNode.GetNumberOfColors()):
       comboBox = comboBoxes[i]
 
@@ -906,6 +917,10 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       colorTableNode.GetColor(i, color)
       destinationNode.GetDisplayNode().SetColor(color[:3])
     self.logic.exportOutputToSurfaceLabel(self.parameterNode)
+
+    # Restore the original scalar name
+    if originalScalarName:
+      self.logic.setScalarOverlay(self.parameterNode, originalScalarName)
 
   def importMarkupNode(self):
     importNode = self.ui.importMarkupComboBox.currentNode()

@@ -909,8 +909,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if scalarName is None:
       return
 
+    logging.debug("setScalarOverlay: " + str(scalarName))
+
     colorNode = None
-    attributeType = 0
+    attributeType = -1
     scalarMode = slicer.vtkMRMLDisplayNode.UseColorNodeScalarRange
     if scalarName == "curv":
       attributeType = vtk.vtkDataObject.POINT
@@ -922,7 +924,11 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       attributeType = vtk.vtkDataObject.CELL
       self.updateParcellationColorNode()
       colorNode = self.getParcellationColorNode()
+    else:
+      colorNode = slicer.util.getFirstNodeByClassByName("vtkMRMLColorNode", scalarName)
+
     if colorNode is None:
+      logging.error("setScalarOverlay: could not find color node")
       return
 
     modelNodes = [
@@ -936,7 +942,12 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       displayNode = modelNode.GetDisplayNode()
       if displayNode is None:
         continue
-      displayNode.SetActiveScalar(scalarName, attributeType)
+
+      if attributeType == -1:
+        displayNode.SetActiveScalarName(scalarName)
+      else:
+        displayNode.SetActiveScalar(scalarName, attributeType)
+
       if colorNode:
         displayNode.SetAndObserveColorNodeID(colorNode.GetID())
         displayNode.SetScalarRangeFlag(scalarMode)
@@ -1499,6 +1510,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     labelArray = outlinePolyData.GetPointData().GetArray("labels")
     pointPedigreeArray = outlinePolyData.GetPointData().GetArray("pointPedigree")
+    if pointPedigreeArray is None:
+      logging.error("Invalid point pedigree array")
+      return
+
     newLabelArray = vtk.vtkIntArray()
     newLabelArray.SetName("labels")
     newLabelArray.SetNumberOfValues(origOutlinePolyData.GetNumberOfPoints())
@@ -1682,7 +1697,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     origModelNode = self.getOrigModelNode(parameterNode)
     if origModelNode is None or origModelNode.GetPolyData() is None:
-      logging.error("updatePlaneIntersection: Invalid orig model")
       return
 
     origIntersectionPolyData = vtk.vtkPolyData()
