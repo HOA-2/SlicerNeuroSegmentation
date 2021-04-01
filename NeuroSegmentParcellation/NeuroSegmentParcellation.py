@@ -853,7 +853,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     origModelNode = self.logic.getOrigModelNode(self.parameterNode)
     importOverlay = self.ui.importOverlayComboBox.currentText
-    
+
     originalScalarName = None
     displayNode = origModelNode.GetDisplayNode()
     if displayNode:
@@ -865,8 +865,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     colorTableNode = origModelNode.GetDisplayNode().GetColorNode()
 
     layout = qt.QFormLayout()
-    widget = qt.QWidget()
-    widget.setLayout(layout)
     comboBoxes = []
 
     outputModelNodes = self.logic.getOutputModelNodes()
@@ -878,17 +876,41 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     for i in range(colorTableNode.GetNumberOfColors()):
       colorName = colorTableNode.GetColorName(i)
+      color = [0,0,0,0]
+      colorTableNode.GetColor(i, color)
+
       destinationComboBox = qt.QComboBox()
+      destinationComboBox.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Fixed)
       destinationComboBox.addItem(str(None), None)
       for i in range(len(outputModelNodes)):
         destinationComboBox.addItem(outputModelNames[i], outputModelIds[i])
-      layout.addRow(qt.QLabel(colorName), destinationComboBox)
+
+      for i in range(len(color)):
+        color[i] = int(255 * color[i])
+
+      label = qt.QLabel()
+      colorString = "rgb({0}, {1}, {2})".format(color[0], color[1], color[2])
+      label.setStyleSheet("QLabel { background-color: " + colorString +  "}")
+      label.setMinimumSize(24, 24)
+
+      rowWidget = qt.QWidget()
+      rowWidget.setLayout(qt.QHBoxLayout())
+      rowWidget.layout().setContentsMargins(0,0,0,0)
+      rowWidget.layout().addWidget(label)
+      rowWidget.layout().addWidget(destinationComboBox)
+      layout.addRow(qt.QLabel(colorName), rowWidget)
       comboBoxes.append(destinationComboBox)
+
+    widget = qt.QWidget()
+    widget.setLayout(layout)
 
     scrollArea = qt.QScrollArea()
     scrollArea.setWidget(widget)
+    scrollArea.setWidgetResizable(True)
+    scrollArea.setHorizontalScrollBarPolicy(qt.Qt.ScrollBarAlwaysOff)
 
     importMultipleDialog = qt.QDialog()
+    importMultipleDialog.setWindowTitle("Import multiple overlay")
     importMultipleDialog.setLayout(qt.QVBoxLayout())
     importMultipleDialog.layout().addWidget(scrollArea)
     importButton = qt.QPushButton("Import")
