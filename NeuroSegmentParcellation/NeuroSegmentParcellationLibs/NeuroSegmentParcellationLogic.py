@@ -1530,7 +1530,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.createLabelOutlineNodes(parameterNode)
     outlineNodes = self.getLabelOutlineNodes(parameterNode)
     for outlineNode in outlineNodes:
-      outlineNode.SetDisplayVisibility(self.getPlaneIntersectionVisible())
+      outlineNode.SetDisplayVisibility(self.getLabelOutlineVisible())
       nodeType = outlineNode.GetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME)
       if nodeType == self.ORIG_NODE_ATTRIBUTE_VALUE:
         origOutlineNode = outlineNode
