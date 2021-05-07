@@ -90,6 +90,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.parameterNode = parameterNode
     if self.parameterNode is None:
       return
+    if self.getQueryNode() is None:
+      self.loadQuery()
     self.onParameterNodeModified(parameterNode)
 
   def getParameterNode(self):
@@ -302,10 +304,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     projectionEnabled = self.getMarkupProjectionEnabled(parameterNode)
     startFade = 0.0
-    endFade = 0.5
+    endFade = 10.0
     if projectionEnabled:
-      startFade = 1.0
-      endFade = 10.0
+      endFade = self.getMaximumProjectionDistance(parameterNode)
 
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
@@ -313,6 +314,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       inputMarkupNode.GetDisplayNode().SetViewNodeIDs(origMarkupViews)
       inputMarkupNode.GetDisplayNode().SetLineColorFadingStart(startFade)
       inputMarkupNode.GetDisplayNode().SetLineColorFadingEnd(endFade)
+      inputMarkupNode.GetDisplayNode().SetSliceProjection(projectionEnabled)
 
       if inputMarkupNode is None or not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
         continue
@@ -568,8 +570,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     success = False
     errorMessage = ""
-    slicer.mrmlScene.StartState(slicer.mrmlScene.BatchProcessState)
     try:
+      slicer.mrmlScene.StartState(slicer.mrmlScene.BatchProcessState)
+      slicer.app.pauseRender()
       with slicer.util.NodeModify(parameterNode):
         astNode = ast.parse(queryString)
         eq = NeuroSegmentParcellationVisitor(self)
@@ -583,6 +586,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       logging.error("Error parsing mesh tool string!")
     finally:
       slicer.mrmlScene.EndState(slicer.mrmlScene.BatchProcessState)
+      slicer.app.resumeRender()
     return [success, errorMessage]
 
   def exportOutputToSegmentation(self, parameterNode, surfacesToExport=[]):
@@ -997,14 +1001,26 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if parameterNode is None:
       logging.error("setMarkupProjectionEnabled: Invalid parameter node")
       return
-
     parameterNode.SetParameter("MarkupProjectionVisibility", "TRUE" if visible else "FALSE")
 
   def getMarkupProjectionEnabled(self, parameterNode):
     if parameterNode is None:
-      logging.error("setMarkupProjectionEnabled: Invalid parameter node")
+      logging.error("getMarkupProjectionEnabled: Invalid parameter node")
       return False
     return True if parameterNode.GetParameter("MarkupProjectionVisibility") == "TRUE" else False
+
+  def setMaximumProjectionDistance(self, parameterNode, maxProjectionDistance):
+    if parameterNode is None:
+      logging.error("setMaximumProjectionDistance: Invalid parameter node")
+      return
+    parameterNode.SetParameter("MarkupProjectionDistance", str(maxProjectionDistance))
+
+  def getMaximumProjectionDistance(self, parameterNode):
+    if parameterNode is None:
+      logging.error("getMaximumProjectionDistance: Invalid parameter node")
+      return False
+    markupProjectionDistance = parameterNode.GetParameter("MarkupProjectionDistance")
+    return float(markupProjectionDistance) if  markupProjectionDistance else 100.0
 
   def runDynamicModelerTool(self, toolNode):
     if toolNode is None:

@@ -207,6 +207,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.pialMarkupsCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
     self.ui.inflatedMarkupsCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
     self.ui.markupsProjectionCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
+    self.ui.projectionDistanceSlider.connect("valueChanged(double)", self.updateMarkupDisplay)
 
     slicer.app.layoutManager().connect("layoutChanged(int)", self.onLayoutChanged)
     self.ui.parcellationViewLayoutButton.connect("clicked()", self.onParcellationViewLayoutButtonClicked)
@@ -440,6 +441,35 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     if self.parameterNode is None:
       return
+
+    # Display parameters
+    wasBlocked = self.ui.origMarkupsCheckBox.blockSignals(True)
+    self.ui.origMarkupsCheckBox.setChecked(self.logic.getMarkupSliceViewVisibility(self.parameterNode, self.logic.ORIG_NODE_ATTRIBUTE_VALUE))
+    self.ui.origMarkupsCheckBox.blockSignals(wasBlocked)
+
+    wasBlocked = self.ui.pialMarkupsCheckBox.blockSignals(True)
+    self.ui.pialMarkupsCheckBox.setChecked(self.logic.getMarkupSliceViewVisibility(self.parameterNode, self.logic.PIAL_NODE_ATTRIBUTE_VALUE))
+    self.ui.pialMarkupsCheckBox.blockSignals(wasBlocked)
+
+    wasBlocked = self.ui.inflatedMarkupsCheckBox.blockSignals(True)
+    self.ui.inflatedMarkupsCheckBox.setChecked(self.logic.getMarkupSliceViewVisibility(self.parameterNode, self.logic.INFLATED_NODE_ATTRIBUTE_VALUE))
+    self.ui.inflatedMarkupsCheckBox.blockSignals(wasBlocked)
+
+    wasBlocked = self.ui.planeIntersectionCheckBox.blockSignals(True)
+    self.ui.planeIntersectionCheckBox.setChecked(self.logic.getPlaneIntersectionVisible())
+    self.ui.planeIntersectionCheckBox.blockSignals(wasBlocked)
+
+    wasBlocked = self.ui.labelOutlineCheckBox.blockSignals(True)
+    self.ui.labelOutlineCheckBox.setChecked(self.logic.getLabelOutlineVisible())
+    self.ui.labelOutlineCheckBox.blockSignals(wasBlocked)
+
+    wasBlocked = self.ui.markupsProjectionCheckBox.blockSignals(True)
+    self.ui.markupsProjectionCheckBox.setChecked(self.logic.getMarkupProjectionEnabled(self.parameterNode))
+    self.ui.markupsProjectionCheckBox.blockSignals(wasBlocked)
+
+    wasBlocked = self.ui.projectionDistanceSlider.blockSignals(True)
+    self.ui.projectionDistanceSlider.value = self.logic.getMaximumProjectionDistance(self.parameterNode)
+    self.ui.projectionDistanceSlider.blockSignals(wasBlocked)
 
     # Update each widget from parameter node
     # Need to temporarily block signals to prevent infinite recursion (MRML node update triggers
@@ -676,6 +706,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       self.logic.setMarkupSliceViewVisibility(self.parameterNode, self.logic.PIAL_NODE_ATTRIBUTE_VALUE, self.ui.pialMarkupsCheckBox.isChecked())
       self.logic.setMarkupSliceViewVisibility(self.parameterNode, self.logic.INFLATED_NODE_ATTRIBUTE_VALUE, self.ui.inflatedMarkupsCheckBox.isChecked())
       self.logic.setMarkupProjectionEnabled(self.parameterNode, self.ui.markupsProjectionCheckBox.isChecked())
+      self.logic.setMaximumProjectionDistance(self.parameterNode, self.ui.projectionDistanceSlider.value)
 
   def onApplyButton(self):
     """
