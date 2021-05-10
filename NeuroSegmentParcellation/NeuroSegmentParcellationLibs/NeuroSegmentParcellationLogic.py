@@ -1407,7 +1407,11 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         closestPoint[1] = pointOnLine[1]
         closestPoint[2] = pointOnLine[2]
 
-  def copyNode(self, sourceNode, destinationNode):
+  def copyMarkupPoints(self, sourceNode, destinationNode):
+    """
+    Copy the position of the control points in the source node to the destination node.
+    Copied point positions are defined in World coordinates.
+    """
     if sourceNode is None:
       logging.error("Source node does not exist")
       return
@@ -1422,10 +1426,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       sourceNode.GetName() + " (" + sourceNode.GetID() + ") to " +
       destinationNode.GetName() + " (" + destinationNode.GetID() + ")")
 
-    controlPoints = vtk.vtkPoints()
-    sourceNode.GetControlPointPositionsWorld(controlPoints)
-    destinationNode.SetControlPointPositionsWorld(controlPoints)
-
+    controlPoints_World = vtk.vtkPoints()
+    sourceNode.GetControlPointPositionsWorld(controlPoints_World)
+    destinationNode.SetControlPointPositionsWorld(controlPoints_World)
 
   def getPlaneIntersectionVisible(self):
     if self.parameterNode is None:
@@ -1436,6 +1439,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.parameterNode is None:
       return
     self.parameterNode.SetParameter(self.PLANE_INTERSECTION_VISIBILITY_NAME, str(visible))
+    if visible:
+      self.updateAllPlaneIntersections(self.getParameterNode())
 
   def getLabelOutlineVisible(self):
     if self.parameterNode is None:
@@ -1707,6 +1712,13 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     for intersectionModelNode in intersectionModelNodes:
       intersectionModelNode.GetDisplayNode().SetColor(planeDisplayNode.GetSelectedColor())
       intersectionModelNode.SetDisplayVisibility(visible)
+
+  def updateAllPlaneIntersections(self, parameterNode):
+    inputMarkupNodes = self.getInputMarkupNodes()
+    for inputMarkupNode in inputMarkupNodes:
+      if inputMarkupNode is None or not inputMarkupNode.IsA("vtkMRMLMarkupsPlaneNode"):
+        continue
+      self.updatePlaneIntersection(parameterNode, inputMarkupNode)
 
   def updatePlaneIntersection(self, parameterNode, planeNode):
     # Only interested in plane nodes
