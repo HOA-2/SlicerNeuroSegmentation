@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>315</width>
+    <width>321</width>
     <height>998</height>
    </rect>
   </property>
@@ -40,7 +40,7 @@
     </widget>
    </item>
    <item row="1" column="0" colspan="2">
-    <widget class="ctkCollapsibleButton" name="CollapsibleButton_2">
+    <widget class="ctkCollapsibleButton" name="parcellationParametersCollapsibleButton">
      <property name="text">
       <string>Parcellation parameters</string>
      </property>
@@ -75,7 +75,7 @@
     </widget>
    </item>
    <item row="2" column="0" colspan="2">
-    <widget class="ctkCollapsibleButton" name="CollapsibleButton">
+    <widget class="ctkCollapsibleButton" name="displayCollapsibleButton">
      <property name="text">
       <string>Display</string>
      </property>

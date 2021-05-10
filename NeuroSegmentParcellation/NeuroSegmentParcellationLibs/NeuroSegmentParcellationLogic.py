@@ -91,7 +91,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.parameterNode is None:
       return
     if self.getQueryNode() is None:
-      self.loadQuery()
+      self.loadQuery(self.queryNodeFileName)
     self.onParameterNodeModified(parameterNode)
 
   def getParameterNode(self):
@@ -99,6 +99,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if not self.parameterNode:
       self.setParameterNode(ScriptedLoadableModuleLogic.getParameterNode(self) )
     return self.parameterNode
+
+  def getQueryNodeFileName(self):
+    return self.queryNodeFileName
 
   def setQueryNodeFileName(self, fileName):
     self.queryNodeFileName = fileName
@@ -1083,7 +1086,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       segmentation.SetSegmentIndex(segmentId, segmentIndex)
     slicer.mrmlScene.RemoveNode(outputModelNode)
 
-  def loadQuery(self):
+  def loadQuery(self, path):
     if self.parameterNode is None:
       logging.error("loadQuery: Invalid parameter node")
       return False
@@ -1094,7 +1097,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       self.setQueryNode(parcellationQueryNode)
 
     storageNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTextStorageNode")
-    storageNode.SetFileName(self.queryNodeFileName)
+    storageNode.SetFileName(path)
     storageNode.ReadData(parcellationQueryNode)
     slicer.mrmlScene.RemoveNode(storageNode)
 

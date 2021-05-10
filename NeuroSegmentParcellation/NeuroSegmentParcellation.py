@@ -218,6 +218,9 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     self.oldLayout = slicer.app.layoutManager().layout
 
+    # Set path to query file
+    self.ui.queryFilePathEdit.currentPath = self.logic.getQueryNodeFileName()
+
     # Initial GUI update
     self.updateGUIFromParameterNode()
     self.updateOutputStructures()
@@ -802,7 +805,9 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.loadQueryButton.setIcon(qt.QIcon())
     self.ui.loadQueryButton.setToolTip("")
 
-    success, message = self.logic.loadQuery()
+    currentPath = self.ui.queryFilePathEdit.currentPath
+
+    success, message = self.logic.loadQuery(currentPath)
     if not success:
       icon = self.ui.loadQueryButton.style().standardIcon(qt.QStyle.SP_MessageBoxCritical)
       self.ui.loadQueryButton.setIcon(icon)
