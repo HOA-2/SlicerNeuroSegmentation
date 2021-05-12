@@ -59,6 +59,14 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX = "MarkupSliceVisibility."
   NEUROSEGMENT_OUTPUT_ATTRIBUTE_VALUE = "NeuroSegmentParcellation.Output"
 
+  CURVE_VISIBILITY_RED_VIEW = "CurveVisibilityRedView"
+  CURVE_VISIBILITY_GREEN_VIEW = "CurveVisibilityGreenView"
+  CURVE_VISIBILITY_YELLOW_VIEW = "CurveVisibilityYellowView"
+
+  INTERSECTION_VISIBILITY_RED_VIEW = "IntersectionVisibilityRedView"
+  INTERSECTION_VISIBILITY_GREEN_VIEW = "IntersectionVisibilityGreenView"
+  INTERSECTION_VISIBILITY_YELLOW_VIEW = "IntersectionVisibilityYellowView"
+
   PLANE_INTERSECTION_VISIBILITY_NAME = "PlaneIntersectionVisibility"
 
   CURVE_INTERSECTION_GLYPH_TYPE_NAME = "CurveIntersectionGlyphType"
@@ -309,8 +317,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     pialMarkupViews = self.getMarkupViewIDs(parameterNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
     inflatedMarkupViews = self.getMarkupViewIDs(parameterNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
 
-    projectionEnabled = self.getMarkupProjectionEnabled(parameterNode)
-    self.intersectionDisplayManager.setVisibility(projectionEnabled)
+    self.intersectionDisplayManager.setRedVisibility(self.getRedIntersectionVisibility())
+    self.intersectionDisplayManager.setGreenVisibility(self.getGreenIntersectionVisibility())
+    self.intersectionDisplayManager.setYellowVisibility(self.getYellowIntersectionVisibility())
+
     self.intersectionDisplayManager.setGlyphType(self.getIntersectionGlyphType())
     self.intersectionDisplayManager.setGlyphScale(self.getIntersectionGlyphScale())
 
@@ -986,7 +996,12 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     viewIDs = ["vtkMRMLViewNode1"]
     if self.getMarkupSliceViewVisibility(parameterNode, markupType):
-      viewIDs += ["vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
+      if self.getRedLineVisibility():
+        viewIDs += ["vtkMRMLSliceNodeRed"]
+      if self.getGreenLineVisibility():
+        viewIDs += ["vtkMRMLSliceNodeGreen"]
+      if self.getYellowLineVisibility():
+        viewIDs += ["vtkMRMLSliceNodeYellow"]
 
     if markupType == self.ORIG_NODE_ATTRIBUTE_VALUE:
       viewIDs.append("vtkMRMLViewNodeO")
@@ -995,31 +1010,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     elif markupType == self.INFLATED_NODE_ATTRIBUTE_VALUE:
       viewIDs.append("vtkMRMLViewNodeI")
     return viewIDs
-
-  def setMarkupProjectionEnabled(self, parameterNode, visible):
-    if parameterNode is None:
-      logging.error("setMarkupProjectionEnabled: Invalid parameter node")
-      return
-    parameterNode.SetParameter("MarkupProjectionVisibility", "TRUE" if visible else "FALSE")
-
-  def getMarkupProjectionEnabled(self, parameterNode):
-    if parameterNode is None:
-      logging.error("getMarkupProjectionEnabled: Invalid parameter node")
-      return False
-    return True if parameterNode.GetParameter("MarkupProjectionVisibility") == "TRUE" else False
-
-  def setMaximumProjectionDistance(self, parameterNode, maxProjectionDistance):
-    if parameterNode is None:
-      logging.error("setMaximumProjectionDistance: Invalid parameter node")
-      return
-    parameterNode.SetParameter("MarkupProjectionDistance", str(maxProjectionDistance))
-
-  def getMaximumProjectionDistance(self, parameterNode):
-    if parameterNode is None:
-      logging.error("getMaximumProjectionDistance: Invalid parameter node")
-      return False
-    markupProjectionDistance = parameterNode.GetParameter("MarkupProjectionDistance")
-    return float(markupProjectionDistance) if  markupProjectionDistance else 100.0
 
   def runDynamicModelerTool(self, toolNode):
     if toolNode is None:
@@ -1464,6 +1454,66 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if glyphScaleString == "":
       return 0.5
     return float(glyphScaleString)
+
+  def setRedLineVisibility(self, visibility):
+    if self.parameterNode is None:
+      return
+    self.parameterNode.SetParameter(self.CURVE_VISIBILITY_RED_VIEW, "TRUE" if visibility else "FALSE")
+
+  def getRedLineVisibility(self):
+    if self.parameterNode is None:
+      return
+    return True if self.parameterNode.GetParameter(self.CURVE_VISIBILITY_RED_VIEW) == "TRUE" else False
+
+  def setGreenLineVisibility(self, visibility):
+    if self.parameterNode is None:
+      return
+    self.parameterNode.SetParameter(self.CURVE_VISIBILITY_GREEN_VIEW, "TRUE" if visibility else "FALSE")
+
+  def getGreenLineVisibility(self):
+    if self.parameterNode is None:
+      return
+    return True if self.parameterNode.GetParameter(self.CURVE_VISIBILITY_GREEN_VIEW) == "TRUE" else False
+    
+  def setYellowLineVisibility(self, visibility):
+    if self.parameterNode is None:
+      return
+    self.parameterNode.SetParameter(self.CURVE_VISIBILITY_YELLOW_VIEW, "TRUE" if visibility else "FALSE")
+
+  def getYellowLineVisibility(self):
+    if self.parameterNode is None:
+      return
+    return True if self.parameterNode.GetParameter(self.CURVE_VISIBILITY_YELLOW_VIEW) == "TRUE" else False
+
+  def setRedIntersectionVisibility(self, visibility):
+    if self.parameterNode is None:
+      return
+    self.parameterNode.SetParameter(self.INTERSECTION_VISIBILITY_RED_VIEW, "TRUE" if visibility else "FALSE")
+
+  def getRedIntersectionVisibility(self):
+    if self.parameterNode is None:
+      return
+    return True if self.parameterNode.GetParameter(self.INTERSECTION_VISIBILITY_RED_VIEW) == "TRUE" else False
+
+  def setGreenIntersectionVisibility(self, visibility):
+    if self.parameterNode is None:
+      return
+    self.parameterNode.SetParameter(self.INTERSECTION_VISIBILITY_GREEN_VIEW, "TRUE" if visibility else "FALSE")
+
+  def getGreenIntersectionVisibility(self):
+    if self.parameterNode is None:
+      return
+    return True if self.parameterNode.GetParameter(self.INTERSECTION_VISIBILITY_GREEN_VIEW) == "TRUE" else False
+
+  def setYellowIntersectionVisibility(self, visibility):
+    if self.parameterNode is None:
+      return
+    self.parameterNode.SetParameter(self.INTERSECTION_VISIBILITY_YELLOW_VIEW, "TRUE" if visibility else "FALSE")
+
+  def getYellowIntersectionVisibility(self):
+    if self.parameterNode is None:
+      return
+    return True if self.parameterNode.GetParameter(self.INTERSECTION_VISIBILITY_YELLOW_VIEW) == "TRUE" else False
 
   def getLabelOutlineVisible(self):
     if self.parameterNode is None:
