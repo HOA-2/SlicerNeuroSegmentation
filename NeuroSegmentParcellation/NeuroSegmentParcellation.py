@@ -229,7 +229,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     self.ui.labelOutlineCheckBox.connect("toggled(bool)", self.onLabelOutlineCheckBox)
 
-    self.ui.intersectionGlyphComboBox.connect("currentIndexChanged(int)", self.onIntersectionGlyphChanged)
+    self.ui.intersectionGlyphComboBox.connect("currentIndexChanged(int)", self.onIntersectionGlyphTypeChanged)
+    self.ui.curveIntersectionScaleSlider.connect("valueChanged(double)", self.onIntersectionGlyphScaleChanged)
 
     self.oldLayout = slicer.app.layoutManager().layout
 
@@ -489,6 +490,10 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     index = self.ui.intersectionGlyphComboBox.findData(self.logic.getIntersectionGlyphType())
     self.ui.intersectionGlyphComboBox.currentIndex = index
     self.ui.intersectionGlyphComboBox.blockSignals(wasBlocked)
+
+    wasBlocked = self.ui.curveIntersectionScaleSlider.blockSignals(True)
+    self.ui.curveIntersectionScaleSlider.value = self.logic.getIntersectionGlyphScale()
+    self.ui.curveIntersectionScaleSlider.blockSignals(wasBlocked)
 
     # Update each widget from parameter node
     # Need to temporarily block signals to prevent infinite recursion (MRML node update triggers
@@ -1017,11 +1022,16 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       return
     self.logic.setLabelOutlineVisible(checked)
 
-  def onIntersectionGlyphChanged(self, index):
+  def onIntersectionGlyphTypeChanged(self, index):
     if self.parameterNode is None:
       return
     glyphType = self.ui.intersectionGlyphComboBox.currentData
     self.logic.setIntersectionGlyphType(glyphType)
+
+  def onIntersectionGlyphScaleChanged(self, value):
+    if self.parameterNode is None:
+      return
+    self.logic.setIntersectionGlyphScale(value)
 
 class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
   """

@@ -62,6 +62,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   PLANE_INTERSECTION_VISIBILITY_NAME = "PlaneIntersectionVisibility"
 
   CURVE_INTERSECTION_GLYPH_TYPE_NAME = "CurveIntersectionGlyphType"
+  CURVE_INTERSECTION_GLYPH_SCALE_NAME = "CurveIntersectionGlyphScale"
 
   LABEL_OUTLINE_VISIBILITY_NAME = "LabelOutlineVisibility"
 
@@ -311,6 +312,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     projectionEnabled = self.getMarkupProjectionEnabled(parameterNode)
     self.intersectionDisplayManager.setVisibility(projectionEnabled)
     self.intersectionDisplayManager.setGlyphType(self.getIntersectionGlyphType())
+    self.intersectionDisplayManager.setGlyphScale(self.getIntersectionGlyphScale())
 
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
@@ -1449,6 +1451,19 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if glyphType == "":
       return slicer.vtkMRMLMarkupsDisplayNode.Cross2D
     return slicer.vtkMRMLMarkupsDisplayNode.GetGlyphTypeFromString(glyphType)
+
+  def setIntersectionGlyphScale(self, glyphScale):
+    if self.parameterNode is None:
+      return
+    self.parameterNode.SetParameter(self.CURVE_INTERSECTION_GLYPH_SCALE_NAME, str(glyphScale))
+
+  def getIntersectionGlyphScale(self):
+    if self.parameterNode is None:
+      return 0.5
+    glyphScaleString = self.parameterNode.GetParameter(self.CURVE_INTERSECTION_GLYPH_SCALE_NAME)
+    if glyphScaleString == "":
+      return 0.5
+    return float(glyphScaleString)
 
   def getLabelOutlineVisible(self):
     if self.parameterNode is None:

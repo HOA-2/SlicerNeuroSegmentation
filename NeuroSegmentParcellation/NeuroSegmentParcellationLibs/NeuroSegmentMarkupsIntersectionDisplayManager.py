@@ -8,6 +8,8 @@ class NeuroSegmentMarkupsIntersectionPipeline(VTKObservationMixin):
   def __init__(self, curveNode, sliceNode):
     VTKObservationMixin.__init__(self)
 
+    self.glyphScale = 0.5
+
     self.intersectionPoints_XY = vtk.vtkPolyData()
 
     self.glyphSource = slicer.vtkMarkupsGlyphSource2D()
@@ -50,6 +52,13 @@ class NeuroSegmentMarkupsIntersectionPipeline(VTKObservationMixin):
   def setGlyphType(self, glyphType):
     self.glyphSource.SetGlyphType(glyphType)
     sliceView = self.getSliceView()
+    if sliceView:
+      sliceView.scheduleRender()
+
+  def setGlyphScale(self, glyphScale):
+    self.glyphScale = glyphScale
+    sliceView = self.getSliceView()
+    self.updateActorFromMRML()
     if sliceView:
       sliceView.scheduleRender()
 
@@ -104,7 +113,7 @@ class NeuroSegmentMarkupsIntersectionPipeline(VTKObservationMixin):
     self.actor.SetVisibility(True)
 
     xyToRASMatrix = self.sliceNode.GetXYToRAS()
-    
+
     sliceNormal_RAS = np.array([0.0, 0.0, 1.0, 0.0])
     xyToRASMatrix.MultiplyPoint(sliceNormal_RAS, sliceNormal_RAS)
 
@@ -114,7 +123,7 @@ class NeuroSegmentMarkupsIntersectionPipeline(VTKObservationMixin):
     slicePlane_RAS = vtk.vtkPlane()
     slicePlane_RAS.SetNormal(sliceNormal_RAS[:3])
     slicePlane_RAS.SetOrigin(sliceOrigin_RAS[:3])
-    
+
     intersectionPoints_RAS = vtk.vtkPoints()
     self.curveNode.GetPointsOnPlaneWorld(slicePlane_RAS, intersectionPoints_RAS)
 
@@ -136,7 +145,7 @@ class NeuroSegmentMarkupsIntersectionPipeline(VTKObservationMixin):
     renderWindow = self.getRenderWindow()
     screenSize = renderWindow.GetScreenSize()
     screenSizePixel = np.sqrt(screenSize[0] * screenSize[0] + screenSize[1] * screenSize[1])
-    screenScaleFactor = 0.2 * 0.1 * 0.4
+    screenScaleFactor = 0.02 * self.glyphScale
     controlPopintSize = screenSizePixel * screenScaleFactor
     self.glypher.SetScaleFactor(controlPopintSize)
 
@@ -173,7 +182,8 @@ class NeuroSegmentMarkupsIntersectionDisplayManager(VTKObservationMixin):
 
     self.viewPipelines = {} # Key is view name, value is dict containing pipelines
                             # Key of nested dict is markups node, value is pipeline object
-    self.visibility = True                      
+    self.visibility = True
+    self.glyphScale = 0.5
 
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeRemovedEvent, self.onNodeRemoved)
@@ -182,7 +192,7 @@ class NeuroSegmentMarkupsIntersectionDisplayManager(VTKObservationMixin):
     layoutManager.connect('layoutChanged(int)', self.updatePipelines)
 
     self.updatePipelines()
- 
+
   def setVisibility(self, visibility):
     self.visibility = visibility
     for sliceViewName, currentViewPipelines in self.viewPipelines.items():
@@ -194,6 +204,12 @@ class NeuroSegmentMarkupsIntersectionDisplayManager(VTKObservationMixin):
     for sliceViewName, currentViewPipelines in self.viewPipelines.items():
       for curveNode, pipeline in currentViewPipelines.items():
         pipeline.setGlyphType(glyphType)
+
+  def setGlyphScale(self, glyphScale):
+    self.glyphScale = glyphScale
+    for sliceViewName, currentViewPipelines in self.viewPipelines.items():
+      for curveNode, pipeline in currentViewPipelines.items():
+        pipeline.setGlyphScale(glyphScale)
 
   def updatePipelines(self):
     self.removeAllActors()
@@ -235,13 +251,15 @@ class NeuroSegmentMarkupsIntersectionDisplayManager(VTKObservationMixin):
     for sliceViewName, currentViewPipelines in self.viewPipelines.items():
       if curveNode in currentViewPipelines.keys():
         continue
-      
+
       widget = layoutManager.sliceWidget(sliceViewName)
       sliceLogic = widget.sliceLogic()
       sliceNode = sliceLogic.GetSliceNode()
 
       pipeline = NeuroSegmentMarkupsIntersectionPipeline(curveNode, sliceNode)
       currentViewPipelines[curveNode] = pipeline
+      pipeline.setGlyphType(self.glyphType)
+      pipeline.setGlyphScale(self.glyphScale)
       pipeline.addActor()
 
   def removeCurveActors(self, curveNode):
