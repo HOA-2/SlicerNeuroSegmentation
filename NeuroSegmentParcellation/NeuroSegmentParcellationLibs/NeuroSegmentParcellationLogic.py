@@ -6,6 +6,7 @@ from slicer.util import VTKObservationMixin
 import logging
 
 from NeuroSegmentParcellationLibs.NeuroSegmentParcellationVisitor import NeuroSegmentParcellationVisitor
+from NeuroSegmentParcellationLibs.NeuroSegmentMarkupsIntersectionDisplayManager import NeuroSegmentMarkupsIntersectionDisplayManager
 
 class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   """Perform filtering
@@ -60,6 +61,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
   PLANE_INTERSECTION_VISIBILITY_NAME = "PlaneIntersectionVisibility"
 
+  CURVE_INTERSECTION_GLYPH_TYPE_NAME = "CurveIntersectionGlyphType"
+
   LABEL_OUTLINE_VISIBILITY_NAME = "LabelOutlineVisibility"
 
   def __init__(self, parent=None):
@@ -77,7 +80,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.updatingFromDerivedMarkup = False
     self.updatingSeedNodes = False
 
-    self.planeNodeActors = {}
+    self.intersectionDisplayManager = NeuroSegmentMarkupsIntersectionDisplayManager()
 
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.updateParameterNodeObservers)
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
@@ -97,7 +100,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   def getParameterNode(self):
     """Returns the current parameter node and creates one if it doesn't exist yet"""
     if not self.parameterNode:
-      self.setParameterNode(ScriptedLoadableModuleLogic.getParameterNode(self) )
+      self.setParameterNode(ScriptedLoadableModuleLogic.getParameterNode(self))
     return self.parameterNode
 
   def getQueryNodeFileName(self):
@@ -306,18 +309,13 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     inflatedMarkupViews = self.getMarkupViewIDs(parameterNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
 
     projectionEnabled = self.getMarkupProjectionEnabled(parameterNode)
-    startFade = 0.0
-    endFade = 10.0
-    if projectionEnabled:
-      endFade = self.getMaximumProjectionDistance(parameterNode)
+    self.intersectionDisplayManager.setVisibility(projectionEnabled)
+    self.intersectionDisplayManager.setGlyphType(self.getIntersectionGlyphType())
 
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
       inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
       inputMarkupNode.GetDisplayNode().SetViewNodeIDs(origMarkupViews)
-      inputMarkupNode.GetDisplayNode().SetLineColorFadingStart(startFade)
-      inputMarkupNode.GetDisplayNode().SetLineColorFadingEnd(endFade)
-      inputMarkupNode.GetDisplayNode().SetSliceProjection(projectionEnabled)
 
       if inputMarkupNode is None or not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
         continue
@@ -333,14 +331,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       pialCurveNode = self.getDerivedCurveNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialCurveNode:
         pialCurveNode.GetDisplayNode().SetViewNodeIDs(pialMarkupViews)
-        pialCurveNode.GetDisplayNode().SetLineColorFadingStart(startFade)
-        pialCurveNode.GetDisplayNode().SetLineColorFadingEnd(endFade)
 
       inflatedCurveNode = self.getDerivedCurveNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
       if inflatedCurveNode:
         inflatedCurveNode.GetDisplayNode().SetViewNodeIDs(inflatedMarkupViews)
-        inflatedCurveNode.GetDisplayNode().SetLineColorFadingStart(startFade)
-        inflatedCurveNode.GetDisplayNode().SetLineColorFadingEnd(endFade)
 
       numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(self.TOOL_NODE_REFERENCE)
       for i in range(numberOfToolNodes):
@@ -1441,6 +1435,20 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.parameterNode.SetParameter(self.PLANE_INTERSECTION_VISIBILITY_NAME, str(visible))
     if visible:
       self.updateAllPlaneIntersections(self.getParameterNode())
+
+  def setIntersectionGlyphType(self, glyphType):
+    if self.parameterNode is None:
+      return
+    glyphTypeString = slicer.vtkMRMLMarkupsDisplayNode.GetGlyphTypeAsString(glyphType)
+    self.parameterNode.SetParameter(self.CURVE_INTERSECTION_GLYPH_TYPE_NAME, glyphTypeString)
+
+  def getIntersectionGlyphType(self):
+    if self.parameterNode is None:
+      return slicer.vtkMRMLMarkupsDisplayNode.Cross2D
+    glyphType = self.parameterNode.GetParameter(self.CURVE_INTERSECTION_GLYPH_TYPE_NAME)
+    if glyphType == "":
+      return slicer.vtkMRMLMarkupsDisplayNode.Cross2D
+    return slicer.vtkMRMLMarkupsDisplayNode.GetGlyphTypeFromString(glyphType)
 
   def getLabelOutlineVisible(self):
     if self.parameterNode is None:

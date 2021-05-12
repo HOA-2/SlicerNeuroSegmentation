@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>321</width>
+    <width>353</width>
     <height>998</height>
    </rect>
   </property>
@@ -155,17 +155,34 @@
              </item>
             </layout>
            </item>
-           <item row="3" column="1">
-            <widget class="QCheckBox" name="labelOutlineCheckBox">
+           <item row="4" column="1">
+            <widget class="QCheckBox" name="curveIntersectionCheckBox">
              <property name="text">
               <string/>
              </property>
             </widget>
            </item>
-           <item row="2" column="0">
-            <widget class="QLabel" name="label_11">
+           <item row="5" column="0">
+            <widget class="QLabel" name="label_15">
              <property name="text">
-              <string>Plane intersection:</string>
+              <string>2D intersection glyph:</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="1" colspan="2">
+            <widget class="QComboBox" name="intersectionGlyphComboBox"/>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="label_13">
+             <property name="text">
+              <string>3D label outline:</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLabel" name="label_8">
+             <property name="text">
+              <string>2D curve intersection:</string>
              </property>
             </widget>
            </item>
@@ -178,14 +195,21 @@
               </sizepolicy>
              </property>
              <property name="text">
-              <string>Views:</string>
+              <string>Show markups in all views:</string>
              </property>
             </widget>
            </item>
-           <item row="3" column="0">
-            <widget class="QLabel" name="label_13">
+           <item row="3" column="1">
+            <widget class="QCheckBox" name="labelOutlineCheckBox">
              <property name="text">
-              <string>Label outline:</string>
+              <string/>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_11">
+             <property name="text">
+              <string>3D plane intersection:</string>
              </property>
             </widget>
            </item>
@@ -193,37 +217,6 @@
             <widget class="QCheckBox" name="planeIntersectionCheckBox">
              <property name="text">
               <string/>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="0">
-            <widget class="QLabel" name="label_8">
-             <property name="text">
-              <string>Projection:</string>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="1">
-            <widget class="QCheckBox" name="markupsProjectionCheckBox">
-             <property name="text">
-              <string/>
-             </property>
-            </widget>
-           </item>
-           <item row="5" column="0">
-            <widget class="QLabel" name="label_15">
-             <property name="text">
-              <string>Projection distance:</string>
-             </property>
-            </widget>
-           </item>
-           <item row="5" column="1">
-            <widget class="ctkSliderWidget" name="projectionDistanceSlider">
-             <property name="minimum">
-              <double>1.000000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>150.000000000000000</double>
              </property>
             </widget>
            </item>
@@ -323,7 +316,7 @@
     </widget>
    </item>
    <item row="3" column="0" colspan="2">
-    <widget class="qMRMLCollapsibleButton" name="importMarkupsCollapsibleButton">
+    <widget class="ctkCollapsibleButton" name="importMarkupsCollapsibleButton">
      <property name="text">
       <string>Import</string>
      </property>
@@ -479,7 +472,7 @@
     </widget>
    </item>
    <item row="6" column="0" colspan="2">
-    <widget class="qMRMLCollapsibleButton" name="inputPlanesCollapsibleButton">
+    <widget class="ctkCollapsibleButton" name="inputPlanesCollapsibleButton">
      <property name="text">
       <string>Input planes</string>
      </property>
@@ -487,7 +480,7 @@
     </widget>
    </item>
    <item row="7" column="0" colspan="2">
-    <widget class="qMRMLCollapsibleButton" name="outputModelsCollapsibleButton">
+    <widget class="ctkCollapsibleButton" name="outputModelsCollapsibleButton">
      <property name="text">
       <string>Output models</string>
      </property>
@@ -508,7 +501,7 @@
     </widget>
    </item>
    <item row="9" column="0" colspan="2">
-    <widget class="qMRMLCollapsibleButton" name="exportSegmentationCollapsibleButton">
+    <widget class="ctkCollapsibleButton" name="exportSegmentationCollapsibleButton">
      <property name="text">
       <string>Export to segmentation</string>
      </property>
@@ -604,17 +597,6 @@
    <class>ctkPathLineEdit</class>
    <extends>QWidget</extends>
    <header>ctkPathLineEdit.h</header>
-  </customwidget>
-  <customwidget>
-   <class>ctkSliderWidget</class>
-   <extends>QWidget</extends>
-   <header>ctkSliderWidget.h</header>
-  </customwidget>
-  <customwidget>
-   <class>qMRMLCollapsibleButton</class>
-   <extends>ctkCollapsibleButton</extends>
-   <header>qMRMLCollapsibleButton.h</header>
-   <container>1</container>
   </customwidget>
   <customwidget>
    <class>qMRMLNodeComboBox</class>

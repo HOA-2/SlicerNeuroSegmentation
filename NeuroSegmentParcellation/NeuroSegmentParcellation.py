@@ -159,6 +159,20 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.importCountButtonGroup.addButton(self.ui.singleOverlayRadioButton)
     self.importCountButtonGroup.addButton(self.ui.multipleOverlayRadioButton)
 
+    self.ui.intersectionGlyphComboBox.addItem("Star burst", slicer.vtkMarkupsGlyphSource2D.GlyphStarBurst)
+    self.ui.intersectionGlyphComboBox.addItem("Cross", slicer.vtkMarkupsGlyphSource2D.GlyphCross)
+    self.ui.intersectionGlyphComboBox.addItem("Cross dot", slicer.vtkMarkupsGlyphSource2D.GlyphCrossDot)
+    self.ui.intersectionGlyphComboBox.addItem("Thick cross", slicer.vtkMarkupsGlyphSource2D.GlyphThickCross)
+    self.ui.intersectionGlyphComboBox.addItem("Dash", slicer.vtkMarkupsGlyphSource2D.GlyphDash)
+    self.ui.intersectionGlyphComboBox.addItem("Circle", slicer.vtkMarkupsGlyphSource2D.GlyphCircle)
+    self.ui.intersectionGlyphComboBox.addItem("Vertex", slicer.vtkMarkupsGlyphSource2D.GlyphVertex)
+    self.ui.intersectionGlyphComboBox.addItem("Triangle", slicer.vtkMarkupsGlyphSource2D.GlyphTriangle)
+    self.ui.intersectionGlyphComboBox.addItem("Square", slicer.vtkMarkupsGlyphSource2D.GlyphSquare)
+    self.ui.intersectionGlyphComboBox.addItem("Diamond", slicer.vtkMarkupsGlyphSource2D.GlyphDiamond)
+    self.ui.intersectionGlyphComboBox.addItem("Arrow", slicer.vtkMarkupsGlyphSource2D.GlyphArrow)
+    self.ui.intersectionGlyphComboBox.addItem("Thick arrow", slicer.vtkMarkupsGlyphSource2D.GlyphThickArrow)
+    self.ui.intersectionGlyphComboBox.addItem("Hooked arrow", slicer.vtkMarkupsGlyphSource2D.GlyphHookedArrow)
+
     # Set scene in MRML widgets. Make sure that in Qt designer
     # "mrmlSceneChanged(vtkMRMLScene*)" signal in is connected to each MRML widget's.
     # "setMRMLScene(vtkMRMLScene*)" slot.
@@ -206,8 +220,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.origMarkupsCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
     self.ui.pialMarkupsCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
     self.ui.inflatedMarkupsCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
-    self.ui.markupsProjectionCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
-    self.ui.projectionDistanceSlider.connect("valueChanged(double)", self.updateMarkupDisplay)
+    self.ui.curveIntersectionCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
 
     slicer.app.layoutManager().connect("layoutChanged(int)", self.onLayoutChanged)
     self.ui.parcellationViewLayoutButton.connect("clicked()", self.onParcellationViewLayoutButtonClicked)
@@ -215,6 +228,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.planeIntersectionCheckBox.connect("toggled(bool)", self.onPlaneCheckBox)
 
     self.ui.labelOutlineCheckBox.connect("toggled(bool)", self.onLabelOutlineCheckBox)
+
+    self.ui.intersectionGlyphComboBox.connect("currentIndexChanged(int)", self.onIntersectionGlyphChanged)
 
     self.oldLayout = slicer.app.layoutManager().layout
 
@@ -466,13 +481,14 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.labelOutlineCheckBox.setChecked(self.logic.getLabelOutlineVisible())
     self.ui.labelOutlineCheckBox.blockSignals(wasBlocked)
 
-    wasBlocked = self.ui.markupsProjectionCheckBox.blockSignals(True)
-    self.ui.markupsProjectionCheckBox.setChecked(self.logic.getMarkupProjectionEnabled(self.parameterNode))
-    self.ui.markupsProjectionCheckBox.blockSignals(wasBlocked)
+    wasBlocked = self.ui.curveIntersectionCheckBox.blockSignals(True)
+    self.ui.curveIntersectionCheckBox.setChecked(self.logic.getMarkupProjectionEnabled(self.parameterNode))
+    self.ui.curveIntersectionCheckBox.blockSignals(wasBlocked)
 
-    wasBlocked = self.ui.projectionDistanceSlider.blockSignals(True)
-    self.ui.projectionDistanceSlider.value = self.logic.getMaximumProjectionDistance(self.parameterNode)
-    self.ui.projectionDistanceSlider.blockSignals(wasBlocked)
+    wasBlocked = self.ui.intersectionGlyphComboBox.blockSignals(True)
+    index = self.ui.intersectionGlyphComboBox.findData(self.logic.getIntersectionGlyphType())
+    self.ui.intersectionGlyphComboBox.currentIndex = index
+    self.ui.intersectionGlyphComboBox.blockSignals(wasBlocked)
 
     # Update each widget from parameter node
     # Need to temporarily block signals to prevent infinite recursion (MRML node update triggers
@@ -708,8 +724,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       self.logic.setMarkupSliceViewVisibility(self.parameterNode, self.logic.ORIG_NODE_ATTRIBUTE_VALUE, self.ui.origMarkupsCheckBox.isChecked())
       self.logic.setMarkupSliceViewVisibility(self.parameterNode, self.logic.PIAL_NODE_ATTRIBUTE_VALUE, self.ui.pialMarkupsCheckBox.isChecked())
       self.logic.setMarkupSliceViewVisibility(self.parameterNode, self.logic.INFLATED_NODE_ATTRIBUTE_VALUE, self.ui.inflatedMarkupsCheckBox.isChecked())
-      self.logic.setMarkupProjectionEnabled(self.parameterNode, self.ui.markupsProjectionCheckBox.isChecked())
-      self.logic.setMaximumProjectionDistance(self.parameterNode, self.ui.projectionDistanceSlider.value)
+      self.logic.setMarkupProjectionEnabled(self.parameterNode, self.ui.curveIntersectionCheckBox.isChecked())
 
   def onApplyButton(self):
     """
@@ -1001,6 +1016,12 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if self.parameterNode is None:
       return
     self.logic.setLabelOutlineVisible(checked)
+
+  def onIntersectionGlyphChanged(self, index):
+    if self.parameterNode is None:
+      return
+    glyphType = self.ui.intersectionGlyphComboBox.currentData
+    self.logic.setIntersectionGlyphType(glyphType)
 
 class NeuroSegmentParcellationTest(ScriptedLoadableModuleTest):
   """
