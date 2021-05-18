@@ -188,6 +188,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     # Connections
     self.ui.parameterNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.setParameterNode)
+    self.ui.parameterNodeSelector.connect('nodeAdded(vtkMRMLNode*)', self.onParameterNodeAdded)
     self.ui.loadQueryButton.connect('clicked(bool)', self.onLoadQuery)
     self.ui.applyButton.connect('clicked(bool)', self.onApplyButton)
     self.ui.exportButton.connect('clicked(bool)', self.onExportButton)
@@ -850,6 +851,13 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       surfacesToExport.append(self.ui.structureSelector.itemText(index.row()))
 
     self.logic.exportOutputToSurfaceLabel(self.parameterNode, surfacesToExport)
+
+  def onParameterNodeAdded(self, parameterNode):
+    """
+    Called if a node is added from the combobox.
+    Sets the default node parameters.
+    """
+    self.logic.setDefaultParameters(parameterNode)
 
   def onLoadQuery(self):
     """
