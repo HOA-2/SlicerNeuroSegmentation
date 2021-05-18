@@ -112,6 +112,11 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       self.setParameterNode(ScriptedLoadableModuleLogic.getParameterNode(self))
     return self.parameterNode
 
+  def createParameterNode(self):
+    parameterNode = ScriptedLoadableModuleLogic.createParameterNode(self)
+    self.setDefaultParameters(parameterNode)
+    return parameterNode
+
   def getQueryNodeFileName(self):
     return self.queryNodeFileName
 
@@ -569,7 +574,20 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     """
     Initialize parameter node with default settings.
     """
-    pass
+    if parameterNode is None:
+      return
+
+    parameterNode.SetParameter(self.CURVE_VISIBILITY_RED_VIEW, "TRUE")
+    parameterNode.SetParameter(self.CURVE_VISIBILITY_GREEN_VIEW, "FALSE")
+    parameterNode.SetParameter(self.CURVE_VISIBILITY_YELLOW_VIEW, "TRUE")
+
+    parameterNode.SetParameter(self.INTERSECTION_VISIBILITY_RED_VIEW, "FALSE")
+    parameterNode.SetParameter(self.INTERSECTION_VISIBILITY_GREEN_VIEW, "TRUE")
+    parameterNode.SetParameter(self.INTERSECTION_VISIBILITY_YELLOW_VIEW, "FALSE")
+
+    parameterNode.SetParameter(self.MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX + self.ORIG_NODE_ATTRIBUTE_VALUE, "TRUE")
+    parameterNode.SetParameter(self.MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX + self.PIAL_NODE_ATTRIBUTE_VALUE, "FALSE")
+    parameterNode.SetParameter(self.MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX + self.INFLATED_NODE_ATTRIBUTE_VALUE, "FALSE")
 
   def parseParcellationString(self, parameterNode):
     queryString = self.getQueryString(parameterNode)
@@ -1474,7 +1492,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.parameterNode is None:
       return
     return True if self.parameterNode.GetParameter(self.CURVE_VISIBILITY_GREEN_VIEW) == "TRUE" else False
-    
+
   def setYellowLineVisibility(self, visibility):
     if self.parameterNode is None:
       return
