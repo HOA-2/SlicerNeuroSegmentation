@@ -50,6 +50,8 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
   NEURO_SEGMENT_WIDGET_LAYOUT_ID = 5612
 
+  NODE_ID_ROLE = qt.Qt.UserRole + 1
+
   def __init__(self, parent):
     ScriptedLoadableModuleWidget.__init__(self, parent)
     VTKObservationMixin.__init__(self)
@@ -58,6 +60,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     ScriptedLoadableModuleWidget.setup(self)
 
     self.logic = NeuroSegmentLogic()
+    self._parameterNode = None
 
     uiWidget = slicer.util.loadUI(self.resourcePath('UI/NeuroSegment.ui'))
     self.layout.addWidget(uiWidget)
@@ -143,6 +146,61 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.defaultSegmentationFileName = self.getPath() + "/Resources/Segmentations/DefaultSegmentation.seg.nrrd"
 
+    self.ui.addGuideCurveButton.connect('clicked()', self.onAddGuideCurveClicked)
+    self.ui.removeGuideCurveButton.connect('clicked()', self.onRemoveGuideCurveClicked)
+
+    self.setParameterNode(self.logic.getParameterNode())
+
+  def onAddGuideCurveClicked(self):
+    """
+    TODO
+    """
+    curveNode = self.logic.addGuideCurve()
+    self.logic.startCurvePlacement(curveNode)
+
+  def onRemoveGuideCurveClicked(self):
+    """
+    TODO
+    """
+    selectedGuideCurve = self.selectedGuideCurve()
+    if selectedGuideCurve:
+      self.logic.removeGuideCurve(selectedGuideCurve)
+    self.logic.stopCurvePlacement()
+
+  def selectedGuideCurve(self):
+    if self.ui.guideCurveTableWidget.currentRow() < 0:
+      return None
+    print(self.ui.guideCurveTableWidget.currentRow())
+    nodeID = self.ui.guideCurveTableWidget.item(self.ui.guideCurveTableWidget.currentRow(), 0).data(self.NODE_ID_ROLE)
+    print(nodeID)
+    return slicer.mrmlScene.GetNodeByID(nodeID)
+
+  def updateGUIFromParameterNode(self):
+    self.updateGuideCurveTable()
+
+  def updateGuideCurveTable(self):
+    self.ui.guideCurveTableWidget.clearContents()
+    curves = self.logic.getGuideCurves()
+    numberOfCurves = len(curves)
+    self.ui.guideCurveTableWidget.rowCount = numberOfCurves
+
+    for i in range(numberOfCurves):
+      curveNode = curves[i]
+
+      item = qt.QTableWidgetItem()
+      item.setData(self.NODE_ID_ROLE, curveNode.GetID())
+      self.ui.guideCurveTableWidget.setItem(i, 0, item)
+
+      label = qt.QLabel(curveNode.GetName())
+      self.ui.guideCurveTableWidget.setCellWidget(i, 0, label)
+
+      placeWidget = slicer.qSlicerMarkupsPlaceWidget()
+      placeWidget.findChild("QToolButton", "MoreButton").setVisible(False)
+      placeWidget.findChild("ctkColorPickerButton", "ColorButton").setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Expanding)
+      placeWidget.setMRMLScene(slicer.mrmlScene)
+      placeWidget.setCurrentNode(curveNode)
+      self.ui.guideCurveTableWidget.setCellWidget(i, 1, placeWidget)
+
   def updateHistogram(self):
     thresholdEffects = [self.ui.segmentEditorWidget.effectByName("Threshold"), self.ui.segmentEditorWidget.effectByName("LocalThreshold")]
     for thresholdEffect in thresholdEffects:
@@ -169,6 +227,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def enter(self):
     self.selectSegmentEditorParameterNode()
     self.updateHistogram()
+    self.setParameterNode(self.logic.getParameterNode())
 
     # Allow switching between effects and selected segment using keyboard shortcuts
     layoutManager = slicer.app.layoutManager()
@@ -192,11 +251,13 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     if self.parent.isEntered:
       self.selectSegmentEditorParameterNode()
       self.ui.segmentEditorWidget.updateWidgetFromMRML()
+      self.setParameterNode(self.logic.getParameterNode())
 
   def onSceneEndImport(self, caller, event):
     if self.parent.isEntered:
       self.selectSegmentEditorParameterNode()
       self.ui.segmentEditorWidget.updateWidgetFromMRML()
+      self.setParameterNode(self.logic.getParameterNode())
 
   def onNodeAddedByUser(self, node):
     if not node.AddDefaultStorageNode():
@@ -273,6 +334,18 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.mainViewWidget3DButton.setParent(None)
     self.mainViewWidget3DButton = None
     self.removeObservers()
+
+  def setParameterNode(self, parameterNode):
+    if self._parameterNode is parameterNode:
+      return
+
+    self.removeObservers(self.onParameterNodeModified)
+    self.addObserver(parameterNode, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified)
+    self._parameterNode = parameterNode
+    self.updateGUIFromParameterNode()
+
+  def onParameterNodeModified(self, caller, event):
+    self.updateGUIFromParameterNode()
 
   def toggleSliceViews(self):
     if self.ui.undockSliceViewButton.checked:
@@ -482,6 +555,55 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
+  GUIDE_CURVE_REFERENCE_ROLE = "GuideCurve"
+
+  def addGuideCurve(self, curveNode=None):
+    """
+    TODO
+    """
+    if curveNode is None:
+      curveNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsCurveNode")
+
+    if self.getParameterNode().HasNodeReferenceID(self.GUIDE_CURVE_REFERENCE_ROLE, curveNode.GetID()):
+      return
+
+    self.getParameterNode().AddNodeReferenceID(self.GUIDE_CURVE_REFERENCE_ROLE, curveNode.GetID())
+    return curveNode
+
+  def removeGuideCurve(self, curveNode):
+    """
+    TODO
+    """
+    if not self.getParameterNode().HasNodeReferenceID(self.GUIDE_CURVE_REFERENCE_ROLE, curveNode.GetID()):
+      return
+
+    numberOfCurves = self.getParameterNode().GetNumberOfNodeReferences(self.GUIDE_CURVE_REFERENCE_ROLE)
+    for i in range(numberOfCurves):
+      if self.getParameterNode().GetNthNodeReference(self.GUIDE_CURVE_REFERENCE_ROLE, i).GetID() == curveNode.GetID():
+        self.getParameterNode().RemoveNthNodeReferenceID(self.GUIDE_CURVE_REFERENCE_ROLE, i)
+        slicer.mrmlScene.RemoveNode(curveNode)
+        return
+
+  def getGuideCurves(self):
+    """
+    TODO
+    """
+    numberOfCurves = self.getParameterNode().GetNumberOfNodeReferences(self.GUIDE_CURVE_REFERENCE_ROLE)
+    curveNodes = []
+    for i in range(numberOfCurves):
+      curveNodes.append(self.getParameterNode().GetNthNodeReference(self.GUIDE_CURVE_REFERENCE_ROLE, i))
+    return curveNodes
+
+  def startCurvePlacement(self, curveNode):
+    if curveNode is None:
+      self.stopCurvePlacement()
+      return
+
+    slicer.modules.markups.logic().StartPlaceMode(True)
+    slicer.modules.markups.logic().SetActiveListID(curveNode)
+
+  def stopCurvePlacement(self):
+    slicer.app.applicationLogic().GetInteractionNode().SetCurrentInteractionMode(slicer.vtkMRMLInteractionNode.ViewTransform)
 
 class NeuroSegmentTest(ScriptedLoadableModuleTest):
   """
