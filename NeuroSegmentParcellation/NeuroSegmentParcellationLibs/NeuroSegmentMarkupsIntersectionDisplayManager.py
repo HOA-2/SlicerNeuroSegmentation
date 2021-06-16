@@ -2,6 +2,7 @@ import vtk, qt, ctk, slicer
 import logging
 from slicer.util import VTKObservationMixin
 import numpy as np
+import json
 
 class NeuroSegmentMarkupsIntersectionPipeline(VTKObservationMixin):
 
@@ -39,15 +40,6 @@ class NeuroSegmentMarkupsIntersectionPipeline(VTKObservationMixin):
 
     self.curveNode = curveNode
     self.sliceNode = sliceNode
-
-    self.visibility = True
-
-  def setVisibility(self, visibility):
-    self.visibility = visibility
-    self.updateActorFromMRML()
-    sliceView = self.getSliceView()
-    if sliceView:
-      sliceView.scheduleRender()
 
   def setGlyphType(self, glyphType):
     self.glyphSource.SetGlyphType(glyphType)
@@ -90,12 +82,24 @@ class NeuroSegmentMarkupsIntersectionPipeline(VTKObservationMixin):
     renderer.RemoveActor2D(self.actor)
     self.removeObservers(self.updateActorFromMRML)
 
-  def updateActorFromMRML(self, caller=None, event=None):
-    if self.curveNode.GetAttribute(NeuroSegmentMarkupsIntersectionDisplayManager.INTERSECTION_VISIBLE_ATTRIBUTE) != str(True):
-      self.actor.SetVisibility(False)
-      return
+  def getViewIDs(self):
+    viewsAttribute = self.curveNode.GetAttribute(NeuroSegmentMarkupsIntersectionDisplayManager.INTERSECTION_VIEWS_ATTRIBUTE)
+    if not viewsAttribute or viewsAttribute == "":
+      return []
+    try:
+      viewIDs = json.loads(viewsAttribute)
+    except json.JSONDecodeError as error:
+      logging.error("Error decoding json: {0}\n{1}".format(viewsAttribute, error)     )
+      return []
+    return viewIDs
 
-    if not self.visibility:
+  def getVisibility(self):
+    viewIDs = self.getViewIDs()
+    return (self.curveNode.GetAttribute(NeuroSegmentMarkupsIntersectionDisplayManager.INTERSECTION_VISIBLE_ATTRIBUTE) == str(True) and
+      self.sliceNode.GetName() in viewIDs)
+
+  def updateActorFromMRML(self, caller=None, event=None):
+    if not self.getVisibility():
       self.actor.SetVisibility(False)
       return
 
@@ -175,15 +179,15 @@ class NeuroSegmentMarkupsIntersectionPipeline(VTKObservationMixin):
 class NeuroSegmentMarkupsIntersectionDisplayManager(VTKObservationMixin):
 
   INTERSECTION_VISIBLE_ATTRIBUTE = "NeuroSegmentMarkupsIntersection.Visible"
+  INTERSECTION_VIEWS_ATTRIBUTE = "NeuroSegmentMarkupsIntersection.ViewIDs"
+  INTERSECTION_GLYPH_TYPE_ATTRIBUTE = "NeuroSegmentMarkupsIntersection.GlyphType"
+  INTERSECTION_GLYPH_SCALE_ATTRIBUTE = "NeuroSegmentMarkupsIntersection.GlyphScale"
 
   def __init__(self):
     VTKObservationMixin.__init__(self)
 
     self.viewPipelines = {} # Key is view name, value is dict containing pipelines
                             # Key of nested dict is markups node, value is pipeline object
-    self.redVisibility = True
-    self.greenVisibility = True
-    self.yellowVisibility = True
 
     self.glyphScale = 0.5
     self.glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphCross
@@ -195,24 +199,6 @@ class NeuroSegmentMarkupsIntersectionDisplayManager(VTKObservationMixin):
     layoutManager.connect('layoutChanged(int)', self.updatePipelines)
 
     self.updatePipelines()
-
-  def setRedVisibility(self, visibility):
-    self.redVisibility = visibility
-    currentViewPipelines = self.viewPipelines["Red"]
-    for curveNode, pipeline in currentViewPipelines.items():
-      pipeline.setVisibility(visibility)
-
-  def setGreenVisibility(self, visibility):
-    self.greenVisibility = visibility
-    currentViewPipelines = self.viewPipelines["Green"]
-    for curveNode, pipeline in currentViewPipelines.items():
-      pipeline.setVisibility(visibility)
-
-  def setYellowVisibility(self, visibility):
-    self.yellowVisibility = visibility
-    currentViewPipelines = self.viewPipelines["Yellow"]
-    for curveNode, pipeline in currentViewPipelines.items():
-      pipeline.setVisibility(visibility)
 
   def setGlyphType(self, glyphType):
     self.glyphType = glyphType
@@ -272,14 +258,6 @@ class NeuroSegmentMarkupsIntersectionDisplayManager(VTKObservationMixin):
       currentViewPipelines[curveNode] = pipeline
       pipeline.setGlyphType(self.glyphType)
       pipeline.setGlyphScale(self.glyphScale)
-      visibility = False
-      if sliceViewName == "Red":
-        visibility = self.redVisibility
-      elif sliceViewName == "Green":
-        visibility = self.greenVisibility
-      elif sliceViewName == "Yellow":
-        visibility = self.yellowVisibility
-      pipeline.setVisibility(visibility)
       pipeline.addActor()
 
   def removeCurveActors(self, curveNode):

@@ -5,6 +5,7 @@ from slicer.ScriptedLoadableModule import *
 import logging
 from slicer.util import VTKObservationMixin
 from NeuroSegmentParcellationLibs import NeuroSegmentMarkupsIntersectionDisplayManager
+import json
 
 #
 # NeuroSegment
@@ -150,6 +151,10 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.addGuideCurveButton.connect('clicked()', self.onAddGuideCurveClicked)
     self.ui.removeGuideCurveButton.connect('clicked()', self.onRemoveGuideCurveClicked)
 
+    self.ui.intersectionViewRedCheckBox.connect('clicked()', self.updateGuideCurveDisplay)
+    self.ui.intersectionViewGreenCheckBox.connect('clicked()', self.updateGuideCurveDisplay)
+    self.ui.intersectionViewYellowCheckBox.connect('clicked()', self.updateGuideCurveDisplay)
+
     self.setParameterNode(self.logic.getParameterNode())
 
   def onAddGuideCurveClicked(self):
@@ -171,13 +176,15 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def selectedGuideCurve(self):
     if self.ui.guideCurveTableWidget.currentRow() < 0:
       return None
-    print(self.ui.guideCurveTableWidget.currentRow())
     nodeID = self.ui.guideCurveTableWidget.item(self.ui.guideCurveTableWidget.currentRow(), 0).data(self.NODE_ID_ROLE)
-    print(nodeID)
     return slicer.mrmlScene.GetNodeByID(nodeID)
 
   def updateGUIFromParameterNode(self):
     self.updateGuideCurveTable()
+
+    self.ui.intersectionViewRedCheckBox.checked = self.logic.getRedIntersectionVisibility()
+    self.ui.intersectionViewGreenCheckBox.checked = self.logic.getGreenIntersectionVisibility()
+    self.ui.intersectionViewYellowCheckBox.checked = self.logic.getYellowIntersectionVisibility()
 
   def updateGuideCurveTable(self):
     self.ui.guideCurveTableWidget.clearContents()
@@ -187,6 +194,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     for i in range(numberOfCurves):
       curveNode = curves[i]
+      nodeID = curveNode.GetID()
 
       item = qt.QTableWidgetItem()
       item.setData(self.NODE_ID_ROLE, curveNode.GetID())
@@ -200,7 +208,96 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       placeWidget.findChild("ctkColorPickerButton", "ColorButton").setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Expanding)
       placeWidget.setMRMLScene(slicer.mrmlScene)
       placeWidget.setCurrentNode(curveNode)
-      self.ui.guideCurveTableWidget.setCellWidget(i, 1, placeWidget)
+
+      visibilityButton = qt.QToolButton()
+      visibilityButton.setObjectName("visibilityButton")
+      visibilityButton.setProperty("ID", nodeID)
+      visibilityButton.setProperty("ID", nodeID)
+      visibilityButton.connect('clicked(bool)', lambda visibility, id=nodeID: self.onVisibilityClicked(id))
+
+      lockButton = qt.QToolButton()
+      lockButton.setObjectName("lockButton")
+      lockButton.setProperty("ID", nodeID)
+      lockButton.setProperty("ID", nodeID)
+      lockButton.connect('clicked(bool)', lambda visibility, id=nodeID: self.onLockClicked(id))
+
+      markupWidget = qt.QWidget()
+      markupWidget.setLayout(qt.QHBoxLayout())
+      markupWidget.layout().addWidget(placeWidget)
+      markupWidget.layout().addWidget(visibilityButton)
+      markupWidget.layout().addWidget(lockButton)
+      markupWidget.layout().setContentsMargins(0,0,0,0)
+
+      self.ui.guideCurveTableWidget.setCellWidget(i, 1, markupWidget)
+
+    self.updateDisplayVisibilityButtons()
+    self.updateLockButtons()
+
+  def onVisibilityClicked(self, id):
+    curveNode = slicer.mrmlScene.GetNodeByID(id)
+    if curveNode is None:
+      return
+    displayNode = curveNode.GetDisplayNode()
+    if displayNode is None:
+      return
+    newVisibility = not displayNode.GetVisibility()
+    displayNode.SetVisibility(newVisibility)
+    self.updateDisplayVisibilityButtons()
+
+  def onLockClicked(self, id):
+    curveNode = slicer.mrmlScene.GetNodeByID(id)
+    if curveNode is None:
+      return
+    curveNode.SetLocked(not curveNode.GetLocked())
+    self.updateLockButtons()
+
+  def updateDisplayVisibilityButtons(self):
+    curves = self.logic.getGuideCurves()
+    numberOfCurves = len(curves)
+    visibilityButtons = []
+    for i in range(numberOfCurves):
+      cellWidget = self.ui.guideCurveTableWidget.cellWidget(i, 1)
+      visibilityButtons += slicer.util.findChildren(cellWidget, name="visibilityButton")
+
+    for visibilityButton in visibilityButtons:
+      nodeID = visibilityButton.property("ID")
+      node = slicer.mrmlScene.GetNodeByID(nodeID)
+      if node is None:
+        logging.error("updateDisplayVisibilityButtons: Could not find node with ID " + str(nodeID))
+        continue
+
+      if node.GetDisplayVisibility():
+        visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerVisible.png"))
+      else:
+        visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerInvisible.png"))
+
+  def updateGuideCurveDisplay(self):
+    self.logic.setRedIntersectionVisibility(self.ui.intersectionViewRedCheckBox.checked)
+    self.logic.setGreenIntersectionVisibility(self.ui.intersectionViewGreenCheckBox.checked)
+    self.logic.setYellowIntersectionVisibility(self.ui.intersectionViewYellowCheckBox.checked)
+
+    #slicer.intersectionDisplayManager.setGlyphType(self.getIntersectionGlyphType())
+    #slicer.intersectionDisplayManager.setGlyphScale(self.getIntersectionGlyphScale())
+
+  def updateLockButtons(self):
+    curves = self.logic.getGuideCurves()
+    numberOfCurves = len(curves)
+    lockButtons = []
+    for i in range(numberOfCurves):
+      cellWidget = self.ui.guideCurveTableWidget.cellWidget(i, 1)
+      lockButtons += slicer.util.findChildren(cellWidget, name="lockButton")
+
+    for lockButton in lockButtons:
+      nodeID = lockButton.property("ID")
+      node = slicer.mrmlScene.GetNodeByID(nodeID)
+      if node is None:
+        logging.error("updateLockButtons: Could not find node with ID " + str(nodeID))
+        continue
+
+      if node.GetLocked():
+        lockButton.setIcon(qt.QIcon(":/Icons/Small/SlicerLock.png"))
+      else:
+        lockButton.setIcon(qt.QIcon(":/Icons/Small/SlicerUnlock.png"))
 
   def updateHistogram(self):
     thresholdEffects = [self.ui.segmentEditorWidget.effectByName("Threshold"), self.ui.segmentEditorWidget.effectByName("LocalThreshold")]
@@ -578,6 +675,7 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
 
     self.getParameterNode().AddNodeReferenceID(self.GUIDE_CURVE_REFERENCE_ROLE, curveNode.GetID())
     curveNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VISIBLE_ATTRIBUTE, str(True))
+    self.onParameterNodeModified()
     return curveNode
 
   def removeGuideCurve(self, curveNode):
@@ -614,6 +712,43 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
 
   def stopCurvePlacement(self):
     slicer.app.applicationLogic().GetInteractionNode().SetCurrentInteractionMode(slicer.vtkMRMLInteractionNode.ViewTransform)
+
+  def setRedIntersectionVisibility(self, visibility):
+    self.getParameterNode().SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VIEWS_ATTRIBUTE + ".Red", str(visibility))
+    self.onParameterNodeModified()
+
+  def setGreenIntersectionVisibility(self, visibility):
+    self.getParameterNode().SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VIEWS_ATTRIBUTE + ".Green", str(visibility))
+    self.onParameterNodeModified()
+
+  def setYellowIntersectionVisibility(self, visibility):
+    self.getParameterNode().SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VIEWS_ATTRIBUTE + ".Yellow", str(visibility))
+    self.onParameterNodeModified()
+
+  def getRedIntersectionVisibility(self):
+    return self.getParameterNode().GetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VIEWS_ATTRIBUTE + ".Red") == str(True)
+
+  def getGreenIntersectionVisibility(self):
+    return self.getParameterNode().GetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VIEWS_ATTRIBUTE + ".Green") == str(True)
+
+  def getYellowIntersectionVisibility(self):
+    return self.getParameterNode().GetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VIEWS_ATTRIBUTE + ".Yellow") == str(True)
+
+  def onParameterNodeModified(self, caller=None, event=None):
+    """
+    TODO: Add observer
+    """
+    intersectionViewIDs = []
+    if self.getRedIntersectionVisibility():
+      intersectionViewIDs.append("Red")
+    if self.getGreenIntersectionVisibility():
+      intersectionViewIDs.append("Green")
+    if self.getYellowIntersectionVisibility():
+      intersectionViewIDs.append("Yellow")
+
+    curveNodes = self.getGuideCurves()
+    for curveNode in curveNodes:
+      curveNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VIEWS_ATTRIBUTE, json.dumps(intersectionViewIDs))
 
 class NeuroSegmentTest(ScriptedLoadableModuleTest):
   """

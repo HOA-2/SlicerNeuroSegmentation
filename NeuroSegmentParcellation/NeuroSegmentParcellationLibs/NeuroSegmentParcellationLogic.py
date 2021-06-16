@@ -4,6 +4,7 @@ import vtk, slicer
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
 import logging
+import json
 
 from NeuroSegmentParcellationLibs.NeuroSegmentParcellationVisitor import NeuroSegmentParcellationVisitor
 from NeuroSegmentParcellationLibs.NeuroSegmentMarkupsIntersectionDisplayManager import NeuroSegmentMarkupsIntersectionDisplayManager
@@ -284,7 +285,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.DisplayModifiedEvent, self.onMasterMarkupDisplayModified)
         self.inputMarkupObservers.append((inputMarkupNode, tag))
         inputMarkupNode.SetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME, self.ORIG_NODE_ATTRIBUTE_VALUE)
-        inputMarkupNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VISIBLE_ATTRIBUTE, str(True))
         self.onMarkupLockStateModified(inputMarkupNode)
 
       if inputMarkupNode.IsA("vtkMRMLMarkupsPlaneNode"):
@@ -326,17 +326,23 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     pialMarkupViews = self.getMarkupViewIDs(parameterNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
     inflatedMarkupViews = self.getMarkupViewIDs(parameterNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
 
-    slicer.intersectionDisplayManager.setRedVisibility(self.getRedIntersectionVisibility())
-    slicer.intersectionDisplayManager.setGreenVisibility(self.getGreenIntersectionVisibility())
-    slicer.intersectionDisplayManager.setYellowVisibility(self.getYellowIntersectionVisibility())
-
     slicer.intersectionDisplayManager.setGlyphType(self.getIntersectionGlyphType())
     slicer.intersectionDisplayManager.setGlyphScale(self.getIntersectionGlyphScale())
+
+    intersectionViewIDs = []
+    if self.getRedIntersectionVisibility():
+      intersectionViewIDs.append("Red")
+    if self.getGreenIntersectionVisibility():
+      intersectionViewIDs.append("Green")
+    if self.getYellowIntersectionVisibility():
+      intersectionViewIDs.append("Yellow")
 
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
       inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
       inputMarkupNode.GetDisplayNode().SetViewNodeIDs(origMarkupViews)
+      inputMarkupNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VISIBLE_ATTRIBUTE, str(True))
+      inputMarkupNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VIEWS_ATTRIBUTE, json.dumps(intersectionViewIDs))
 
       if inputMarkupNode is None or not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
         continue
