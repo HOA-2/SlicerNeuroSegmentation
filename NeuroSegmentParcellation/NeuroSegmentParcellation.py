@@ -1048,7 +1048,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
   def importMarkupNode(self):
     importNode = self.ui.importMarkupComboBox.currentNode()
     destinationNode = self.ui.destinationMarkupComboBox.currentNode()
-    self.logic.copyMarkupPoints(importNode, destinationNode)
+    destinationNode.CopyContent(importNode)
 
   def importOverlay(self):
     self.logic.initializePedigreeIds(self.parameterNode)

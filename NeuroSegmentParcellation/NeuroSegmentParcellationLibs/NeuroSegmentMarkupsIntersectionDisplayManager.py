@@ -3,8 +3,8 @@ import logging
 from slicer.util import VTKObservationMixin
 import numpy as np
 
-
 class NeuroSegmentMarkupsIntersectionPipeline(VTKObservationMixin):
+
   def __init__(self, curveNode, sliceNode):
     VTKObservationMixin.__init__(self)
 
@@ -91,6 +91,10 @@ class NeuroSegmentMarkupsIntersectionPipeline(VTKObservationMixin):
     self.removeObservers(self.updateActorFromMRML)
 
   def updateActorFromMRML(self, caller=None, event=None):
+    if self.curveNode.GetAttribute(NeuroSegmentMarkupsIntersectionDisplayManager.INTERSECTION_VISIBLE_ATTRIBUTE) != str(True):
+      self.actor.SetVisibility(False)
+      return
+
     if not self.visibility:
       self.actor.SetVisibility(False)
       return
@@ -169,6 +173,8 @@ class NeuroSegmentMarkupsIntersectionPipeline(VTKObservationMixin):
     return renderWindow.GetRenderers().GetItemAsObject(0)
 
 class NeuroSegmentMarkupsIntersectionDisplayManager(VTKObservationMixin):
+
+  INTERSECTION_VISIBLE_ATTRIBUTE = "NeuroSegmentMarkupsIntersection.Visible"
 
   def __init__(self):
     VTKObservationMixin.__init__(self)
@@ -252,9 +258,6 @@ class NeuroSegmentMarkupsIntersectionDisplayManager(VTKObservationMixin):
     self.removeCurveActors(node)
 
   def addViewActors(self, curveNode):
-    if curveNode.GetAttribute("NeuroSegmentParcellation.NodeType") != "Orig":
-      return
-
     layoutManager = slicer.app.layoutManager()
 
     for sliceViewName, currentViewPipelines in self.viewPipelines.items():

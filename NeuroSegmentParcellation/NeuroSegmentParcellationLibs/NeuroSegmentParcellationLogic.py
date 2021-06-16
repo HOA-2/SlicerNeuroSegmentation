@@ -89,7 +89,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     self.updatingFromDerivedMarkup = False
     self.updatingSeedNodes = False
 
-    self.intersectionDisplayManager = NeuroSegmentMarkupsIntersectionDisplayManager()
+    try:
+      slicer.intersectionDisplayManager
+    except AttributeError as error:
+      slicer.intersectionDisplayManager = NeuroSegmentMarkupsIntersectionDisplayManager()
 
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.updateParameterNodeObservers)
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
@@ -281,6 +284,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.DisplayModifiedEvent, self.onMasterMarkupDisplayModified)
         self.inputMarkupObservers.append((inputMarkupNode, tag))
         inputMarkupNode.SetAttribute(self.NODE_TYPE_ATTRIBUTE_NAME, self.ORIG_NODE_ATTRIBUTE_VALUE)
+        inputMarkupNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VISIBLE_ATTRIBUTE, str(True))
         self.onMarkupLockStateModified(inputMarkupNode)
 
       if inputMarkupNode.IsA("vtkMRMLMarkupsPlaneNode"):
@@ -322,12 +326,12 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     pialMarkupViews = self.getMarkupViewIDs(parameterNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
     inflatedMarkupViews = self.getMarkupViewIDs(parameterNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
 
-    self.intersectionDisplayManager.setRedVisibility(self.getRedIntersectionVisibility())
-    self.intersectionDisplayManager.setGreenVisibility(self.getGreenIntersectionVisibility())
-    self.intersectionDisplayManager.setYellowVisibility(self.getYellowIntersectionVisibility())
+    slicer.intersectionDisplayManager.setRedVisibility(self.getRedIntersectionVisibility())
+    slicer.intersectionDisplayManager.setGreenVisibility(self.getGreenIntersectionVisibility())
+    slicer.intersectionDisplayManager.setYellowVisibility(self.getYellowIntersectionVisibility())
 
-    self.intersectionDisplayManager.setGlyphType(self.getIntersectionGlyphType())
-    self.intersectionDisplayManager.setGlyphScale(self.getIntersectionGlyphScale())
+    slicer.intersectionDisplayManager.setGlyphType(self.getIntersectionGlyphType())
+    slicer.intersectionDisplayManager.setGlyphScale(self.getIntersectionGlyphScale())
 
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):

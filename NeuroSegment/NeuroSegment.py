@@ -4,6 +4,7 @@ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
 from slicer.util import VTKObservationMixin
+from NeuroSegmentParcellationLibs import NeuroSegmentMarkupsIntersectionDisplayManager
 
 #
 # NeuroSegment
@@ -557,6 +558,14 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
 
   GUIDE_CURVE_REFERENCE_ROLE = "GuideCurve"
 
+  def __init__(self, parent=None):
+    ScriptedLoadableModuleLogic.__init__(self, parent)
+
+    #try:
+    #  slicer.intersectionDisplayManager
+    #except AttributeError:
+    slicer.intersectionDisplayManager = NeuroSegmentMarkupsIntersectionDisplayManager.NeuroSegmentMarkupsIntersectionDisplayManager()
+
   def addGuideCurve(self, curveNode=None):
     """
     TODO
@@ -568,6 +577,7 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
       return
 
     self.getParameterNode().AddNodeReferenceID(self.GUIDE_CURVE_REFERENCE_ROLE, curveNode.GetID())
+    curveNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VISIBLE_ATTRIBUTE, str(True))
     return curveNode
 
   def removeGuideCurve(self, curveNode):
