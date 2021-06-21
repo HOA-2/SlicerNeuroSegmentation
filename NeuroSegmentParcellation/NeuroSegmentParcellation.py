@@ -29,16 +29,18 @@ class NeuroSegmentParcellation(ScriptedLoadableModule, VTKObservationMixin):
   def initializeModule(self):
     #slicer.mrmlScene.SetUndoOn()
     defaultNodes = [
-      slicer.vtkMRMLMarkupsFiducialNode(),
-      slicer.vtkMRMLMarkupsCurveNode(),
-      slicer.vtkMRMLMarkupsLineNode(),
-      slicer.vtkMRMLMarkupsAngleNode(),
-      slicer.vtkMRMLMarkupsClosedCurveNode(),
-      slicer.vtkMRMLLinearTransformNode(),
-      slicer.vtkMRMLCameraNode(),
-      slicer.vtkMRMLViewNode(),
-      slicer.vtkMRMLSliceNode(),
+      slicer.mrmlScene.CreateNodeByClass("vtkMRMLMarkupsFiducialNode"),
+      slicer.mrmlScene.CreateNodeByClass("vtkMRMLMarkupsCurveNode"),
+      slicer.mrmlScene.CreateNodeByClass("vtkMRMLMarkupsLineNode"),
+      slicer.mrmlScene.CreateNodeByClass("vtkMRMLMarkupsAngleNode"),
+      slicer.mrmlScene.CreateNodeByClass("vtkMRMLMarkupsClosedCurveNode"),
+      slicer.mrmlScene.CreateNodeByClass("vtkMRMLLinearTransformNode"),
+      slicer.mrmlScene.CreateNodeByClass("vtkMRMLCameraNode"),
+      slicer.mrmlScene.CreateNodeByClass("vtkMRMLViewNode"),
+      slicer.mrmlScene.CreateNodeByClass("vtkMRMLSliceNode"),
       ]
+    for node in defaultNodes:
+      node.UnRegister(None)
 
     for node in defaultNodes:
       node.UndoEnabledOn()
