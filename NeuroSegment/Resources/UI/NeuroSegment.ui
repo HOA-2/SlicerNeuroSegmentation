@@ -150,7 +150,17 @@
                 </widget>
                </item>
                <item row="3" column="2" colspan="4">
-                <widget class="ctkSliderWidget" name="curveIntersectionScaleSlider"/>
+                <widget class="ctkSliderWidget" name="curveIntersectionScaleSlider">
+                 <property name="singleStep">
+                  <double>0.010000000000000</double>
+                 </property>
+                 <property name="pageStep">
+                  <double>0.100000000000000</double>
+                 </property>
+                 <property name="maximum">
+                  <double>1.000000000000000</double>
+                 </property>
+                </widget>
                </item>
                <item row="2" column="0">
                 <widget class="QLabel" name="label_3">

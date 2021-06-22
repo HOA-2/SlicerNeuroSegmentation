@@ -165,6 +165,8 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.ui.intersectionGlyphComboBox.connect("currentIndexChanged(int)", self.updateGuideCurveDisplay)
 
+    self.ui.curveIntersectionScaleSlider.connect("valueChanged(double)", self.updateGuideCurveDisplay)
+
     self.ui.addGuideCurveButton.connect('clicked()', self.onAddGuideCurveClicked)
     self.ui.removeGuideCurveButton.connect('clicked()', self.onRemoveGuideCurveClicked)
 
@@ -215,6 +217,10 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     index = self.ui.intersectionGlyphComboBox.findData(self.logic.getIntersectionGlyphType())
     self.ui.intersectionGlyphComboBox.currentIndex = index
     self.ui.intersectionGlyphComboBox.blockSignals(wasBlocked)
+
+    wasBlocked = self.ui.curveIntersectionScaleSlider.blockSignals(True)
+    self.ui.curveIntersectionScaleSlider.value = self.logic.getIntersectionGlyphScale()
+    self.ui.curveIntersectionScaleSlider.blockSignals(wasBlocked)
 
   def updateGuideCurveTable(self):
     self.ui.guideCurveTableWidget.clearContents()
@@ -311,7 +317,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.logic.setYellowLineVisibility(self.ui.lineViewYellowCheckBox.checked)
 
     self.logic.setIntersectionGlyphType(self.ui.intersectionGlyphComboBox.currentData)
-    
+    self.logic.setIntersectionGlyphScale(self.ui.curveIntersectionScaleSlider.value)
 
   def updateLockButtons(self):
     curves = self.logic.getGuideCurves()
@@ -694,6 +700,7 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
   CURVE_VISIBILITY_YELLOW_VIEW = "CurveVisibilityYellowView"
 
   CURVE_INTERSECTION_GLYPH_TYPE_ATTRIBUTE = "CurveIntersectionGlyphType"
+  CURVE_INTERSECTION_GLYPH_SCALE_ATTRIBUTE = "CurveIntersectionGlyphScale"
 
   INTERSECTION_VISIBILITY_RED_VIEW = "IntersectionVisibilityRedView"
   INTERSECTION_VISIBILITY_GREEN_VIEW = "IntersectionVisibilityGreenView"
@@ -835,6 +842,15 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
     self.getParameterNode().SetParameter(self.CURVE_INTERSECTION_GLYPH_TYPE_ATTRIBUTE, glyphTypeString)
     self.onParameterNodeModified()
 
+  def setIntersectionGlyphScale(self, glyphScale):
+    self.getParameterNode().SetParameter(self.CURVE_INTERSECTION_GLYPH_SCALE_ATTRIBUTE, str(glyphScale))
+
+  def getIntersectionGlyphScale(self):
+    glyphScaleString = self.getParameterNode().GetParameter(self.CURVE_INTERSECTION_GLYPH_SCALE_ATTRIBUTE)
+    if glyphScaleString == "":
+      return 0.5
+    return float(glyphScaleString)
+
   def createParameterNode(self):
     parameterNode = ScriptedLoadableModuleLogic.createParameterNode(self)
     self.setDefaultParameters(parameterNode)
@@ -876,7 +892,7 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
         lineViewIDs  += ["vtkMRMLSliceNodeYellow"]
 
     slicer.intersectionDisplayManager.setGlyphType(self.getIntersectionGlyphType())
-    #slicer.intersectionDisplayManager.setGlyphScale(self.getIntersectionGlyphScale())
+    slicer.intersectionDisplayManager.setGlyphScale(self.getIntersectionGlyphScale())
 
     curveNodes = self.getGuideCurves()
     for curveNode in curveNodes:
