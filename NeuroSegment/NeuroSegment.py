@@ -6,6 +6,7 @@ import logging
 from slicer.util import VTKObservationMixin
 from NeuroSegmentParcellationLibs import NeuroSegmentMarkupsIntersectionDisplayManager
 import json
+import random
 
 #
 # NeuroSegment
@@ -689,14 +690,39 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
     """
     if curveNode is None:
       curveNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsCurveNode")
+    curveNode.CreateDefaultDisplayNodes()
 
     if self.getParameterNode().HasNodeReferenceID(self.GUIDE_CURVE_REFERENCE_ROLE, curveNode.GetID()):
       return
 
     self.getParameterNode().AddNodeReferenceID(self.GUIDE_CURVE_REFERENCE_ROLE, curveNode.GetID())
     curveNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VISIBLE_ATTRIBUTE, str(True))
+
+    color = self.generateCurveColor()
+    curveNode.GetDisplayNode().SetSelectedColor(color[:3])
+
     self.onParameterNodeModified()
     return curveNode
+
+  def generateCurveColor(self):
+
+    colorCountStr = self.getParameterNode().GetParameter("ColorCount")
+    if not colorCountStr or colorCountStr == "":
+      colorCountStr = "0"
+    colorCount = int(colorCountStr)+1
+
+    genericAnatomyColorNode = slicer.mrmlScene.GetNodeByID("vtkMRMLColorTableNodeFileGenericAnatomyColors.txt")
+    if genericAnatomyColorNode:
+      colorCount %= genericAnatomyColorNode.GetNumberOfColors()
+      currentColor = [0,0,0,0]
+      genericAnatomyColorNode.GetColor(colorCount, currentColor)
+    else:
+      currentColor = [random.random(), random.random(), random.random(), 1.0]
+      colorCount = 0
+
+    self.getParameterNode().SetParameter("ColorCount", str(colorCount))
+
+    return currentColor
 
   def removeGuideCurve(self, curveNode):
     """
