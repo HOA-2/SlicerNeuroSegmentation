@@ -170,10 +170,12 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.addGuideCurveButton.connect('clicked()', self.onAddGuideCurveClicked)
     self.ui.removeGuideCurveButton.connect('clicked()', self.onRemoveGuideCurveClicked)
 
+    self.ui.lineViewMainCheckBox.connect('clicked()', self.updateGuideCurveDisplay)
     self.ui.lineViewRedCheckBox.connect('clicked()', self.updateGuideCurveDisplay)
     self.ui.lineViewGreenCheckBox.connect('clicked()', self.updateGuideCurveDisplay)
     self.ui.lineViewYellowCheckBox.connect('clicked()', self.updateGuideCurveDisplay)
 
+    self.ui.intersectionViewMainCheckBox.connect('clicked()', self.updateGuideCurveDisplay)
     self.ui.intersectionViewRedCheckBox.connect('clicked()', self.updateGuideCurveDisplay)
     self.ui.intersectionViewGreenCheckBox.connect('clicked()', self.updateGuideCurveDisplay)
     self.ui.intersectionViewYellowCheckBox.connect('clicked()', self.updateGuideCurveDisplay)
@@ -205,10 +207,12 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def updateGUIFromParameterNode(self):
     self.updateGuideCurveTable()
 
+    self.ui.lineViewMainCheckBox.checked = self.logic.getMainLineVisibility()
     self.ui.lineViewRedCheckBox.checked = self.logic.getRedLineVisibility()
     self.ui.lineViewGreenCheckBox.checked = self.logic.getGreenLineVisibility()
     self.ui.lineViewYellowCheckBox.checked = self.logic.getYellowLineVisibility()
 
+    self.ui.intersectionViewMainCheckBox.checked = self.logic.getMainIntersectionVisibility()
     self.ui.intersectionViewRedCheckBox.checked = self.logic.getRedIntersectionVisibility()
     self.ui.intersectionViewGreenCheckBox.checked = self.logic.getGreenIntersectionVisibility()
     self.ui.intersectionViewYellowCheckBox.checked = self.logic.getYellowIntersectionVisibility()
@@ -308,10 +312,12 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         visibilityButton.setIcon(qt.QIcon(":/Icons/Small/SlicerInvisible.png"))
 
   def updateGuideCurveDisplay(self):
+    self.logic.setMainIntersectionVisibility(self.ui.intersectionViewMainCheckBox.checked)
     self.logic.setRedIntersectionVisibility(self.ui.intersectionViewRedCheckBox.checked)
     self.logic.setGreenIntersectionVisibility(self.ui.intersectionViewGreenCheckBox.checked)
     self.logic.setYellowIntersectionVisibility(self.ui.intersectionViewYellowCheckBox.checked)
 
+    self.logic.setMainLineVisibility(self.ui.lineViewMainCheckBox.checked)
     self.logic.setRedLineVisibility(self.ui.lineViewRedCheckBox.checked)
     self.logic.setGreenLineVisibility(self.ui.lineViewGreenCheckBox.checked)
     self.logic.setYellowLineVisibility(self.ui.lineViewYellowCheckBox.checked)
@@ -698,6 +704,7 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
   CURVE_VISIBILITY_RED_VIEW = "CurveVisibilityRedView"
   CURVE_VISIBILITY_GREEN_VIEW = "CurveVisibilityGreenView"
   CURVE_VISIBILITY_YELLOW_VIEW = "CurveVisibilityYellowView"
+  CURVE_VISIBILITY_MAIN_VIEW = "CurveVisibilityMainView"
 
   CURVE_INTERSECTION_GLYPH_TYPE_ATTRIBUTE = "CurveIntersectionGlyphType"
   CURVE_INTERSECTION_GLYPH_SCALE_ATTRIBUTE = "CurveIntersectionGlyphScale"
@@ -705,6 +712,7 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
   INTERSECTION_VISIBILITY_RED_VIEW = "IntersectionVisibilityRedView"
   INTERSECTION_VISIBILITY_GREEN_VIEW = "IntersectionVisibilityGreenView"
   INTERSECTION_VISIBILITY_YELLOW_VIEW = "IntersectionVisibilityYellowView"
+  INTERSECTION_VISIBILITY_MAIN_VIEW = "IntersectionVisibilityMainView"
 
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
@@ -831,6 +839,20 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
   def getYellowLineVisibility(self):
     return self.getParameterNode().GetParameter(self.CURVE_VISIBILITY_YELLOW_VIEW) == str(True)
 
+  def setMainIntersectionVisibility(self, visibility):
+    self.getParameterNode().SetParameter(self.INTERSECTION_VISIBILITY_MAIN_VIEW, str(visibility))
+    self.onParameterNodeModified()
+
+  def getMainIntersectionVisibility(self):
+    return self.getParameterNode().GetParameter(self.INTERSECTION_VISIBILITY_MAIN_VIEW) == str(True)
+
+  def setMainLineVisibility(self, visibility):
+    self.getParameterNode().SetParameter(self.CURVE_VISIBILITY_MAIN_VIEW, str(visibility))
+    self.onParameterNodeModified()
+
+  def getMainLineVisibility(self):
+    return self.getParameterNode().GetParameter(self.CURVE_VISIBILITY_MAIN_VIEW) == str(True)
+
   def getIntersectionGlyphType(self):
     glyphType = self.getParameterNode().GetParameter(self.CURVE_INTERSECTION_GLYPH_TYPE_ATTRIBUTE)
     if glyphType == "":
@@ -863,10 +885,12 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
     if parameterNode is None:
       return
 
+    parameterNode.SetParameter(self.CURVE_VISIBILITY_MAIN_VIEW, str(True))
     parameterNode.SetParameter(self.CURVE_VISIBILITY_RED_VIEW, str(True))
     parameterNode.SetParameter(self.CURVE_VISIBILITY_GREEN_VIEW, str(True))
     parameterNode.SetParameter(self.CURVE_VISIBILITY_YELLOW_VIEW, str(True))
 
+    parameterNode.SetParameter(self.INTERSECTION_VISIBILITY_MAIN_VIEW, str(False))
     parameterNode.SetParameter(self.INTERSECTION_VISIBILITY_RED_VIEW, str(False))
     parameterNode.SetParameter(self.INTERSECTION_VISIBILITY_GREEN_VIEW, str(True))
     parameterNode.SetParameter(self.INTERSECTION_VISIBILITY_YELLOW_VIEW, str(False))
@@ -876,20 +900,30 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
     TODO: Add observer
     """
     intersectionViewIDs = []
+    if self.getMainIntersectionVisibility():
+      intersectionViewIDs.append("Main")
     if self.getRedIntersectionVisibility():
       intersectionViewIDs.append("Red")
+      intersectionViewIDs.append("Red2")
     if self.getGreenIntersectionVisibility():
       intersectionViewIDs.append("Green")
+      intersectionViewIDs.append("Green2")
     if self.getYellowIntersectionVisibility():
       intersectionViewIDs.append("Yellow")
+      intersectionViewIDs.append("Yellow2")
 
     lineViewIDs = ["vtkMRMLViewNode1"]
+    if self.getMainLineVisibility():
+      lineViewIDs  += ["vtkMRMLSliceNodeMain"]
     if self.getRedLineVisibility():
       lineViewIDs  += ["vtkMRMLSliceNodeRed"]
+      lineViewIDs  += ["vtkMRMLSliceNodeRed2"]
     if self.getGreenLineVisibility():
       lineViewIDs  += ["vtkMRMLSliceNodeGreen"]
+      lineViewIDs  += ["vtkMRMLSliceNodeGreen2"]
     if self.getYellowLineVisibility():
         lineViewIDs  += ["vtkMRMLSliceNodeYellow"]
+        lineViewIDs  += ["vtkMRMLSliceNodeYellow2"]
 
     slicer.intersectionDisplayManager.setGlyphType(self.getIntersectionGlyphType())
     slicer.intersectionDisplayManager.setGlyphScale(self.getIntersectionGlyphScale())
