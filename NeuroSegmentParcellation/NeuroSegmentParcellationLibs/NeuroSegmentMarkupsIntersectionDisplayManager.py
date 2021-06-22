@@ -190,7 +190,7 @@ class NeuroSegmentMarkupsIntersectionDisplayManager(VTKObservationMixin):
                             # Key of nested dict is markups node, value is pipeline object
 
     self.glyphScale = 0.5
-    self.glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphCross
+    self.glyphType = slicer.vtkMRMLMarkupsDisplayNode.Cross2D
 
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeRemovedEvent, self.onNodeRemoved)
@@ -202,6 +202,35 @@ class NeuroSegmentMarkupsIntersectionDisplayManager(VTKObservationMixin):
 
   def setGlyphType(self, glyphType):
     self.glyphType = glyphType
+    if glyphType == slicer.vtkMRMLMarkupsDisplayNode.StarBurst2D:
+      glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphStarBurst
+    elif glyphType == slicer.vtkMRMLMarkupsDisplayNode.Cross2D:
+       glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphCross
+    elif glyphType == slicer.vtkMRMLMarkupsDisplayNode.CrossDot2D:
+      glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphCrossDot
+    elif glyphType == slicer.vtkMRMLMarkupsDisplayNode.ThickCross2D:
+       glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphThickCross
+    elif glyphType == slicer.vtkMRMLMarkupsDisplayNode.Dash2D:
+      glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphDash
+    elif glyphType == slicer.vtkMRMLMarkupsDisplayNode.Sphere3D:
+       glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphCircle
+    elif glyphType == slicer.vtkMRMLMarkupsDisplayNode.Vertex2D:
+       glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphVertex
+    elif glyphType == slicer.vtkMRMLMarkupsDisplayNode.Circle2D:
+       glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphCircle
+    elif glyphType == slicer.vtkMRMLMarkupsDisplayNode.Triangle2D:
+       glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphTriangle
+    elif glyphType == slicer.vtkMRMLMarkupsDisplayNode.Square2D:
+       glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphSquare
+    elif glyphType == slicer.vtkMRMLMarkupsDisplayNode.Diamond2D:
+       glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphDiamond
+    elif glyphType == slicer.vtkMRMLMarkupsDisplayNode.Arrow2D:
+       glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphArrow
+    elif glyphType == slicer.vtkMRMLMarkupsDisplayNode.ThickArrow2D:
+       glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphThickArrow
+    elif glyphType == slicer.vtkMRMLMarkupsDisplayNode.HookedArrow2D:
+       glyphType = slicer.vtkMarkupsGlyphSource2D.GlyphHookedArrow
+
     for sliceViewName, currentViewPipelines in self.viewPipelines.items():
       for curveNode, pipeline in currentViewPipelines.items():
         pipeline.setGlyphType(glyphType)

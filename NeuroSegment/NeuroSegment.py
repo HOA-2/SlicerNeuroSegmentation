@@ -149,6 +149,22 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.defaultSegmentationFileName = self.getPath() + "/Resources/Segmentations/DefaultSegmentation.seg.nrrd"
 
+    self.ui.intersectionGlyphComboBox.addItem("Star burst", slicer.vtkMRMLMarkupsDisplayNode.StarBurst2D)
+    self.ui.intersectionGlyphComboBox.addItem("Cross", slicer.vtkMRMLMarkupsDisplayNode.Cross2D)
+    self.ui.intersectionGlyphComboBox.addItem("Cross dot", slicer.vtkMRMLMarkupsDisplayNode.CrossDot2D)
+    self.ui.intersectionGlyphComboBox.addItem("Thick cross", slicer.vtkMRMLMarkupsDisplayNode.ThickCross2D)
+    self.ui.intersectionGlyphComboBox.addItem("Dash", slicer.vtkMRMLMarkupsDisplayNode.Dash2D)
+    self.ui.intersectionGlyphComboBox.addItem("Circle", slicer.vtkMRMLMarkupsDisplayNode.Circle2D)
+    self.ui.intersectionGlyphComboBox.addItem("Vertex", slicer.vtkMRMLMarkupsDisplayNode.Vertex2D)
+    self.ui.intersectionGlyphComboBox.addItem("Triangle", slicer.vtkMRMLMarkupsDisplayNode.Triangle2D)
+    self.ui.intersectionGlyphComboBox.addItem("Square", slicer.vtkMRMLMarkupsDisplayNode.Square2D)
+    self.ui.intersectionGlyphComboBox.addItem("Diamond", slicer.vtkMRMLMarkupsDisplayNode.Diamond2D)
+    self.ui.intersectionGlyphComboBox.addItem("Arrow", slicer.vtkMRMLMarkupsDisplayNode.Arrow2D)
+    self.ui.intersectionGlyphComboBox.addItem("Thick arrow", slicer.vtkMRMLMarkupsDisplayNode.ThickArrow2D)
+    self.ui.intersectionGlyphComboBox.addItem("Hooked arrow", slicer.vtkMRMLMarkupsDisplayNode.HookedArrow2D)
+
+    self.ui.intersectionGlyphComboBox.connect("currentIndexChanged(int)", self.updateGuideCurveDisplay)
+
     self.ui.addGuideCurveButton.connect('clicked()', self.onAddGuideCurveClicked)
     self.ui.removeGuideCurveButton.connect('clicked()', self.onRemoveGuideCurveClicked)
 
@@ -194,6 +210,11 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.intersectionViewRedCheckBox.checked = self.logic.getRedIntersectionVisibility()
     self.ui.intersectionViewGreenCheckBox.checked = self.logic.getGreenIntersectionVisibility()
     self.ui.intersectionViewYellowCheckBox.checked = self.logic.getYellowIntersectionVisibility()
+
+    wasBlocked = self.ui.intersectionGlyphComboBox.blockSignals(True)
+    index = self.ui.intersectionGlyphComboBox.findData(self.logic.getIntersectionGlyphType())
+    self.ui.intersectionGlyphComboBox.currentIndex = index
+    self.ui.intersectionGlyphComboBox.blockSignals(wasBlocked)
 
   def updateGuideCurveTable(self):
     self.ui.guideCurveTableWidget.clearContents()
@@ -289,8 +310,8 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.logic.setGreenLineVisibility(self.ui.lineViewGreenCheckBox.checked)
     self.logic.setYellowLineVisibility(self.ui.lineViewYellowCheckBox.checked)
 
-    #slicer.intersectionDisplayManager.setGlyphType(self.getIntersectionGlyphType())
-    #slicer.intersectionDisplayManager.setGlyphScale(self.getIntersectionGlyphScale())
+    self.logic.setIntersectionGlyphType(self.ui.intersectionGlyphComboBox.currentData)
+    
 
   def updateLockButtons(self):
     curves = self.logic.getGuideCurves()
@@ -672,6 +693,8 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
   CURVE_VISIBILITY_GREEN_VIEW = "CurveVisibilityGreenView"
   CURVE_VISIBILITY_YELLOW_VIEW = "CurveVisibilityYellowView"
 
+  CURVE_INTERSECTION_GLYPH_TYPE_ATTRIBUTE = "CurveIntersectionGlyphType"
+
   INTERSECTION_VISIBILITY_RED_VIEW = "IntersectionVisibilityRedView"
   INTERSECTION_VISIBILITY_GREEN_VIEW = "IntersectionVisibilityGreenView"
   INTERSECTION_VISIBILITY_YELLOW_VIEW = "IntersectionVisibilityYellowView"
@@ -801,6 +824,17 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
   def getYellowLineVisibility(self):
     return self.getParameterNode().GetParameter(self.CURVE_VISIBILITY_YELLOW_VIEW) == str(True)
 
+  def getIntersectionGlyphType(self):
+    glyphType = self.getParameterNode().GetParameter(self.CURVE_INTERSECTION_GLYPH_TYPE_ATTRIBUTE)
+    if glyphType == "":
+      return slicer.vtkMRMLMarkupsDisplayNode.Cross2D
+    return slicer.vtkMRMLMarkupsDisplayNode.GetGlyphTypeFromString(glyphType)
+
+  def setIntersectionGlyphType(self, glyphType):
+    glyphTypeString = slicer.vtkMRMLMarkupsDisplayNode.GetGlyphTypeAsString(glyphType)
+    self.getParameterNode().SetParameter(self.CURVE_INTERSECTION_GLYPH_TYPE_ATTRIBUTE, glyphTypeString)
+    self.onParameterNodeModified()
+
   def createParameterNode(self):
     parameterNode = ScriptedLoadableModuleLogic.createParameterNode(self)
     self.setDefaultParameters(parameterNode)
@@ -840,6 +874,9 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
       lineViewIDs  += ["vtkMRMLSliceNodeGreen"]
     if self.getYellowLineVisibility():
         lineViewIDs  += ["vtkMRMLSliceNodeYellow"]
+
+    slicer.intersectionDisplayManager.setGlyphType(self.getIntersectionGlyphType())
+    #slicer.intersectionDisplayManager.setGlyphScale(self.getIntersectionGlyphScale())
 
     curveNodes = self.getGuideCurves()
     for curveNode in curveNodes:
