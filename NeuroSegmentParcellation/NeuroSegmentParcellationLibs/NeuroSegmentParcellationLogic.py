@@ -340,7 +340,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
       inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
-      inputMarkupNode.GetDisplayNode().SetViewNodeIDs(origMarkupViews)
+      if inputMarkupNode.IsA("vtkMRMLMarkupsPlaneNode"):
+        inputMarkupNode.GetDisplayNode().SetViewNodeIDs([])
+      else:
+        inputMarkupNode.GetDisplayNode().SetViewNodeIDs(origMarkupViews)
       inputMarkupNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VISIBLE_ATTRIBUTE, str(True))
       inputMarkupNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VIEWS_ATTRIBUTE, json.dumps(intersectionViewIDs))
 
