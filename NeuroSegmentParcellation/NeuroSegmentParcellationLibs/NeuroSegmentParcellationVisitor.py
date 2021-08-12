@@ -39,6 +39,7 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       10.0, # ch
       10.0, # dch
     ]
+    self.invertScalars = False
 
   def setParameterNode(self, parameterNode):
     self.parameterNode = parameterNode
@@ -85,6 +86,9 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       return
     elif target.id == "_DistanceWeightingPenalties":
       self.process__DistanceWeightingPenalties(node.value)
+      return
+    elif target.id == "_InvertScalars":
+      self.invertScalars = bool(node.value.value)
       return
 
     outputModel = slicer.util.getFirstNodeByClassByName("vtkMRMLModelNode", target.id)
@@ -199,6 +203,7 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
           ]
         for i in range(len(penaltyFunctions)):
           penaltyFunctions[i](self.penalties[i])
+        inputNode.SetInvertScalars(self.invertScalars)
 
       inputNodes.append(inputNode)
       self.parameterNode.AddNodeReferenceID(self.logic.INPUT_MARKUPS_REFERENCE, inputNode.GetID())

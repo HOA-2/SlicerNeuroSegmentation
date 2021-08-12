@@ -24,14 +24,17 @@ _Planes = [
 ]
 
 #                          [   d,   c,   h,  dc,  dh,  ch, dch,   p ]
-_DistanceWeightingValues = [ 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+_DistanceWeightingValues = [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]
 
 #                             [    c,    h,   dc,   dh,   ch,  dch ]
 _DistanceWeightingPenalties = [ 10.0, 10.0, 10.0, 10.0, 10.0, 10.0 ]
 
+_InvertScalars = True
+
 _Curves = [HemisphericMargin]
 
 _DistanceWeightingValues = [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]
+_InvertScalars = False
 
 _Curves = [
   AHR_Line,
