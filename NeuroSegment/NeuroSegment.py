@@ -186,8 +186,9 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     """
     TODO
     """
-    curveNode = self.logic.addGuideCurve()
+    curveNode = self.logic.addGuideCurve(self.ui.guideCurveImportSelector.currentNode())
     self.logic.startCurvePlacement(curveNode)
+    self.ui.guideCurveImportSelector.setCurrentNode(None)
 
   def onRemoveGuideCurveClicked(self):
     """
@@ -727,17 +728,17 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
     TODO
     """
     if curveNode is None:
-      curveNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsCurveNode")
-    curveNode.CreateDefaultDisplayNodes()
+      curveNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsCurveNode", "GuideCurve")
+      curveNode.CreateDefaultDisplayNodes()
+
+      color = self.generateCurveColor()
+      curveNode.GetDisplayNode().SetSelectedColor(color[:3])
 
     if self.getParameterNode().HasNodeReferenceID(self.GUIDE_CURVE_REFERENCE_ROLE, curveNode.GetID()):
       return
 
     self.getParameterNode().AddNodeReferenceID(self.GUIDE_CURVE_REFERENCE_ROLE, curveNode.GetID())
     curveNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VISIBLE_ATTRIBUTE, str(True))
-
-    color = self.generateCurveColor()
-    curveNode.GetDisplayNode().SetSelectedColor(color[:3])
 
     self.onParameterNodeModified()
     return curveNode

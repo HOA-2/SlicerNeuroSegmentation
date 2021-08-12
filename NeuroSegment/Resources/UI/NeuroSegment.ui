@@ -194,6 +194,27 @@
              </item>
              <item>
               <layout class="QGridLayout" name="gridLayout_2">
+               <item row="0" column="0">
+                <widget class="qMRMLNodeComboBox" name="guideCurveImportSelector">
+                 <property name="nodeTypes">
+                  <stringlist>
+                   <string>vtkMRMLMarkupsCurveNode</string>
+                  </stringlist>
+                 </property>
+                 <property name="noneEnabled">
+                  <bool>true</bool>
+                 </property>
+                 <property name="addEnabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="removeEnabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="noneDisplay">
+                  <string>New guide curve</string>
+                 </property>
+                </widget>
+               </item>
                <item row="0" column="1">
                 <widget class="QToolButton" name="addGuideCurveButton">
                  <property name="minimumSize">
@@ -212,19 +233,6 @@
                   <string>+</string>
                  </property>
                 </widget>
-               </item>
-               <item row="0" column="0">
-                <spacer name="horizontalSpacer_3">
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
                </item>
                <item row="0" column="2">
                 <widget class="QToolButton" name="removeGuideCurveButton">
@@ -343,6 +351,11 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>qMRMLNodeComboBox</class>
+   <extends>QWidget</extends>
+   <header>qMRMLNodeComboBox.h</header>
+  </customwidget>
+  <customwidget>
    <class>qMRMLVolumeThresholdWidget</class>
    <extends>QWidget</extends>
    <header>qMRMLVolumeThresholdWidget.h</header>
@@ -436,6 +449,22 @@
     <hint type="destinationlabel">
      <x>448</x>
      <y>283</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>neuroSegment</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>guideCurveImportSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>702</x>
+     <y>466</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>320</x>
+     <y>628</y>
     </hint>
    </hints>
   </connection>
