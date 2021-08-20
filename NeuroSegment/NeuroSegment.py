@@ -728,7 +728,8 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
     TODO
     """
     if curveNode is None:
-      curveNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsCurveNode", "GuideCurve")
+      name = slicer.mrmlScene.GenerateUniqueName("GuideCurve")
+      curveNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsCurveNode", name)
       curveNode.CreateDefaultDisplayNodes()
 
       color = self.generateCurveColor()
