@@ -613,12 +613,16 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     try:
       slicer.mrmlScene.StartState(slicer.mrmlScene.BatchProcessState)
       slicer.app.pauseRender()
+
+      logging.debug("Attempting to parse parcellation string:\n_________________\n{0}\n_________________".format(queryString))
+
       with slicer.util.NodeModify(parameterNode):
         astNode = ast.parse(queryString)
         eq = NeuroSegmentParcellationVisitor(self)
         eq.setParameterNode(parameterNode)
         eq.visit(astNode)
         success = True
+
     except Exception as e:
       slicer.util.errorDisplay("Error parsing parcellation: "+str(e))
       import traceback
