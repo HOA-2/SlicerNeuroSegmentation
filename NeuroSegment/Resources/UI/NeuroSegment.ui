@@ -296,6 +296,13 @@
             </column>
            </widget>
           </item>
+          <item>
+           <widget class="QCheckBox" name="labelVisibilityCheckBox">
+            <property name="text">
+             <string>Label visibility</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
@@ -354,6 +361,7 @@
    <class>qMRMLNodeComboBox</class>
    <extends>QWidget</extends>
    <header>qMRMLNodeComboBox.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>qMRMLVolumeThresholdWidget</class>
