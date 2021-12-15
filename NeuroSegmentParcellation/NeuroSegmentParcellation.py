@@ -748,7 +748,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       scalarName = "sulc"
     elif self.ui.labelsRadioButton.isChecked():
       scalarName = "labels"
-      colorNode = self.logic.getParcellationColorNode()
     self.logic.setScalarOverlay(self.parameterNode, scalarName)
 
   def updateMarkupDisplay(self):
@@ -781,7 +780,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     self.logic.initializePedigreeIds(self.parameterNode)
 
-    dynamicModelerLogic = slicer.modules.dynamicmodeler.logic()
     for toolNode in self.logic.getToolNodes():
       self.logic.runDynamicModelerTool(toolNode)
     self.logic.exportOutputToSurfaceLabel(self.parameterNode)
