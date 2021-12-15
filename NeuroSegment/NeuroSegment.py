@@ -182,6 +182,9 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.ui.labelVisibilityCheckBox.connect("toggled(bool)", self.updateGuideCurveDisplay)
 
+    self.ui.importGuideJSONButton.connect('clicked()', self.onImportGuideCurveJSON)
+    self.ui.exportGuideJSONButton.connect('clicked()', self.onExportGuideCurveJSON)
+
     self.setParameterNode(self.logic.getParameterNode())
 
   def onAddGuideCurveClicked(self):
@@ -206,6 +209,39 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       return None
     nodeID = self.ui.guideCurveTableWidget.item(self.ui.guideCurveTableWidget.currentRow(), 0).data(self.NODE_ID_ROLE)
     return slicer.mrmlScene.GetNodeByID(nodeID)
+
+  def onImportGuideCurveJSON(self):
+    directory = slicer.util.settingsValue(self.logic.IMPORT_EXPORT_GUIDE_DIRECTORY_SETTING, None)
+    if directory is None:
+      directory = ""
+    importDialog = qt.QFileDialog(None, "Import guide curve", directory)
+    importDialog.setAcceptMode(qt.QFileDialog.AcceptOpen)
+    importDialog.setFileMode(qt.QFileDialog.ExistingFile)
+    importDialog.setNameFilter("JSON file (*.json)")
+    result = importDialog.exec()
+
+    selectedFiles = importDialog.selectedFiles()
+    if result != qt.QDialog.Accepted or len(selectedFiles) == 0:
+      return
+    
+    qt.QSettings().setValue(self.logic.IMPORT_EXPORT_GUIDE_DIRECTORY_SETTING, importDialog.directory().path())
+    self.logic.loadGuideMarkupsJson(selectedFiles[0])
+
+  def onExportGuideCurveJSON(self):
+    directory = slicer.util.settingsValue(self.logic.IMPORT_EXPORT_GUIDE_DIRECTORY_SETTING, None)
+    if directory is None:
+      directory = ""
+    importDialog = qt.QFileDialog(None, "Export guide curve", directory)
+    importDialog.setAcceptMode(qt.QFileDialog.AcceptSave)
+    importDialog.setNameFilter("JSON file (*.json)")
+    result = importDialog.exec()
+
+    selectedFiles = importDialog.selectedFiles()
+    if result != qt.QDialog.Accepted or len(selectedFiles) == 0:
+      return
+
+    qt.QSettings().setValue(self.logic.IMPORT_EXPORT_GUIDE_DIRECTORY_SETTING, importDialog.directory().path())
+    self.logic.saveGuideMarkupsJson(selectedFiles[0])
 
   def updateGUIFromParameterNode(self):
     self.updateGuideCurveTable()
@@ -751,6 +787,8 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
 
   LABEL_TEXT_VISIBILITY = "LabelTextVisibility"
 
+  IMPORT_EXPORT_GUIDE_DIRECTORY_SETTING = "ImportExportGuideDirectory"
+
   def __init__(self, parent=None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
 
@@ -759,16 +797,20 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
     #except AttributeError:
     slicer.intersectionDisplayManager = NeuroSegmentMarkupsIntersectionDisplayManager.NeuroSegmentMarkupsIntersectionDisplayManager()
 
-  def addGuideCurve(self, curveNode=None):
+  def addGuideCurve(self, curveNode=None, name=None, color=None):
     """
     TODO
     """
     if curveNode is None:
-      name = slicer.mrmlScene.GenerateUniqueName("GuideCurve")
+      if name is None:
+        name = slicer.mrmlScene.GenerateUniqueName("GuideCurve")
+      else:
+        name = slicer.mrmlScene.GenerateUniqueName(name)
       curveNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsCurveNode", name)
       curveNode.CreateDefaultDisplayNodes()
 
-      color = self.generateCurveColor()
+      if color is None:
+        color = self.generateCurveColor()
       curveNode.GetDisplayNode().SetSelectedColor(color[:3])
 
     if self.getParameterNode().HasNodeReferenceID(self.GUIDE_CURVE_REFERENCE_ROLE, curveNode.GetID()):
@@ -777,7 +819,6 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
     self.getParameterNode().AddNodeReferenceID(self.GUIDE_CURVE_REFERENCE_ROLE, curveNode.GetID())
     curveNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VISIBLE_ATTRIBUTE, str(True))
 
-    self.onParameterNodeModified()
     return curveNode
 
   def generateCurveColor(self):
@@ -969,6 +1010,29 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
       curveNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VIEWS_ATTRIBUTE, json.dumps(intersectionViewIDs))
       curveNode.GetDisplayNode().SetViewNodeIDs(lineViewIDs)
       curveNode.GetDisplayNode().SetPropertiesLabelVisibility(labelVisibility)
+
+  def loadGuideMarkupsJson(self, fileName):
+    jsonString = ""
+    with open(fileName, "r") as guideFile:
+      jsonString = guideFile.read()
+
+    guideCurves = json.loads(jsonString)
+    for guideCurve in guideCurves:
+      name = guideCurve['Name']
+      color = guideCurve['Color']
+      self.addGuideCurve(None, name, color)
+
+  def saveGuideMarkupsJson(self, fileName):
+    guideCurveJSON = []
+    curveNodes = self.getGuideCurves()
+    for curveNode in curveNodes:
+      guideCurve = {}
+      guideCurve['Name'] = curveNode.GetName()
+      if curveNode.GetDisplayNode():
+        guideCurve['Color'] = curveNode.GetDisplayNode().GetSelectedColor()
+      guideCurveJSON.append(guideCurve)
+    with open(fileName, "w") as guideFile:
+      guideFile.write(json.dumps(guideCurveJSON))
 
 class NeuroSegmentTest(ScriptedLoadableModuleTest):
   """
