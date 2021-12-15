@@ -307,36 +307,36 @@
                </item>
               </layout>
              </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="ctkCollapsibleGroupBox" name="jsonCollapsibleButton">
+            <property name="title">
+             <string>JSON import/export</string>
+            </property>
+            <property name="collapsed">
+             <bool>true</bool>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_2">
              <item>
-              <widget class="ctkCollapsibleGroupBox" name="jsonCollapsibleButton">
-               <property name="title">
-                <string>JSON import/export</string>
+              <widget class="QPushButton" name="importGuideJSONButton">
+               <property name="toolTip">
+                <string>Import guide markups from JSON.</string>
                </property>
-               <property name="collapsed">
-                <bool>true</bool>
+               <property name="text">
+                <string>Import from JSON</string>
                </property>
-               <layout class="QVBoxLayout" name="verticalLayout_2">
-                <item>
-                 <widget class="QPushButton" name="importGuideJSONButton">
-                  <property name="toolTip">
-                   <string>Import guide markups from JSON.</string>
-                  </property>
-                  <property name="text">
-                   <string>Import from JSON</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="exportGuideJSONButton">
-                  <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Export the current list of guide markups to JSON.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="text">
-                   <string>Export to JSON</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="exportGuideJSONButton">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Export the current list of guide markups to JSON.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="text">
+                <string>Export to JSON</string>
+               </property>
               </widget>
              </item>
             </layout>
