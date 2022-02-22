@@ -33,7 +33,6 @@ _InvertScalars = True
 
 _Curves = [HemisphericMargin]
 
-_DistanceWeightingValues = [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]
 _InvertScalars = False
 
 _Curves = [
@@ -65,7 +64,15 @@ _Curves = [
   CunPo,
   CunealSulcus,
   CunPnt,
-  CalcarineSuperiorLine,
+]
+
+_InvertScalars = True
+
+_Curves = [CalcarineSuperiorLine]
+
+_InvertScalars = False
+
+_Curves = [
   HippocampalFissue,
   CollateralSulcus,
   Bf_line,
@@ -91,11 +98,11 @@ F1_l_a = PlaneQ & PlaneI & HemisphericMargin & SuperiorFrontalSulcus & anterior_
 F1_l_m = PlaneI & PlaneO & HemisphericMargin & SuperiorFrontalSulcus & anterior_of(PlaneO) & posterior_of(PlaneI)
 F1_l_p = PlaneO & PrecentralSulcus & HemisphericMargin & SuperiorFrontalSulcus & anterior_of(PrecentralSulcus) & posterior_of(PlaneO)
 F2a = PlaneQ & PlaneI & SuperiorFrontalSulcus & InferiorFrontalSulcus & anterior_of(PlaneI) & posterior_of(PlaneQ)
-F2m = PlaneI & PlaneO & SuperiorFrontalSulcus & InferiorFrontalSulcus & anterior_of(PlaneO) & posterior_of(PlaneI) 
+F2m = PlaneI & PlaneO & SuperiorFrontalSulcus & InferiorFrontalSulcus & anterior_of(PlaneO) & posterior_of(PlaneI)
 F2p = PlaneI & PrecentralSulcus & SuperiorFrontalSulcus & InferiorFrontalSulcus & anterior_of(PrecentralSulcus) & posterior_of(PlaneO)
 F3a = PlaneQ & PlaneA & AHR_Line & InferiorFrontalSulcus
 F3t = PlaneA & AnteriorAscendingRamusOfTheSylvian & Superior45DegreeLine & InferiorFrontalSulcus
-F3o = AnteriorAscendingRamusOfTheSylvian & PrecentralSulcus & Superior45DegreeLine & InferiorFrontalSulcus 
+F3o = AnteriorAscendingRamusOfTheSylvian & PrecentralSulcus & Superior45DegreeLine & InferiorFrontalSulcus
 F3orb = PlaneQ & PlaneA & Superior45DegreeLine & AHR_Line
 FOC_a = PlaneQ & TransH &AntOrbS & LatHS
 FOC_l = PlaneQ & CircularSulcusOfTheInsula & Superior45DegreeLine & LatHS
@@ -122,7 +129,7 @@ SPLa = PlaneF & PostcentralSulcus & IntraparietalSulcus & HemisphericMargin
 SPLp = PlaneF & PAL & HemisphericMargin & IntraparietalSulcus
 AGa = PlaneE & PlaneF & SuperiorTemporalSulcus & IntraparietalSulcus & LateralOccipitalSulcus & IntermediateSulcusOfJensen
 AGp = PlaneF & PAL & SuperiorTemporalSulcus & LateralOccipitalSulcus & IntraparietalSulcus
-OLs = PAL & PlaneG & LateralOccipitalSulcus & HemisphericMargin 
+OLs = PAL & PlaneG & LateralOccipitalSulcus & HemisphericMargin
 OLi = PlaneF & PlaneG & LateralOccipitalSulcus & OccipitotemporalSulcus
 OP = PlaneG & posterior_of(PlaneG)
 TP = PlaneB & anterior_of(PlaneB)
