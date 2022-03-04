@@ -658,16 +658,20 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       logging.error("exportOutputToSegmentation: Invalid pial node")
       return False
 
-    self.updateLabelOverlay()
-    outputModelNodes = self.getOutputModelNodes()
-
-    wasModifying = exportSegmentationNode.StartModify()
-    slicer.app.pauseRender()
     try:
+      wasModifying = exportSegmentationNode.StartModify()
+      slicer.app.pauseRender()
+
+      self.updateLabelOverlay()
+      outputModelNodes = self.getOutputModelNodes()
+
       outputOrigPolyData = vtk.vtkPolyData()
       tempModelNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode")
       tempModelNode.SetAndObservePolyData(outputOrigPolyData)
       tempModelNode.CreateDefaultDisplayNodes()
+
+      if origModelNode.GetParentTransformNode():
+        tempModelNode.SetAndObserveTransformNodeID(origModelNode.GetParentTransformNode().GetID())
       for i in range(self.getNumberOfOutputModels()):
         outputModelNode = outputModelNodes[i]
         if len(surfacesToExport) > 0 and not outputModelNode.GetName() in surfacesToExport:
@@ -1076,7 +1080,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
   def exportMeshToSegmentation(self, surfacePatchNode, innerSurfaceNode, outerSurfaceNode, exportSegmentationNode):
 
-    outputModelNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode")
+    outputModelNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", surfacePatchNode.GetName())
 
     toolNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLDynamicModelerNode")
     toolNode.SetToolName(slicer.vtkSlicerFreeSurferExtrudeTool().GetName())
@@ -1093,18 +1097,12 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     segmentation.SetMasterRepresentationName(slicer.vtkSegmentationConverter.GetClosedSurfaceRepresentationName())
     segmentId = segmentation.GetSegmentIdBySegmentName(segmentName)
     segment = segmentation.GetSegment(segmentId)
-    segmentIndex = segmentation.GetSegmentIndex(segmentId)
-    if not segment is None:
-      segmentation.RemoveSegment(segment)
-
-    segment = slicer.vtkSegment()
-    segment.SetName(segmentName)
-    segment.SetColor(segmentColor)
+    if segment is None:
+      segment = slicer.vtkSegment()
+      segment.SetName(segmentName)
+      segment.SetColor(segmentColor)
+      segmentation.AddSegment(segment)
     segment.AddRepresentation(slicer.vtkSegmentationConverter.GetClosedSurfaceRepresentationName(), outputModelNode.GetPolyData())
-    segmentation.AddSegment(segment)
-    segmentId = segmentation.GetSegmentIdBySegmentName(segmentName)
-    if segmentIndex >= 0:
-      segmentation.SetSegmentIndex(segmentId, segmentIndex)
     slicer.mrmlScene.RemoveNode(outputModelNode)
 
   def loadQuery(self, path):
