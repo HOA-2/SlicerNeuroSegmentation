@@ -31,6 +31,8 @@ class CurveComparisonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
 
+    self.logic = CurveComparisonLogic()
+
     # Load widget from .ui file (created by Qt Designer)
     uiWidget = slicer.util.loadUI(self.resourcePath('UI/CurveComparison.ui'))
     uiWidget.setMRMLScene(slicer.mrmlScene)
@@ -38,15 +40,50 @@ class CurveComparisonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
     self.ui.computeButton.connect('clicked(bool)', self.onComputeButtonClicked)
-    self.ui.outputTableNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.updateComputeButton)
-    self.ui.inputCurveNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.updateComputeButton)
-    self.updateComputeButton()
 
-    self.logic = CurveComparisonLogic()
+    self.ui.inputCurveNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.inputCurveNodeChanged)
+    self.ui.surfaceNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.surfaceNodeChanged)
 
-  def updateComputeButton(self):
-    currentTableNode = self.ui.outputTableNodeSelector.currentNode()
+    self.ui.showOverlayCheckBox.connect('clicked()', self.onShowOverlayClicked)
+
+    self.ui.outputTableNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.updateWidgetFromMRML)
+
+    self.updateWidgetFromMRML()
+
+  def inputCurveNodeChanged(self):  
+    self.updateWidgetFromMRML()
+
+  def surfaceNodeChanged(self):
+    surfaceNode = self.ui.surfaceNodeSelector.currentNode()
     currentCurveNode = self.ui.inputCurveNodeSelector.currentNode()
+    if currentCurveNode:
+      currentCurveNode.SetAndObserveSurfaceConstraintNode(surfaceNode)
+    self.updateWidgetFromMRML()
+
+  def onShowOverlayClicked(self):
+    surfaceNode = self.ui.surfaceNodeSelector.currentNode()
+    if self.ui.showOverlayCheckBox.checked and surfaceNode and surfaceNode.GetDisplayNode():
+      surfaceNode.GetDisplayNode().SetActiveScalarName(self.logic.ISO_REGIONS_ARRAY_NAME)
+    else:
+      surfaceNode.GetDisplayNode().SetActiveScalarName("")
+    self.updateWidgetFromMRML()
+
+  def updateWidgetFromMRML(self):
+    # TODO: Parameter node
+    currentCurveNode = self.ui.inputCurveNodeSelector.currentNode()
+    surfaceNode = currentCurveNode.GetSurfaceConstraintNode()
+    currentTableNode = self.ui.outputTableNodeSelector.currentNode()
+
+    wasBlocking  = self.ui.surfaceNodeSelector.blockSignals(True)
+    self.ui.surfaceNodeSelector.setCurrentNode(surfaceNode)
+    self.ui.surfaceNodeSelector.blockSignals(wasBlocking)
+
+    activeName = ""
+    surfaceNode = self.ui.surfaceNodeSelector.currentNode()
+    if surfaceNode and surfaceNode.GetDisplayNode():
+      activeName = surfaceNode.GetDisplayNode().GetActiveScalarName()
+    self.ui.showOverlayCheckBox.checked = (activeName == self.logic.ISO_REGIONS_ARRAY_NAME)
+
     self.ui.computeButton.enabled = (not currentTableNode is None and not currentCurveNode is None and
       not currentCurveNode.GetShortestDistanceSurfaceNode() is None and currentCurveNode.GetNumberOfControlPoints() >= 2)
 
@@ -85,6 +122,8 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
   MAX_DISTANCE_COLUMN_NAME = "Max distance (mm)"
   OVERLAP_PERCENT_COLUMN_NAME = "Overlap percent (%)"
   ISO_OVERLAP_COLUMN_NAME = "ISO overlap"
+
+  ISO_REGIONS_ARRAY_NAME = "ISO-Regions"
 
   NUMBER_OF_ISO_REGIONS = 6
 
@@ -235,9 +274,9 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.setCurveNodeWeights(optimizerCurveNode, weights)
 
     polyData = inputCurveNode.GetShortestDistanceSurfaceNode().GetPolyData()
-    isoRegionsArrayName = "ISO-Regions"
+    
     pointData = polyData.GetPointData()
-    isoRegionsArray = pointData.GetArray(isoRegionsArrayName)
+    isoRegionsArray = pointData.GetArray(self.ISO_REGIONS_ARRAY_NAME)
 
     isoRegionSum = np.zeros(self.NUMBER_OF_ISO_REGIONS + 1)
 
@@ -297,7 +336,8 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     """
     :param curve: The curve that the overlay will be created from (vtkMRMLMarkupsCurveNode)
     """
-    polyData = curveNode.GetShortestDistanceSurfaceNode().GetPolyData()
+    modelNode = curveNode.GetShortestDistanceSurfaceNode() 
+    polyData = modelNode.GetPolyData()
     if polyData is None:
       #TODO
       return
@@ -305,7 +345,7 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     transformFilter = vtk.vtkTransformPolyDataFilter()
     transformFilter.SetInputData(polyData)
     modelToWorldTransform = vtk.vtkGeneralTransform()
-    slicer.vtkMRMLTransformNode.GetTransformBetweenNodes(curveNode.GetShortestDistanceSurfaceNode().GetParentTransformNode(), None, modelToWorldTransform);
+    slicer.vtkMRMLTransformNode.GetTransformBetweenNodes(modelNode.GetParentTransformNode(), None, modelToWorldTransform)
     transformFilter.SetTransform(modelToWorldTransform)
     transformFilter.Update()
     polyData = transformFilter.GetOutput()
@@ -316,15 +356,14 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
     curvePoints = curveNode.GetCurvePointsWorld()
 
-    isoRegionsArrayName = "ISO-Regions"
     pointData = polyData.GetPointData()
-    isoRegionsArray = pointData.GetArray(isoRegionsArrayName)
+    isoRegionsArray = pointData.GetArray(self.ISO_REGIONS_ARRAY_NAME)
     if isoRegionsArray  is None:
       isoRegionsArray = vtk.vtkIdTypeArray()
-      isoRegionsArray.SetName(isoRegionsArrayName)
+      isoRegionsArray.SetName(self.ISO_REGIONS_ARRAY_NAME)
     isoRegionsArray.SetNumberOfValues(polyData.GetNumberOfPoints())
     isoRegionsArray.Fill(-1)
-    curveNode.GetShortestDistanceSurfaceNode().AddPointScalars(isoRegionsArray)
+    modelNode.AddPointScalars(isoRegionsArray)
 
     visitedPoints = []
     previousISORegion = []
@@ -344,6 +383,9 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
       visitedPoints += currentISORegion
       previousISORegion = currentISORegion
+
+    if modelNode.GetDisplayNode():
+      modelNode.GetDisplayNode().Modified()
 
   def getAdjacentPoints(self, inputPolydata, inputPointIDs):
     pointIDs = []
