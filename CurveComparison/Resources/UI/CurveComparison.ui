@@ -12,8 +12,8 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="qMRMLCollapsibleButton" name="MRMLCollapsibleButton">
-     <property name="text">
+    <widget class="qMRMLCollapsibleButton" name="MRMLCollapsibleButton" native="true">
+     <property name="text" stdset="0">
       <string>Input</string>
      </property>
      <layout class="QFormLayout" name="formLayout">
@@ -25,8 +25,8 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="qMRMLNodeComboBox" name="inputCurveNodeSelector">
-        <property name="nodeTypes">
+       <widget class="qMRMLNodeComboBox" name="inputCurveNodeSelector" native="true">
+        <property name="nodeTypes" stdset="0">
          <stringlist>
           <string>vtkMRMLMarkupsCurveNode</string>
          </stringlist>
@@ -37,8 +37,8 @@
     </widget>
    </item>
    <item>
-    <widget class="qMRMLCollapsibleButton" name="MRMLCollapsibleButton_2">
-     <property name="text">
+    <widget class="qMRMLCollapsibleButton" name="MRMLCollapsibleButton_2" native="true">
+     <property name="text" stdset="0">
       <string>Output</string>
      </property>
      <layout class="QFormLayout" name="formLayout_2">
@@ -50,8 +50,8 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="qMRMLNodeComboBox" name="outputTableNodeSelector">
-        <property name="nodeTypes">
+       <widget class="qMRMLNodeComboBox" name="outputTableNodeSelector" native="true">
+        <property name="nodeTypes" stdset="0">
          <stringlist>
           <string>vtkMRMLTableNode</string>
          </stringlist>
@@ -90,10 +90,10 @@
        </widget>
       </item>
       <item row="3" column="1">
-       <widget class="QLineEdit" name="hightestOverlapLineEdit"/>
+       <widget class="QLineEdit" name="highestOverlapLineEdit"/>
       </item>
       <item row="4" column="1">
-       <widget class="QLineEdit" name="hightestISOOverlapLineEdit">
+       <widget class="QLineEdit" name="highestISOOverlapLineEdit">
         <property name="readOnly">
          <bool>true</bool>
         </property>
@@ -133,9 +133,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>qMRMLCollapsibleButton</class>
-   <extends>ctkCollapsibleButton</extends>
-   <header>qMRMLCollapsibleButton.h</header>
+   <class>qMRMLWidget</class>
+   <extends>QWidget</extends>
+   <header>qMRMLWidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -145,15 +145,15 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>qMRMLWidget</class>
-   <extends>QWidget</extends>
-   <header>qMRMLWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>ctkCollapsibleButton</class>
    <extends>QWidget</extends>
    <header>ctkCollapsibleButton.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLCollapsibleButton</class>
+   <extends>ctkCollapsibleButton</extends>
+   <header>qMRMLCollapsibleButton.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
