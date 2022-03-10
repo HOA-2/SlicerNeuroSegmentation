@@ -58,6 +58,7 @@ class CurveComparisonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     currentCurveNode = self.ui.inputCurveNodeSelector.currentNode()
     if currentCurveNode:
       currentCurveNode.SetAndObserveSurfaceConstraintNode(surfaceNode)
+      currentCurveNode.SetCurveTypeToShortestDistanceOnSurface()
     self.updateWidgetFromMRML()
 
   def onShowOverlayClicked(self):
