@@ -192,6 +192,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       inputCurveNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
       if inputCurveNode.IsA("vtkMRMLMarkupsCurveNode"):
         inputCurveNode.SetAndObserveShortestDistanceSurfaceNode(origModelNode)
+        inputCurveNode.SetSurfaceConstraintMaximumSearchRadiusTolerance(0.0)
 
         sulcArray = None
         curvArray = None
