@@ -82,7 +82,7 @@ class SurfaceAverageWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     # (in the selected parameter node).
     self.ui.inputModel1Selector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
     self.ui.inputModel2Selector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
-    self.ui.outputModelSelector.connect("valueChanged(double)", self.updateParameterNodeFromGUI)
+    self.ui.outputModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
 
     # Buttons
     self.ui.applyButton.connect('clicked(bool)', self.onApplyButton)
@@ -277,13 +277,19 @@ class SurfaceAverageLogic(ScriptedLoadableModuleLogic):
       model2Point = np.array(inputModel2Points.GetPoint(i))
       outputModelPoint = (model1Point + model2Point)/2.0
       outputPoints.SetPoint(i, outputModelPoint)
-      if i == 0:
-        print(model1Point)
-        print(model2Point)
-        print(outputModelPoint)
-    outputPoints.Modified()
-    outputModel.Modified()
-    outputModel.SetAndObservePolyData(outputPolyData)
+
+    normals = vtk.vtkPolyDataNormals()
+    normals.SetInputData(outputPolyData)
+    normals.SetAutoOrientNormals(False)
+    normals.SetFlipNormals(False)
+    normals.SetSplitting(False)
+    normals.Update()
+    outputModel.SetAndObservePolyData(normals.GetOutput()) 
+    if inputModel1.GetParentTransformNode():
+      outputModel.SetAndObserveTransformNodeID(inputModel1.GetParentTransformNode().GetID())
+    else:
+      outputModel.SetAndObserveTransformNodeID(None)
+    outputModel.CreateDefaultDisplayNodes()   
 
     stopTime = time.time()
     logging.info(f'Processing completed in {stopTime-startTime:.2f} seconds')
