@@ -302,11 +302,13 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       nodeID = curveNode.GetID()
 
       item = qt.QTableWidgetItem()
-      item.setData(self.NODE_ID_ROLE, curveNode.GetID())
+      item.setData(self.NODE_ID_ROLE, nodeID)
       self.ui.guideCurveTableWidget.setItem(i, 0, item)
 
-      label = qt.QLabel(curveNode.GetName())
-      self.ui.guideCurveTableWidget.setCellWidget(i, 0, label)
+      nameItem = self.ui.guideCurveTableWidget.item(i, 0)
+      nameItem.setText(curveNode.GetName())
+      nameItem.setData(self.NODE_ID_ROLE, nodeID)
+      self.ui.guideCurveTableWidget.connect('itemChanged(QTableWidgetItem*)', self.onNameChanged)
 
       placeWidget = slicer.qSlicerMarkupsPlaceWidget()
       placeWidget.findChild("QToolButton", "MoreButton").setVisible(False)
@@ -316,7 +318,6 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
       visibilityButton = qt.QToolButton()
       visibilityButton.setObjectName("visibilityButton")
-      visibilityButton.setProperty("ID", nodeID)
       visibilityButton.setProperty("ID", nodeID)
       visibilityButton.connect('clicked(bool)', lambda visibility, id=nodeID: self.onVisibilityClicked(id))
 
@@ -337,6 +338,14 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.updateDisplayVisibilityButtons()
     self.updateLockButtons()
+
+  def onNameChanged(self, item):
+    nodeID = item.data(self.NODE_ID_ROLE)
+    curveNode = slicer.mrmlScene.GetNodeByID(nodeID)
+    if curveNode is None:
+      return
+    curveNode.SetName(item.text())
+
 
   def onVisibilityClicked(self, id):
     curveNode = slicer.mrmlScene.GetNodeByID(id)
