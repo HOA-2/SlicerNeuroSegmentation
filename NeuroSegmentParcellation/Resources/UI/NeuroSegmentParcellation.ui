@@ -19,22 +19,22 @@
     </widget>
    </item>
    <item row="0" column="1">
-    <widget class="qMRMLNodeComboBox" name="parameterNodeSelector" native="true">
+    <widget class="qMRMLNodeComboBox" name="parameterNodeSelector">
      <property name="toolTip">
       <string>Pick node to store parameter set</string>
      </property>
-     <property name="nodeTypes" stdset="0">
+     <property name="nodeTypes">
       <stringlist>
        <string>vtkMRMLScriptedModuleNode</string>
       </stringlist>
      </property>
-     <property name="showHidden" stdset="0">
+     <property name="showHidden">
       <bool>true</bool>
      </property>
-     <property name="baseName" stdset="0">
+     <property name="baseName">
       <string>NeuroSegmentParcellation</string>
      </property>
-     <property name="renameEnabled" stdset="0">
+     <property name="renameEnabled">
       <bool>true</bool>
      </property>
     </widget>
@@ -340,6 +340,29 @@
         </layout>
        </widget>
       </item>
+      <item>
+       <widget class="ctkCollapsibleGroupBox" name="CollapsibleGroupBox_3">
+        <property name="title">
+         <string>Overall</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_5">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_18">
+           <property name="text">
+            <string>Label visibility:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QCheckBox" name="labelVisibilityCheckBox">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
@@ -360,19 +383,19 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="qMRMLNodeComboBox" name="origModelSelector" native="true">
-        <property name="nodeTypes" stdset="0">
+       <widget class="qMRMLNodeComboBox" name="origModelSelector">
+        <property name="nodeTypes">
          <stringlist>
           <string>vtkMRMLModelNode</string>
          </stringlist>
         </property>
-        <property name="noneEnabled" stdset="0">
+        <property name="noneEnabled">
          <bool>true</bool>
         </property>
-        <property name="addEnabled" stdset="0">
+        <property name="addEnabled">
          <bool>false</bool>
         </property>
-        <property name="removeEnabled" stdset="0">
+        <property name="removeEnabled">
          <bool>false</bool>
         </property>
        </widget>
@@ -385,19 +408,19 @@
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="qMRMLNodeComboBox" name="pialModelSelector" native="true">
-        <property name="nodeTypes" stdset="0">
+       <widget class="qMRMLNodeComboBox" name="pialModelSelector">
+        <property name="nodeTypes">
          <stringlist>
           <string>vtkMRMLModelNode</string>
          </stringlist>
         </property>
-        <property name="noneEnabled" stdset="0">
+        <property name="noneEnabled">
          <bool>true</bool>
         </property>
-        <property name="addEnabled" stdset="0">
+        <property name="addEnabled">
          <bool>false</bool>
         </property>
-        <property name="removeEnabled" stdset="0">
+        <property name="removeEnabled">
          <bool>false</bool>
         </property>
        </widget>
@@ -410,19 +433,19 @@
        </widget>
       </item>
       <item row="2" column="1">
-       <widget class="qMRMLNodeComboBox" name="inflatedModelSelector" native="true">
-        <property name="nodeTypes" stdset="0">
+       <widget class="qMRMLNodeComboBox" name="inflatedModelSelector">
+        <property name="nodeTypes">
          <stringlist>
           <string>vtkMRMLModelNode</string>
          </stringlist>
         </property>
-        <property name="noneEnabled" stdset="0">
+        <property name="noneEnabled">
          <bool>true</bool>
         </property>
-        <property name="addEnabled" stdset="0">
+        <property name="addEnabled">
          <bool>false</bool>
         </property>
-        <property name="removeEnabled" stdset="0">
+        <property name="removeEnabled">
          <bool>false</bool>
         </property>
        </widget>
@@ -473,16 +496,16 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="qMRMLNodeComboBox" name="importMarkupComboBox" native="true">
-          <property name="nodeTypes" stdset="0">
+         <widget class="qMRMLNodeComboBox" name="importMarkupComboBox">
+          <property name="nodeTypes">
            <stringlist>
             <string>vtkMRMLMarkupsNode</string>
            </stringlist>
           </property>
-          <property name="addEnabled" stdset="0">
+          <property name="addEnabled">
            <bool>false</bool>
           </property>
-          <property name="removeEnabled" stdset="0">
+          <property name="removeEnabled">
            <bool>false</bool>
           </property>
          </widget>
@@ -516,31 +539,31 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="qMRMLNodeComboBox" name="destinationMarkupComboBox" native="true">
-          <property name="nodeTypes" stdset="0">
+         <widget class="qMRMLNodeComboBox" name="destinationMarkupComboBox">
+          <property name="nodeTypes">
            <stringlist>
             <string>vtkMRMLMarkupsNode</string>
            </stringlist>
           </property>
-          <property name="addEnabled" stdset="0">
+          <property name="addEnabled">
            <bool>false</bool>
           </property>
-          <property name="removeEnabled" stdset="0">
+          <property name="removeEnabled">
            <bool>false</bool>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="qMRMLNodeComboBox" name="destinationModelComboBox" native="true">
-          <property name="nodeTypes" stdset="0">
+         <widget class="qMRMLNodeComboBox" name="destinationModelComboBox">
+          <property name="nodeTypes">
            <stringlist>
             <string>vtkMRMLModelNode</string>
            </stringlist>
           </property>
-          <property name="addEnabled" stdset="0">
+          <property name="addEnabled">
            <bool>false</bool>
           </property>
-          <property name="removeEnabled" stdset="0">
+          <property name="removeEnabled">
            <bool>false</bool>
           </property>
          </widget>
@@ -629,8 +652,8 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="qMRMLNodeComboBox" name="exportSegmentationSelector" native="true">
-        <property name="nodeTypes" stdset="0">
+       <widget class="qMRMLNodeComboBox" name="exportSegmentationSelector">
+        <property name="nodeTypes">
          <stringlist>
           <string>vtkMRMLSegmentationNode</string>
          </stringlist>
@@ -687,6 +710,18 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>qMRMLNodeComboBox</class>
+   <extends>QWidget</extends>
+   <header>qMRMLNodeComboBox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLWidget</class>
+   <extends>QWidget</extends>
+   <header>qMRMLWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
    <class>ctkCheckableComboBox</class>
    <extends>QComboBox</extends>
    <header>ctkCheckableComboBox.h</header>
@@ -717,18 +752,6 @@
    <class>ctkSliderWidget</class>
    <extends>QWidget</extends>
    <header>ctkSliderWidget.h</header>
-  </customwidget>
-  <customwidget>
-   <class>qMRMLNodeComboBox</class>
-   <extends>QWidget</extends>
-   <header>qMRMLNodeComboBox.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>qMRMLWidget</class>
-   <extends>QWidget</extends>
-   <header>qMRMLWidget.h</header>
-   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

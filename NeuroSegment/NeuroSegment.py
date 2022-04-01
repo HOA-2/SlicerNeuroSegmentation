@@ -973,7 +973,7 @@ class NeuroSegmentLogic(ScriptedLoadableModuleLogic):
 
   def onParameterNodeModified(self, caller=None, event=None):
     """
-    TODO: Add observer
+    Called when the parameter node is modified
     """
     intersectionViewIDs = []
     if self.getMainIntersectionVisibility():

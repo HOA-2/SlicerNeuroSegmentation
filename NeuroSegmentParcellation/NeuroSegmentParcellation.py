@@ -242,6 +242,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.intersectionGlyphComboBox.connect("currentIndexChanged(int)", self.updateMarkupDisplay)
     self.ui.curveIntersectionScaleSlider.connect("valueChanged(double)", self.updateMarkupDisplay)
 
+    self.ui.labelVisibilityCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
+
     self.oldLayout = slicer.app.layoutManager().layout
 
     # Set path to query file
@@ -525,6 +527,10 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.curveIntersectionScaleSlider.value = self.logic.getIntersectionGlyphScale()
     self.ui.curveIntersectionScaleSlider.blockSignals(wasBlocked)
 
+    wasBlocked = self.ui.labelVisibilityCheckBox.blockSignals(True)
+    self.ui.labelVisibilityCheckBox.setChecked(self.logic.getLabelVisibility())
+    self.ui.labelVisibilityCheckBox.blockSignals(wasBlocked)
+
     # Update each widget from parameter node
     # Need to temporarily block signals to prevent infinite recursion (MRML node update triggers
     # GUI update, which triggers MRML node update, which triggers GUI update, ...)
@@ -769,6 +775,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       self.logic.setRedIntersectionVisibility(self.ui.intersectionViewRedCheckBox.checked)
       self.logic.setGreenIntersectionVisibility(self.ui.intersectionViewGreenCheckBox.checked)
       self.logic.setYellowIntersectionVisibility(self.ui.intersectionViewYellowCheckBox.checked)
+
+      self.logic.setLabelVisibility(self.ui.labelVisibilityCheckBox.checked)
 
   def onApplyButton(self):
     """

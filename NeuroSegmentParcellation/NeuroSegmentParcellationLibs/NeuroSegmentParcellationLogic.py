@@ -68,6 +68,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   INTERSECTION_VISIBILITY_GREEN_VIEW = "IntersectionVisibilityGreenView"
   INTERSECTION_VISIBILITY_YELLOW_VIEW = "IntersectionVisibilityYellowView"
 
+  LABEL_TEXT_VISIBILITY = "LabelTextVisibility"
+
   PLANE_INTERSECTION_VISIBILITY_NAME = "PlaneIntersectionVisibility"
 
   CURVE_INTERSECTION_GLYPH_TYPE_NAME = "CurveIntersectionGlyphType"
@@ -338,6 +340,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.getYellowIntersectionVisibility():
       intersectionViewIDs.append("Yellow")
 
+    labelVisibility = self.getLabelVisibility()
+
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
       inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
@@ -366,6 +370,10 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       inflatedCurveNode = self.getDerivedCurveNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
       if inflatedCurveNode:
         inflatedCurveNode.GetDisplayNode().SetViewNodeIDs(inflatedMarkupViews)
+
+      currentAndDerivedMarkups = [inputMarkupNode, pialControlPoints, pialCurveNode, inflatedControlPoints, inflatedCurveNode]
+      for markupsNode in currentAndDerivedMarkups:
+        markupsNode.GetDisplayNode().SetPropertiesLabelVisibility(labelVisibility)
 
       numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(self.TOOL_NODE_REFERENCE)
       for i in range(numberOfToolNodes):
@@ -1548,6 +1556,12 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.parameterNode is None:
       return
     return True if self.parameterNode.GetParameter(self.INTERSECTION_VISIBILITY_YELLOW_VIEW) == "TRUE" else False
+
+  def getLabelVisibility(self):
+    return self.getParameterNode().GetParameter(self.LABEL_TEXT_VISIBILITY) == str(True)
+
+  def setLabelVisibility(self, visibility):
+     self.getParameterNode().SetParameter(self.LABEL_TEXT_VISIBILITY, str(visibility))
 
   def getLabelOutlineVisible(self):
     if self.parameterNode is None:
