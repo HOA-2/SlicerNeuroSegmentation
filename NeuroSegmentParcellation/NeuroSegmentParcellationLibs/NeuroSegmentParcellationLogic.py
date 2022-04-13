@@ -563,15 +563,15 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       return derivedMarkup
 
     derivedMarkup = slicer.mrmlScene.AddNewNodeByClass(origMarkupNode.GetClassName())
+    derivedMarkup.SetName(origMarkupNode.GetName() + "_" + nodeReference)
     derivedMarkup.CreateDefaultDisplayNodes()
-    derivedMarkup.SetCurveTypeToLinear()
     derivedMarkup.UndoEnabledOff()
     derivedMarkup.SetLocked(True)
     derivedMarkup.GetDisplayNode().CopyContent(origMarkupNode.GetDisplayNode())
-    derivedMarkup.SetName(origMarkupNode.GetName() + "_" + nodeReference)
+    if derivedMarkup.IsA("vtkMRMLMarkupsCurveNode"):
+      derivedMarkup.SetCurveTypeToLinear()
     origMarkupNode.SetNodeReferenceID(nodeReference, derivedMarkup.GetID())
     derivedMarkup.SetNodeReferenceID("OrigMarkup", origMarkupNode.GetID())
-
     return derivedMarkup
 
   def getDerivedControlPointsNode(self, origMarkupNode, nodeType):
@@ -1852,7 +1852,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       return
 
     origIntersectionPolyData = vtk.vtkPolyData()
-    if planeNode.GetNumberOfControlPoints() >= 3:
+    if planeNode.GetIsPlaneValid():
 
       self.initializePedigreeIds(parameterNode)
 
