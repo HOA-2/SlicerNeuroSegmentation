@@ -146,12 +146,40 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   def onNodeAdded(self, caller, eventId, node):
     if node is None:
       return
-    if not node.IsA("vtkMRMLScriptedModuleNode"):
+
+    if node.IsA("vtkMRMLScriptedModuleNode") and node.GetAttribute("ModuleName") == self.moduleName:
+      if not self.hasObserver(node, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified):
+        self.addObserver(node, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified)
+
+    elif node.IsA("vtkMRMLModelNode") and self.getParameterNode():
+      fileTypeAttributeName = slicer.vtkMRMLFreeSurferModelStorageNode.GetFreeSurferFileTypeAttributeName()
+      fileTypeAttributeValue = node.GetAttribute(fileTypeAttributeName)
+      if fileTypeAttributeValue is None or fileTypeAttributeValue == "":
+        return
+      self.updateModelNodes()
+
+  def updateModelNodes(self):
+    parameterNode = self.getParameterNode()
+    fileTypeAttributeName = slicer.vtkMRMLFreeSurferModelStorageNode.GetFreeSurferFileTypeAttributeName()
+    modelNodes = slicer.util.getNodesByClass("vtkMRMLModelNode")
+
+    origModelNode = self.getOrigModelNode(parameterNode)
+    pialModelNode = self.getPialModelNode(parameterNode)
+    inflatedModelNode = self.getInflatedModelNode(parameterNode)
+    if origModelNode and pialModelNode and inflatedModelNode:
       return
-    if not node.GetAttribute("ModuleName") == self.moduleName:
-      return
-    if not self.hasObserver(node, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified):
-      self.addObserver(node, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified)
+
+    for modelNode in modelNodes:
+      fileTypeAttributeValue = modelNode.GetAttribute(fileTypeAttributeName)
+
+      if origModelNode is None and (fileTypeAttributeValue == ".orig" or fileTypeAttributeValue == ".white"):
+        self.setOrigModelNode(parameterNode, modelNode)
+
+      elif pialModelNode is None and fileTypeAttributeValue == ".pial":
+        self.setPialModelNode(parameterNode, modelNode)
+
+      elif inflatedModelNode is None and fileTypeAttributeValue == ".inflated":
+        self.setInflatedModelNode(parameterNode, modelNode)
 
   def onParameterNodeModified(self, parameterNode, eventId=None):
     if parameterNode is None:
@@ -238,6 +266,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       modelNode = parameterNode.GetNthNodeReference(modelReference, i)
       if modelNode is None:
         continue
+      modelNode.CreateDefaultDisplayNodes()
       modelNode.GetDisplayNode().SetViewNodeIDs(viewIDs)
 
   def updateInputModelPointLocators(self, parameterNode):

@@ -258,6 +258,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
   def enter(self):
     parcellationViewLayoutOpen = slicer.app.layoutManager().layout == NeuroSegmentParcellation.NEURO_PARCELLATION_LAYOUT_ID
     self.ui.parcellationViewLayoutButton.setChecked(parcellationViewLayoutOpen)
+    self.logic.updateModelNodes()
 
   def onParcellationViewLayoutButtonClicked(self):
     if self.ui.parcellationViewLayoutButton.checked:
