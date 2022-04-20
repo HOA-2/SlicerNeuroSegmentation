@@ -110,6 +110,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       return
     if self.getQueryNode() is None:
       self.loadQuery(self.queryNodeFileName)
+    self.updateModelNodes()
     self.onParameterNodeModified(parameterNode)
 
   def getParameterNode(self):
