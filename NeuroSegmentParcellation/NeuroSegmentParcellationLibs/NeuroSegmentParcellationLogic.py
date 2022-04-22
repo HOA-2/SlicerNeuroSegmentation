@@ -99,6 +99,11 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.updateParameterNodeObservers)
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
+    scriptedModuleNodes = slicer.util.getNodesByClass("vtkMRMLScriptedModuleNode")
+    for node in scriptedModuleNodes:
+      if node.GetAttribute("ModuleName") == self.moduleName:
+        self.setParameterNode(node)
+        break
     self.updateParameterNodeObservers()
 
   def setParameterNode(self, parameterNode):
@@ -183,7 +188,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         self.setInflatedModelNode(parameterNode, modelNode)
 
   def onParameterNodeModified(self, parameterNode, eventId=None):
-    if parameterNode is None:
+    if parameterNode is None or slicer.mrmlScene.IsImporting():
       return
 
     try:
@@ -202,7 +207,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       slicer.app.resumeRender()
 
   def updateOutputModelAttributes(self, parameterNode):
-    outputModelNodes = self.getOutputModelNodes()
     for outputModelNode in self.getOutputModelNodes():
       outputModelNode.SetAttribute(self.NEUROSEGMENT_OUTPUT_ATTRIBUTE_VALUE, str(True))
 
@@ -249,8 +253,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   def updateAllModelViews(self, parameterNode):
     if parameterNode is None:
       return
-
-    sliceViewIDs = ["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
 
     self.updateModelViews(parameterNode, self.ORIG_MODEL_REFERENCE, "vtkMRMLViewNodeO")
     self.updateModelViews(parameterNode, self.PIAL_MODEL_REFERENCE, "vtkMRMLViewNodeP")
@@ -375,6 +377,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfMarkupNodes):
       inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
+      inputMarkupNode.CreateDefaultDisplayNodes()
       if inputMarkupNode.IsA("vtkMRMLMarkupsPlaneNode"):
         inputMarkupNode.GetDisplayNode().SetViewNodeIDs([])
       else:
@@ -382,23 +385,27 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       inputMarkupNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VISIBLE_ATTRIBUTE, str(True))
       inputMarkupNode.SetAttribute(slicer.intersectionDisplayManager.INTERSECTION_VIEWS_ATTRIBUTE, json.dumps(intersectionViewIDs))
 
-      if inputMarkupNode is None or not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
+      if not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
         continue
 
       pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialControlPoints:
+        pialControlPoints.CreateDefaultDisplayNodes()
         pialControlPoints.GetDisplayNode().SetViewNodeIDs(pialMarkupViews)
 
       inflatedControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
       if inflatedControlPoints:
+        inflatedControlPoints.CreateDefaultDisplayNodes()
         inflatedControlPoints.GetDisplayNode().SetViewNodeIDs(inflatedMarkupViews)
 
       pialCurveNode = self.getDerivedCurveNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
       if pialCurveNode:
+        pialCurveNode.CreateDefaultDisplayNodes()
         pialCurveNode.GetDisplayNode().SetViewNodeIDs(pialMarkupViews)
 
       inflatedCurveNode = self.getDerivedCurveNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
       if inflatedCurveNode:
+        inflatedCurveNode.CreateDefaultDisplayNodes()
         inflatedCurveNode.GetDisplayNode().SetViewNodeIDs(inflatedMarkupViews)
 
       currentAndDerivedMarkups = [inputMarkupNode, pialControlPoints, pialCurveNode, inflatedControlPoints, inflatedCurveNode]
