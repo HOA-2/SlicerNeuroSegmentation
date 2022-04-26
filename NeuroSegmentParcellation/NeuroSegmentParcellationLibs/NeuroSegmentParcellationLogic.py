@@ -59,6 +59,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   MANUALLY_PLACED_ATTRIBUTE_NAME = "NeuroSegmentParcellation.ManuallyPlaced"
   MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX = "MarkupSliceVisibility."
   NEUROSEGMENT_OUTPUT_ATTRIBUTE_VALUE = "NeuroSegmentParcellation.Output"
+  PARCELLATION_ROLE_ATTRIBUTE = "NeuroSegmentParcellation.Role"
 
   CURVE_VISIBILITY_RED_VIEW = "CurveVisibilityRedView"
   CURVE_VISIBILITY_GREEN_VIEW = "CurveVisibilityGreenView"
@@ -666,6 +667,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         astNode = ast.parse(queryString)
         eq = NeuroSegmentParcellationVisitor(self)
         eq.setParameterNode(parameterNode)
+        parameterNode.RemoveNodeReferenceIDs(self.INPUT_MARKUPS_REFERENCE)
+        parameterNode.RemoveNodeReferenceIDs(self.OUTPUT_MODEL_REFERENCE)
+        parameterNode.RemoveNodeReferenceIDs(self.TOOL_NODE_REFERENCE)
         eq.visit(astNode)
         success = True
 
@@ -1166,8 +1170,6 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     storageNode.ReadData(parcellationQueryNode)
     slicer.mrmlScene.RemoveNode(storageNode)
 
-    self.parameterNode.RemoveNodeReferenceIDs(self.INPUT_MARKUPS_REFERENCE)
-    self.parameterNode.RemoveNodeReferenceIDs(self.OUTPUT_MODEL_REFERENCE)
     return self.parseParcellationString(self.parameterNode)
 
   def initializePedigreeIds(self, parameterNode):

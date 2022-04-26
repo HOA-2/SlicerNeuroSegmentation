@@ -39,10 +39,39 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       10.0, # ch
       10.0, # dch
     ]
+    self.inputMarkupNodeCache = {}
+    self.toolNodeCache = {}
+    self.outputModelNodeCache = {}
     self.invertScalars = False
 
   def setParameterNode(self, parameterNode):
     self.parameterNode = parameterNode
+    self.inputMarkupNodeCache = self.updateNodeCache(self.logic.INPUT_MARKUPS_REFERENCE)
+    self.toolNodeCache = self.updateNodeCache(self.logic.TOOL_NODE_REFERENCE)
+    self.outputModelNodeCache = self.updateNodeCache(self.logic.OUTPUT_MODEL_REFERENCE)
+
+  def updateNodeCache(self, referenceRole):
+    nodes = {}
+    numberOfOutputModelNodes = self.parameterNode.GetNumberOfNodeReferences(referenceRole)
+    for i in range(numberOfOutputModelNodes):
+      outputModelNode = self.parameterNode.GetNthNodeReference(referenceRole, i)
+      role = outputModelNode.GetAttribute(self.logic.PARCELLATION_ROLE_ATTRIBUTE)
+      if role:
+        nodes[role] = outputModelNode
+      else:
+        nodes[outputModelNode.GetName()] = outputModelNode
+    return nodes
+
+  def getCachedNode(self, nodes, role):
+    foundNode = nodes.get(role)
+    if foundNode:
+      return foundNode
+    # Exact match not found. See if there are any partial matches, and use the shortest one.
+    matches = [key for key in nodes if key.startswith(role)]
+    foundKey = min(matches, key=len, default=None)
+    if not foundKey:
+      return None
+    return nodes[foundKey]      
 
   def visit_Assign(self, node):
     """
@@ -91,9 +120,10 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       self.invertScalars = bool(node.value.value)
       return
 
-    outputModel = slicer.util.getFirstNodeByClassByName("vtkMRMLModelNode", target.id)
+    outputModel = self.getCachedNode(self.outputModelNodeCache, target.id)
     if outputModel is None:
       outputModel = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", target.id)
+    outputModel.SetAttribute(self.logic.PARCELLATION_ROLE_ATTRIBUTE, target.id)
     outputModelDisplayNode = outputModel.GetDisplayNode()
     if outputModelDisplayNode is None:
       outputModel.CreateDefaultDisplayNodes()
@@ -101,19 +131,21 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
       outputModelDisplayNode.SetVisibility(False)
     self.parameterNode.AddNodeReferenceID(self.logic.OUTPUT_MODEL_REFERENCE, outputModel.GetID())
 
-    inputSeed = slicer.util.getFirstNodeByClassByName("vtkMRMLMarkupsFiducialNode", target.id + "_SeedPoints")
+    toolNodeRole = outputModel.GetName() + "_BoundaryCut"
+    toolNode = self.getCachedNode(self.toolNodeCache, toolNodeRole)
+    if toolNode is None:
+      toolNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLDynamicModelerNode", toolNodeRole)
+    toolNode.SetAttribute(self.logic.PARCELLATION_ROLE_ATTRIBUTE, toolNodeRole)
+    toolNode.SetToolName(slicer.vtkSlicerDynamicModelerBoundaryCutTool().GetName())
+    toolNode.SetNodeReferenceID(self.logic.BOUNDARY_CUT_OUTPUT_MODEL_REFERENCE, outputModel.GetID())
+
+    inputSeed = toolNode.GetNodeReference(self.logic.MANUALLY_PLACED_ATTRIBUTE_NAME)
     if inputSeed is None:
       inputSeed = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", target.id + "_SeedPoints")
       inputSeed.CreateDefaultDisplayNodes()
       inputSeed.SetAttribute(self.logic.MANUALLY_PLACED_ATTRIBUTE_NAME, "FALSE")
-    self.currentSeedNode = inputSeed
-
-    toolNode = slicer.util.getFirstNodeByClassByName("vtkMRMLModelNode", outputModel.GetName() + "_BoundaryCut")
-    if toolNode is None:
-      toolNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLDynamicModelerNode", outputModel.GetName() + "_BoundaryCut")
-    toolNode.SetToolName(slicer.vtkSlicerDynamicModelerBoundaryCutTool().GetName())
-    toolNode.SetNodeReferenceID(self.logic.BOUNDARY_CUT_OUTPUT_MODEL_REFERENCE, outputModel.GetID())
     toolNode.SetNodeReferenceID(self.logic.BOUNDARY_CUT_INPUT_SEED_REFERENCE, inputSeed.GetID())
+    self.currentSeedNode = inputSeed
 
     nodes = self.visit(node.value)
     for inputNode in nodes:
@@ -169,9 +201,10 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     planeNames = [e.id for e in node.elts]
     inputNodes = []
     for name in planeNames:
-      inputNode = slicer.util.getFirstNodeByClassByName(className, name)
+      inputNode = self.getCachedNode(self.inputMarkupNodeCache, name)
       if not inputNode:
         inputNode = slicer.mrmlScene.AddNewNodeByClass(className, name)
+        inputNode.SetAttribute(self.logic.PARCELLATION_ROLE_ATTRIBUTE, name)
         inputNode.CreateDefaultDisplayNodes()
         displayNode = inputNode.GetDisplayNode()
         if displayNode:
