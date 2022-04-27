@@ -5,17 +5,19 @@ project(NeuroSegmentation)
 #-----------------------------------------------------------------------------
 # Extension meta-information
 set(EXTENSION_HOMEPAGE "https://www.slicer.org/wiki/Documentation/Nightly/Extensions/NeuroSegmentation")
-set(EXTENSION_CATEGORY "Examples")
-set(EXTENSION_CONTRIBUTORS "John Doe (AnyWare Corp.)")
-set(EXTENSION_DESCRIPTION "This is an example of a simple extension")
+set(EXTENSION_CATEGORY "Neuroimaging")
+set(EXTENSION_CONTRIBUTORS "Kyle Sunderland (Perk Lab (Queen's University))")
+set(EXTENSION_DESCRIPTION "Extension for performing segmentation of FreeSurfer images and surfaces in Slicer.")
 set(EXTENSION_ICONURL "http://www.example.com/Slicer/Extensions/NeuroSegmentation.png")
-set(EXTENSION_SCREENSHOTURLS "http://www.example.com/Slicer/Extensions/NeuroSegmentation/Screenshots/1.png")
-set(EXTENSION_DEPENDS "NA") # Specified as a list or "NA" if no dependencies
+set(EXTENSION_SCREENSHOTURLS "")
+set(EXTENSION_DEPENDS "SlicerFreeSurfer")
 
 #-----------------------------------------------------------------------------
 # Extension dependencies
 find_package(Slicer REQUIRED)
 include(${Slicer_USE_FILE})
+
+find_package(SlicerFreeSurfer REQUIRED)
 
 #-----------------------------------------------------------------------------
 # Extension modules
