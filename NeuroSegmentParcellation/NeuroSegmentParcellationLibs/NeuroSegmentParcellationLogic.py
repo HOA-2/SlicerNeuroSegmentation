@@ -73,6 +73,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
   PLANE_INTERSECTION_VISIBILITY_NAME = "PlaneIntersectionVisibility"
 
+  INPUT_MODEL_SCALAR_OVERLAY = "InputScalarOverlay"
+
   CURVE_INTERSECTION_GLYPH_TYPE_NAME = "CurveIntersectionGlyphType"
   CURVE_INTERSECTION_GLYPH_SCALE_NAME = "CurveIntersectionGlyphScale"
 
@@ -197,6 +199,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       self.updateInputModelNodes(parameterNode)
       self.updateInputModelPointLocators(parameterNode)
       self.updateAllModelViews(parameterNode)
+      self.updateInputModelDisplay(parameterNode)
 
       self.removeInputMarkupObservers()
       self.updatePlaneIntersectionVisibility()
@@ -206,6 +209,50 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       self.updateOutputModelAttributes(parameterNode)
     finally:
       slicer.app.resumeRender()
+
+  def updateInputModelDisplay(self, parameterNode):
+    scalarName = self.getScalarOverlay(parameterNode)
+    colorNode = None
+    attributeType = -1
+    scalarMode = slicer.vtkMRMLDisplayNode.UseColorNodeScalarRange
+    if scalarName == "curv":
+      attributeType = vtk.vtkDataObject.POINT
+      colorNode = slicer.util.getNode("RedGreen")
+    elif scalarName == "sulc":
+      attributeType = vtk.vtkDataObject.POINT
+      colorNode = slicer.util.getNode("RedGreen")
+    elif scalarName == "labels":
+      attributeType = vtk.vtkDataObject.CELL
+      self.updateParcellationColorNode()
+      colorNode = self.getParcellationColorNode()
+    else:
+      colorNode = slicer.util.getFirstNodeByClassByName("vtkMRMLColorNode", scalarName)
+
+    if colorNode is None:
+      logging.error("setScalarOverlay: could not find color node")
+      return
+
+    modelNodes = [
+      self.getOrigModelNode(parameterNode),
+      self.getPialModelNode(parameterNode),
+      self.getInflatedModelNode(parameterNode)
+      ]
+    for modelNode in modelNodes:
+      if modelNode is None:
+        continue
+      displayNode = modelNode.GetDisplayNode()
+      if displayNode is None:
+        continue
+
+      if attributeType == -1:
+        displayNode.SetActiveScalarName(scalarName)
+      else:
+        displayNode.SetActiveScalar(scalarName, attributeType)
+
+      if colorNode:
+        displayNode.SetAndObserveColorNodeID(colorNode.GetID())
+        displayNode.SetScalarRangeFlag(scalarMode)
+      displayNode.SetScalarVisibility(True)
 
   def updateOutputModelAttributes(self, parameterNode):
     for outputModelNode in self.getOutputModelNodes():
@@ -649,6 +696,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     parameterNode.SetParameter(self.MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX + self.PIAL_NODE_ATTRIBUTE_VALUE, "FALSE")
     parameterNode.SetParameter(self.MARKUP_SLICE_VISIBILITY_PARAMETER_PREFIX + self.INFLATED_NODE_ATTRIBUTE_VALUE, "FALSE")
 
+    parameterNode.SetParameter(self.INPUT_MODEL_SCALAR_OVERLAY, "curv")
+
   def parseParcellationString(self, parameterNode):
     queryString = self.getQueryString(parameterNode)
     if queryString is None:
@@ -1007,53 +1056,15 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       scalarOverlays.append(pointData.GetArray(i))
     return scalarOverlays
 
+  def getScalarOverlay(self, parameterNode):
+    if parameterNode is None:
+      return ""
+    return parameterNode.GetParameter(self.INPUT_MODEL_SCALAR_OVERLAY)
+
   def setScalarOverlay(self, parameterNode, scalarName):
-    if scalarName is None:
+    if parameterNode is None or scalarName is None:
       return
-
-    logging.debug("setScalarOverlay: " + str(scalarName))
-
-    colorNode = None
-    attributeType = -1
-    scalarMode = slicer.vtkMRMLDisplayNode.UseColorNodeScalarRange
-    if scalarName == "curv":
-      attributeType = vtk.vtkDataObject.POINT
-      colorNode = slicer.util.getNode("RedGreen")
-    elif scalarName == "sulc":
-      attributeType = vtk.vtkDataObject.POINT
-      colorNode = slicer.util.getNode("RedGreen")
-    elif scalarName == "labels":
-      attributeType = vtk.vtkDataObject.CELL
-      self.updateParcellationColorNode()
-      colorNode = self.getParcellationColorNode()
-    else:
-      colorNode = slicer.util.getFirstNodeByClassByName("vtkMRMLColorNode", scalarName)
-
-    if colorNode is None:
-      logging.error("setScalarOverlay: could not find color node")
-      return
-
-    modelNodes = [
-      self.getOrigModelNode(parameterNode),
-      self.getPialModelNode(parameterNode),
-      self.getInflatedModelNode(parameterNode)
-      ]
-    for modelNode in modelNodes:
-      if modelNode is None:
-        continue
-      displayNode = modelNode.GetDisplayNode()
-      if displayNode is None:
-        continue
-
-      if attributeType == -1:
-        displayNode.SetActiveScalarName(scalarName)
-      else:
-        displayNode.SetActiveScalar(scalarName, attributeType)
-
-      if colorNode:
-        displayNode.SetAndObserveColorNodeID(colorNode.GetID())
-        displayNode.SetScalarRangeFlag(scalarMode)
-      displayNode.SetScalarVisibility(True)
+    parameterNode.SetParameter(self.INPUT_MODEL_SCALAR_OVERLAY, scalarName)
 
   def setMarkupSliceViewVisibility(self, parameterNode, markupType, visible):
     if markupType != self.ORIG_NODE_ATTRIBUTE_VALUE and markupType != self.PIAL_NODE_ATTRIBUTE_VALUE and markupType != self.INFLATED_NODE_ATTRIBUTE_VALUE:

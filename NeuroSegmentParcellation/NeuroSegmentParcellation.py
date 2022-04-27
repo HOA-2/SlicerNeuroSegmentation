@@ -475,6 +475,19 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       return
 
     # Display parameters
+    scalarOverlay = self.logic.getScalarOverlay(self.parameterNode)
+    wasBlocked = self.ui.curvRadioButton.blockSignals(True)
+    self.ui.curvRadioButton.checked = scalarOverlay == "curv"
+    self.ui.curvRadioButton.blockSignals(wasBlocked)
+
+    wasBlocked = self.ui.sulcRadioButton.blockSignals(True)
+    self.ui.sulcRadioButton.checked = scalarOverlay == "sulc"
+    self.ui.sulcRadioButton.blockSignals(wasBlocked)
+
+    wasBlocked = self.ui.labelsRadioButton.blockSignals(True)
+    self.ui.labelsRadioButton.checked = scalarOverlay == "labels"
+    self.ui.curvRadioButton.blockSignals(wasBlocked)
+    
     wasBlocked = self.ui.origMarkupsCheckBox.blockSignals(True)
     self.ui.origMarkupsCheckBox.setChecked(self.logic.getMarkupSliceViewVisibility(self.parameterNode, self.logic.ORIG_NODE_ATTRIBUTE_VALUE))
     self.ui.origMarkupsCheckBox.blockSignals(wasBlocked)
@@ -748,7 +761,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       self.logic.setExportSegmentation(self.ui.exportSegmentationSelector.currentNode())
 
   def updateScalarOverlay(self):
-    scalarName = None
+    scalarName = "curv"
     if self.ui.curvRadioButton.isChecked():
       scalarName = "curv"
     elif self.ui.sulcRadioButton.isChecked():
