@@ -5,6 +5,9 @@ set(MODULE_NAME NeuroSegmentParcellation)
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
+  NeuroSegmentParcellationLibs/NeuroSegmentMarkupsIntersectionDisplayManager.py
+  NeuroSegmentParcellationLibs/NeuroSegmentParcellationLogic.py
+  NeuroSegmentParcellationLibs/NeuroSegmentParcellationVisitor.py
   )
 
 set(MODULE_PYTHON_RESOURCES
