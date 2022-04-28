@@ -486,7 +486,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     wasBlocked = self.ui.labelsRadioButton.blockSignals(True)
     self.ui.labelsRadioButton.checked = scalarOverlay == "labels"
-    self.ui.curvRadioButton.blockSignals(wasBlocked)
+    self.ui.labelsRadioButton.blockSignals(wasBlocked)
     
     wasBlocked = self.ui.origMarkupsCheckBox.blockSignals(True)
     self.ui.origMarkupsCheckBox.setChecked(self.logic.getMarkupSliceViewVisibility(self.parameterNode, self.logic.ORIG_NODE_ATTRIBUTE_VALUE))
