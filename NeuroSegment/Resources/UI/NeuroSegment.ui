@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>609</width>
-    <height>934</height>
+    <width>741</width>
+    <height>1087</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -26,29 +26,83 @@
      <item>
       <layout class="QVBoxLayout" name="segmentEditorLayout">
        <item>
-        <widget class="qMRMLSegmentEditorWidget" name="segmentEditorWidget">
+        <widget class="ctkCollapsibleButton" name="CollapsibleButton_3">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+          <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <property name="masterVolumeNodeSelectorVisible">
+         <property name="text">
+          <string>Segmentation</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_7">
+          <property name="spacing">
+           <number>0</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="qMRMLSegmentEditorWidget" name="segmentEditorWidget">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="masterVolumeNodeSelectorVisible">
+             <bool>true</bool>
+            </property>
+            <property name="switchToSegmentationsButtonVisible">
+             <bool>false</bool>
+            </property>
+            <property name="maximumNumberOfUndoStates">
+             <number>10</number>
+            </property>
+            <property name="unorderedEffectsVisible">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="ctkCollapsibleButton" name="CollapsibleButton_2">
+         <property name="text">
+          <string>Volume display</string>
+         </property>
+         <property name="collapsed">
           <bool>true</bool>
          </property>
-         <property name="switchToSegmentationsButtonVisible">
-          <bool>false</bool>
-         </property>
-         <property name="maximumNumberOfUndoStates">
-          <number>10</number>
-         </property>
-         <property name="unorderedEffectsVisible">
-          <bool>true</bool>
-         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_6">
+          <item>
+           <widget class="qMRMLWindowLevelWidget" name="windowLevelWidget"/>
+          </item>
+          <item>
+           <widget class="qMRMLVolumeThresholdWidget" name="volumeThresholdWidget"/>
+          </item>
+         </layout>
         </widget>
        </item>
        <item>
         <widget class="ctkCollapsibleButton" name="CollapsibleButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="text">
           <string>Guide markups</string>
          </property>
@@ -158,6 +212,9 @@
            <widget class="ctkCollapsibleGroupBox" name="CollapsibleGroupBox">
             <property name="title">
              <string>Display options</string>
+            </property>
+            <property name="collapsed">
+             <bool>true</bool>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_4">
              <item>
@@ -345,21 +402,6 @@
          </layout>
         </widget>
        </item>
-       <item>
-        <widget class="ctkCollapsibleButton" name="CollapsibleButton_2">
-         <property name="text">
-          <string>Volume display</string>
-         </property>
-         <layout class="QVBoxLayout" name="verticalLayout_6">
-          <item>
-           <widget class="qMRMLWindowLevelWidget" name="windowLevelWidget"/>
-          </item>
-          <item>
-           <widget class="qMRMLVolumeThresholdWidget" name="volumeThresholdWidget"/>
-          </item>
-         </layout>
-        </widget>
-       </item>
       </layout>
      </item>
      <item>
@@ -379,19 +421,6 @@
       </widget>
      </item>
     </layout>
-   </item>
-   <item>
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>40</height>
-      </size>
-     </property>
-    </spacer>
    </item>
   </layout>
  </widget>
