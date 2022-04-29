@@ -144,6 +144,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.inputPlanesWidget = None
     self.inputCurvesWidget = None
     self.outputModelsWidget = None
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onEndImportEvent)
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
@@ -435,8 +436,14 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     finally:
       slicer.app.resumeRender()
 
+  def onEndImportEvent(self, caller=None, event=None):
+    self.onParameterNodeModified()
+
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onParameterNodeModified(self, caller=None, event=None, callData=None):
+    if slicer.mrmlScene.IsImporting():
+      return
+
     self.removeObservers(self.onOrigModelNodeModified)
     origModelNode = self.logic.getOrigModelNode(self.parameterNode)
     if origModelNode:
@@ -445,6 +452,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onOrigModelNodeModified(self, caller=None, event=None, callData=None):
+    if slicer.mrmlScene.IsImporting():
+      return
     self.updateImportWidget()
 
   def updateGUIFromParameterNode(self, caller=None, event=None):
@@ -582,7 +591,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     outputModelsLayout = qt.QFormLayout()
     for toolNode in self.logic.getToolNodes():
       outputModelNode = toolNode.GetNodeReference("BoundaryCut.OutputModel")
-      outputModelNode .CreateDefaultDisplayNodes()
+      outputModelNode.CreateDefaultDisplayNodes()
       outputModelDisplayNode = outputModelNode.GetDisplayNode()
       color = outputModelDisplayNode.GetColor()
 
