@@ -169,6 +169,5 @@ Test2 = PlaneF
 BFsbcmp = BASFRBRN & OlfactorySulcus & Bf_line & CircularSulcusOfTheInsula
 
 FP_l.color = [0,0,0]
-F1_l.color = [0,0,0]
 PlaneA.color = [0,0,0]
 
