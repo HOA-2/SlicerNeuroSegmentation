@@ -8,6 +8,7 @@ from slicer.util import VTKObservationMixin
 import logging
 
 from NeuroSegmentParcellationLibs.NeuroSegmentParcellationLogic import NeuroSegmentParcellationLogic
+from NeuroSegmentParcellationLibs.NeuroSegmentOutputToolWidget import NeuroSegmentOutputToolWidget
 
 class NeuroSegmentParcellation(ScriptedLoadableModule, VTKObservationMixin):
 
@@ -469,16 +470,16 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.exportSegmentationCollapsibleButton.enabled = self.parameterNode is not None
 
     if self.inputPlanesWidget is not None:
-      self.ui.inputPlanesCollapsibleButton.layout().removeWidget(self.inputPlanesWidget)
-      self.inputPlanesWidget.setParent(None)
+      self.inputPlanesWidget.deleteLater()
+      self.inputPlanesWidget= None
 
     if self.inputCurvesWidget is not None:
-      self.ui.inputCurvesCollapsibleButton.layout().removeWidget(self.inputCurvesWidget)
-      self.inputCurvesWidget.setParent(None)
+      self.inputCurvesWidget.deleteLater()
+      self.inputCurvesWidget = None
 
     if self.outputModelsWidget is not None:
-      self.ui.outputModelsCollapsibleButton.layout().removeWidget(self.outputModelsWidget)
-      self.outputModelsWidget.setParent(None)
+      self.outputModelsWidget.deleteLater()
+      self.outputModelsWidget = None
 
     if self.parameterNode is None:
       return
@@ -587,57 +588,18 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.inputPlanesWidget = self.createInputMarkupsWidget("vtkMRMLMarkupsPlaneNode")
     self.ui.inputPlanesCollapsibleButton.layout().addWidget(self.inputPlanesWidget)
 
-    #
     outputModelsLayout = qt.QFormLayout()
+    outputModelsLayout.verticalSpacing = 6
     for toolNode in self.logic.getToolNodes():
       outputModelNode = toolNode.GetNodeReference("BoundaryCut.OutputModel")
-      outputModelNode.CreateDefaultDisplayNodes()
-      outputModelDisplayNode = outputModelNode.GetDisplayNode()
-      color = outputModelDisplayNode.GetColor()
-
-      colorPicker = ctk.ctkColorPickerButton()
-      colorPicker.setColor(qt.QColor(color[0]*255, color[1]*255, color[2]*255))
-      colorPicker.setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Expanding)
-      colorPicker.setProperty("NodeID", outputModelNode.GetID())
-      colorPicker.displayColorName = False
-      colorPicker.connect('colorChanged(QColor)', lambda color, id=outputModelNode.GetID(): self.onColorChanged(color, id))
-
-      nodeID = outputModelNode.GetID()
-      visibilityButton = qt.QToolButton()
-      visibilityButton.setObjectName("visibilityButton")
-      visibilityButton.setProperty("ID", nodeID)
-      visibilityButton.connect('clicked(bool)', lambda visibility, id=nodeID: self.onVisibilityClicked(id))
-
-      seedNode = toolNode.GetNodeReference("BoundaryCut.InputSeed")
-      seedPlaceWidget = slicer.qSlicerMarkupsPlaceWidget()
-      seedPlaceWidget.setMRMLScene(slicer.mrmlScene)
-      seedPlaceWidget.deleteButton().setVisible(False)
-      seedPlaceWidget.findChild("QToolButton", "MoreButton").setVisible(False)
-      seedPlaceWidget.findChild("ctkColorPickerButton", "ColorButton").setVisible(False)
-      seedPlaceWidget.setCurrentNode(seedNode)
-
-      outputModelLayout = qt.QHBoxLayout()
-      outputModelLayout.setContentsMargins(6, 0, 0, 0)
-      outputModelLayout.addWidget(colorPicker)
-      outputModelLayout.addWidget(seedPlaceWidget)
-      outputModelLayout.addWidget(visibilityButton)
-
-      if outputModelNode.GetPolyData() is None:
-        computeButton = qt.QPushButton("Compute")
-        computeButton.setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Expanding)
-        computeButton.connect('clicked(bool)', lambda visibility, id=outputModelNode.GetID(): self.onComputeClicked(id))
-        outputModelLayout.addWidget(computeButton)
-      else:
-        deleteButton = qt.QPushButton("Delete")
-        deleteButton.setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Expanding)
-        deleteButton.connect('clicked(bool)', lambda visibility, id=outputModelNode.GetID(): self.onDeleteClicked(id))
-        outputModelLayout.addWidget(deleteButton)
-
-      outputModelWidget = qt.QWidget()
-      outputModelWidget.setLayout(outputModelLayout)
-
-      label = qt.QLabel(outputModelNode.GetName())
+      outputModelName = "ERR"
+      if outputModelNode:
+        outputModelName = outputModelNode.GetName()
+      label = qt.QLabel(outputModelName + ":")
+      outputModelWidget = NeuroSegmentOutputToolWidget(self.logic)
       outputModelsLayout.addRow(label, outputModelWidget)
+      outputModelWidget.setToolNode(toolNode)
+      outputModelWidget.setParameterNode(self.parameterNode)
 
     self.outputModelsWidget = qt.QWidget()
     self.outputModelsWidget.setLayout(outputModelsLayout)
@@ -651,7 +613,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
   def updateDisplayVisibilityButtons(self):
     logging.debug("updateDisplayVisibilityButtons: Start")
-    containerWidgets = [self.outputModelsWidget, self.inputCurvesWidget, self.inputPlanesWidget]
+    containerWidgets = [self.inputCurvesWidget, self.inputPlanesWidget]
     visibilityButtons = []
     for containerWidget in containerWidgets:
       visibilityButtons += slicer.util.findChildren(containerWidget, name="visibilityButton")
@@ -814,50 +776,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     for toolNode in self.logic.getToolNodes():
       self.logic.runDynamicModelerTool(toolNode)
     self.logic.exportOutputToSurfaceLabel(self.parameterNode)
-
-  def onComputeClicked(self, id):
-    if self.parameterNode is None:
-      logging.error("onComputeClicked: Invalid parameter node")
-      return
-
-    toolNode = None
-    for currentToolNode in self.logic.getToolNodes():
-      toolNode = currentToolNode
-      if toolNode is None:
-        continue
-      outputModelNode = toolNode.GetNodeReference("BoundaryCut.OutputModel")
-      if outputModelNode is None:
-        continue
-      if outputModelNode.GetID() == id:
-        break
-      toolNode = None
-
-    if toolNode is None:
-      logging.error("onComputeClicked: Could not find tool node with output ID: " + id)
-      return
-    self.logic.runDynamicModelerTool(toolNode)
-    self.logic.exportOutputToSurfaceLabel(self.parameterNode)
-    self.updateGUIFromParameterNode()
-
-  def onDeleteClicked(self, id):
-    if self.parameterNode is None:
-      logging.error("onComputeClicked: Invalid parameter node")
-      return
-    outputModelNode = None
-    for currentToolNode in self.logic.getToolNodes():
-      toolNode = currentToolNode
-      outputModelNode = toolNode.GetNodeReference("BoundaryCut.OutputModel")
-      if outputModelNode is None:
-        continue
-      if outputModelNode.GetID() == id:
-        break
-      outputModelNode = None
-
-    if outputModelNode is None:
-      logging.error("onComputeClicked: Could not find output model node with ID: " + id)
-      return
-    outputModelNode.SetAndObservePolyData(None)
-    self.updateGUIFromParameterNode()
 
   def onExportButton(self):
     """

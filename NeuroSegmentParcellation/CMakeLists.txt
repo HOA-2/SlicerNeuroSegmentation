@@ -5,14 +5,16 @@ set(MODULE_NAME NeuroSegmentParcellation)
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
-  NeuroSegmentParcellationLibs/NeuroSegmentMarkupsIntersectionDisplayManager.py
-  NeuroSegmentParcellationLibs/NeuroSegmentParcellationLogic.py
   NeuroSegmentParcellationLibs/NeuroSegmentParcellationVisitor.py
+  NeuroSegmentParcellationLibs/NeuroSegmentParcellationLogic.py
+  NeuroSegmentParcellationLibs/NeuroSegmentMarkupsIntersectionDisplayManager.py
+  NeuroSegmentParcellationLibs/NeuroSegmentOutputToolWidget.py
   )
 
 set(MODULE_PYTHON_RESOURCES
   Resources/Icons/${MODULE_NAME}.png
   Resources/UI/${MODULE_NAME}.ui
+  Resources/UI/NeuroSegmentOutputToolWidget.ui
   )
 
 #-----------------------------------------------------------------------------
