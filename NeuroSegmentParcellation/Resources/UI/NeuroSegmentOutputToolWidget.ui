@@ -55,6 +55,9 @@
       </widget>
      </item>
      <item>
+      <widget class="qSlicerMarkupsPlaceWidget" name="seedPlaceWidget"/>
+     </item>
+     <item>
       <widget class="QPushButton" name="computeButton">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
@@ -141,6 +144,17 @@
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>qSlicerWidget</class>
+   <extends>QWidget</extends>
+   <header>qSlicerWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qSlicerMarkupsPlaceWidget</class>
+   <extends>qSlicerWidget</extends>
+   <header>qSlicerMarkupsPlaceWidget.h</header>
+  </customwidget>
   <customwidget>
    <class>ctkCollapsibleGroupBox</class>
    <extends>QGroupBox</extends>

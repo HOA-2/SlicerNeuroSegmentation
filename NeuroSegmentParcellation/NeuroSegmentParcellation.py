@@ -320,13 +320,12 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if selectionNode is None:
       return
 
-    currentPlaceId = selectionNode.GetActivePlaceNodeID()
     currentPlaceNode = slicer.mrmlScene.GetNodeByID(selectionNode.GetActivePlaceNodeID())
     nodeType = currentPlaceNode.GetAttribute(self.logic.NODE_TYPE_ATTRIBUTE_NAME)
     if nodeType is None:
       return
 
-    if nodeType == self.logic.ORIG_NODE_ATTRIBUTE_VALUE:
+    if currentPlaceNode.IsA("vtkMRMLMarkupsCurveNode") and nodeType == self.logic.ORIG_NODE_ATTRIBUTE_VALUE:
       self.logic.onMasterMarkupModified(currentPlaceNode)
     elif nodeType == self.logic.PIAL_NODE_ATTRIBUTE_VALUE or nodeType == self.logic.INFLATED_NODE_ATTRIBUTE_VALUE:
       self.logic.onDerivedControlPointsModified(currentPlaceNode)
@@ -355,7 +354,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     if viewNode:
       nodeName = viewNode.GetName()
 
-    currentPlaceId = selectionNode.GetActivePlaceNodeID()
     currentPlaceNode = slicer.mrmlScene.GetNodeByID(selectionNode.GetActivePlaceNodeID())
     nodeType = currentPlaceNode.GetAttribute(self.logic.NODE_TYPE_ATTRIBUTE_NAME)
     if nodeType is None:
