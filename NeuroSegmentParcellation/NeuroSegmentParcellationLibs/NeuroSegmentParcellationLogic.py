@@ -474,7 +474,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if not inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
       return
 
-    origModel = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
+    origModel = self.parameterNode.GetNodeReference(self.ORIG_MODEL_REFERENCE)
     if origModel is None:
       return
 
