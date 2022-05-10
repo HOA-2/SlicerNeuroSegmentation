@@ -235,7 +235,7 @@ class NeuroSegmentOutputToolWidget(qt.QWidget, VTKObservationMixin):
       advancedFrameLayout.addRow(qt.QLabel(f"Input {i}:"), comboBox)
       self.inputBorderSelectors.append(comboBox)
     comboBox = self.createComboBox(None, comboBoxClasses)
-    advancedFrameLayout.addRow(qt.QLabel(f"Input {i}:"), comboBox)
+    advancedFrameLayout.addRow(qt.QLabel(f"Input {i+1}:"), comboBox)
     self.inputBorderSelectors.append(comboBox)
 
     self.ui.advancedGroupBox.layout().addWidget(self.advancedFrame)
