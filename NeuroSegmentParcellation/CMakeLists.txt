@@ -10,6 +10,7 @@ set(MODULE_PYTHON_SCRIPTS
   NeuroSegmentParcellationLibs/NeuroSegmentMarkupsIntersectionDisplayManager.py
   NeuroSegmentParcellationLibs/NeuroSegmentOutputToolWidget.py
   NeuroSegmentParcellationLibs/NeuroSegmentInputMarkupsWidget.py
+  NeuroSegmentParcellationLibs/NeuroSegmentInputMarkupsFrame.py
   )
 
 set(MODULE_PYTHON_RESOURCES

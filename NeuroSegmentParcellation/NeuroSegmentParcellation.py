@@ -10,6 +10,7 @@ import logging
 from NeuroSegmentParcellationLibs.NeuroSegmentParcellationLogic import NeuroSegmentParcellationLogic
 from NeuroSegmentParcellationLibs.NeuroSegmentOutputToolWidget import NeuroSegmentOutputToolWidget
 from NeuroSegmentParcellationLibs.NeuroSegmentInputMarkupsWidget import NeuroSegmentInputMarkupsWidget
+from NeuroSegmentParcellationLibs.NeuroSegmentInputMarkupsFrame import NeuroSegmentInputMarkupsFrame
 
 class NeuroSegmentParcellation(ScriptedLoadableModule, VTKObservationMixin):
 
@@ -143,8 +144,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     VTKObservationMixin.__init__(self)
     self.logic = None
     self.parameterNode = None
-    self.inputPlanesWidget = None
-    self.inputCurvesWidget = None
     self.outputModelsWidget = None
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onEndImportEvent)
 
@@ -189,6 +188,13 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.logic = NeuroSegmentParcellationLogic()
     self.logic.setQueryNodeFileName(self.resourcePath('Parcellation/parcellation.qry'))
     self.ui.parameterNodeSelector.addAttribute("vtkMRMLScriptedModuleNode", "ModuleName", self.moduleName)
+
+    self.inputCurvesWidget = NeuroSegmentInputMarkupsFrame(self.logic, "vtkMRMLMarkupsCurveNode")
+    self.ui.inputCurvesCollapsibleButton.layout().addWidget(self.inputCurvesWidget)
+
+    self.inputPlanesWidget = NeuroSegmentInputMarkupsFrame(self.logic, "vtkMRMLMarkupsPlaneNode")
+    self.ui.inputPlanesCollapsibleButton.layout().addWidget(self.inputPlanesWidget)
+
     self.setParameterNode(self.logic.getParameterNode())
 
     # Connections
@@ -429,6 +435,9 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
         self.addObserver(self.parameterNode, vtk.vtkCommand.ModifiedEvent, self.onParameterNodeModified)
         self.onParameterNodeModified(self.parameterNode)
 
+      self.inputCurvesWidget.setParameterNode(inputParameterNode)
+      self.inputPlanesWidget.setParameterNode(inputParameterNode)
+
       # Initial GUI update
       self.logic.setParameterNode(self.parameterNode)
       self.updateGUIFromParameterNode()
@@ -467,14 +476,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.inputModelCollapsibleButton.enabled = self.parameterNode is not None
     self.ui.outputModelsCollapsibleButton.enabled = self.parameterNode is not None
     self.ui.exportSegmentationCollapsibleButton.enabled = self.parameterNode is not None
-
-    if self.inputPlanesWidget is not None:
-      self.inputPlanesWidget.deleteLater()
-      self.inputPlanesWidget= None
-
-    if self.inputCurvesWidget is not None:
-      self.inputCurvesWidget.deleteLater()
-      self.inputCurvesWidget = None
 
     if self.outputModelsWidget is not None:
       self.outputModelsWidget.deleteLater()
@@ -580,12 +581,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       self.ui.exportButton.enabled = True
     else:
       self.ui.exportButton.enabled = False
-
-    self.inputCurvesWidget = self.createInputMarkupsWidget("vtkMRMLMarkupsCurveNode")
-    self.ui.inputCurvesCollapsibleButton.layout().addWidget(self.inputCurvesWidget)
-
-    self.inputPlanesWidget = self.createInputMarkupsWidget("vtkMRMLMarkupsPlaneNode")
-    self.ui.inputPlanesCollapsibleButton.layout().addWidget(self.inputPlanesWidget)
 
     outputModelsLayout = qt.QFormLayout()
     outputModelsLayout.verticalSpacing = 6

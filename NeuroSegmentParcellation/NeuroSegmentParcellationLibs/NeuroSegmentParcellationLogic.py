@@ -1018,14 +1018,19 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       toolNodes.append(toolNode)
     return toolNodes
 
-  def getInputMarkupNodes(self):
-    if self.parameterNode is None:
+  def getInputMarkupNodes(self, parameterNode=None):
+    if parameterNode is None:
+      parameterNode = self.parameterNode
+    return self.getInputMarkupNodesInternal(parameterNode)
+
+  def getInputMarkupNodesInternal(self, parameterNode):
+    if parameterNode is None:
       return []
 
     inputMarkupNodes = []
-    numberOfInputMarkupNodes = self.parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
+    numberOfInputMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
     for i in range(numberOfInputMarkupNodes):
-      inputMarkupNode = self.parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
+      inputMarkupNode = parameterNode.GetNthNodeReference(self.INPUT_MARKUPS_REFERENCE, i)
       inputMarkupNodes.append(inputMarkupNode)
     return inputMarkupNodes
 
