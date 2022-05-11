@@ -356,6 +356,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     for inputMarkupNode in inputMarkupNodes:
       if inputMarkupNode is None:
         continue
+
       if inputMarkupNode.IsA("vtkMRMLMarkupsCurveNode"):
         tag = inputMarkupNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointAddedEvent, self.onMasterMarkupModified)
         self.inputMarkupObservers.append((inputMarkupNode, tag))
@@ -478,6 +479,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if origModel is None:
       return
 
+    self.updateInputModelPointLocators(self.parameterNode)
+
     curvePoints = inputMarkupNode.GetCurve().GetPoints()
     if self.origPointLocator.GetDataSet() is None or curvePoints is None:
       return
@@ -500,6 +503,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
           pointIndex = 0
           pialPoints.SetNumberOfPoints(len(pointIds))
           for pointId in pointIds:
+            if pointId >= pialModel.GetPolyData().GetNumberOfPoints():
+              logging.warning(f"onMasterMarkupModified: Pial input point out of range ({pointId})")
+              continue
             pialPoint = list(pialModel.GetPolyData().GetPoints().GetPoint(pointId))
             pialModel.TransformPointToWorld(pialPoint, pialPoint)
             pialPoints.SetPoint(pointIndex, pialPoint)
@@ -517,6 +523,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
           inflatedPoints.SetNumberOfPoints(len(pointIds))
           pointIndex = 0
           for pointId in pointIds:
+            if pointId >= inflatedModel.GetPolyData().GetNumberOfPoints():
+              logging.warning(f"onMasterMarkupModified: Inflated input point out of range ({pointId})")
+              continue
             inflatedPoint = list(inflatedModel.GetPolyData().GetPoints().GetPoint(pointId))
             inflatedModel.TransformPointToWorld(inflatedPoint, inflatedPoint)
             inflatedPoints.SetPoint(pointIndex, inflatedPoint)
@@ -598,6 +607,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
 
     try:
       slicer.app.pauseRender()
+
+      self.updateInputModelPointLocators(self.parameterNode)
 
       self.updatingFromDerivedMarkup = True
       origMarkup = derivedMarkupNode.GetNodeReference("OrigMarkup")
@@ -920,8 +931,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
           continue
         displayNode.CopyContent(markupNode.GetDisplayNode())
 
-      self.updatingFromMasterMarkup = wasUpdatingFromMasterMarkup
     finally:
+      self.updatingFromMasterMarkup = wasUpdatingFromMasterMarkup
       slicer.app.resumeRender()
 
   def getQueryNode(self):
