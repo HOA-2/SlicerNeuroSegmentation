@@ -485,69 +485,71 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.origPointLocator.GetDataSet() is None or curvePoints is None:
       return
 
-    wasUpdatingFromMasterMarkup = self.updatingFromMasterMarkup
-    self.updatingFromMasterMarkup = True
+    try:
+      wasUpdatingFromMasterMarkup = self.updatingFromMasterMarkup
+      self.updatingFromMasterMarkup = True
 
-    pointIds = []
-    for i in range(curvePoints.GetNumberOfPoints()):
-      origPointLocal = list(curvePoints.GetPoint(i))
-      origModel.TransformPointFromWorld(origPointLocal, origPointLocal)
-      pointIds.append(self.origPointLocator.FindClosestPoint(origPointLocal))
+      pointIds = []
+      for i in range(curvePoints.GetNumberOfPoints()):
+        origPointLocal = list(curvePoints.GetPoint(i))
+        origModel.TransformPointFromWorld(origPointLocal, origPointLocal)
+        pointIds.append(self.origPointLocator.FindClosestPoint(origPointLocal))
 
-    pialMarkup = self.getDerivedCurveNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
-    if pialMarkup:
-      with slicer.util.NodeModify(pialMarkup):
-        pialModel = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
-        if pialModel and pialModel.GetPolyData() and pialModel.GetPolyData().GetPoints():
-          pialPoints = vtk.vtkPoints()
-          pointIndex = 0
-          pialPoints.SetNumberOfPoints(len(pointIds))
-          for pointId in pointIds:
-            if pointId >= pialModel.GetPolyData().GetNumberOfPoints():
-              logging.warning(f"onMasterMarkupModified: Pial input point out of range ({pointId})")
-              continue
-            pialPoint = list(pialModel.GetPolyData().GetPoints().GetPoint(pointId))
-            pialModel.TransformPointToWorld(pialPoint, pialPoint)
-            pialPoints.SetPoint(pointIndex, pialPoint)
-            pointIndex += 1
-          pialMarkup.SetControlPointPositionsWorld(pialPoints)
-          for pointIndex in range(len(pointIds)):
-            pialMarkup.SetNthControlPointVisibility(pointIndex, False)
+      pialMarkup = self.getDerivedCurveNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
+      if pialMarkup:
+        with slicer.util.NodeModify(pialMarkup):
+          pialModel = self.parameterNode.GetNodeReference(self.PIAL_MODEL_REFERENCE)
+          if pialModel and pialModel.GetPolyData() and pialModel.GetPolyData().GetPoints():
+            pialPoints = vtk.vtkPoints()
+            pointIndex = 0
+            pialPoints.SetNumberOfPoints(len(pointIds))
+            for pointId in pointIds:
+              if pointId >= pialModel.GetPolyData().GetNumberOfPoints():
+                logging.warning(f"onMasterMarkupModified: Pial input point out of range ({pointId})")
+                continue
+              pialPoint = list(pialModel.GetPolyData().GetPoints().GetPoint(pointId))
+              pialModel.TransformPointToWorld(pialPoint, pialPoint)
+              pialPoints.SetPoint(pointIndex, pialPoint)
+              pointIndex += 1
+            pialMarkup.SetControlPointPositionsWorld(pialPoints)
+            for pointIndex in range(len(pointIds)):
+              pialMarkup.SetNthControlPointVisibility(pointIndex, False)
 
-    inflatedMarkup = self.getDerivedCurveNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
-    if inflatedMarkup:
-      with slicer.util.NodeModify(inflatedMarkup):
-        inflatedModel = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
-        if inflatedModel and inflatedModel.GetPolyData() and inflatedModel.GetPolyData().GetPoints():
-          inflatedPoints = vtk.vtkPoints()
-          inflatedPoints.SetNumberOfPoints(len(pointIds))
-          pointIndex = 0
-          for pointId in pointIds:
-            if pointId >= inflatedModel.GetPolyData().GetNumberOfPoints():
-              logging.warning(f"onMasterMarkupModified: Inflated input point out of range ({pointId})")
-              continue
-            inflatedPoint = list(inflatedModel.GetPolyData().GetPoints().GetPoint(pointId))
-            inflatedModel.TransformPointToWorld(inflatedPoint, inflatedPoint)
-            inflatedPoints.SetPoint(pointIndex, inflatedPoint)
-            pointIndex += 1
-          inflatedMarkup.SetControlPointPositionsWorld(inflatedPoints)
-          for pointIndex in range(len(pointIds)):
-            inflatedMarkup.SetNthControlPointVisibility(pointIndex, False)
+      inflatedMarkup = self.getDerivedCurveNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
+      if inflatedMarkup:
+        with slicer.util.NodeModify(inflatedMarkup):
+          inflatedModel = self.parameterNode.GetNodeReference(self.INFLATED_MODEL_REFERENCE)
+          if inflatedModel and inflatedModel.GetPolyData() and inflatedModel.GetPolyData().GetPoints():
+            inflatedPoints = vtk.vtkPoints()
+            inflatedPoints.SetNumberOfPoints(len(pointIds))
+            pointIndex = 0
+            for pointId in pointIds:
+              if pointId >= inflatedModel.GetPolyData().GetNumberOfPoints():
+                logging.warning(f"onMasterMarkupModified: Inflated input point out of range ({pointId})")
+                continue
+              inflatedPoint = list(inflatedModel.GetPolyData().GetPoints().GetPoint(pointId))
+              inflatedModel.TransformPointToWorld(inflatedPoint, inflatedPoint)
+              inflatedPoints.SetPoint(pointIndex, inflatedPoint)
+              pointIndex += 1
+            inflatedMarkup.SetControlPointPositionsWorld(inflatedPoints)
+            for pointIndex in range(len(pointIds)):
+              inflatedMarkup.SetNthControlPointVisibility(pointIndex, False)
 
-    if not self.updatingFromDerivedMarkup:
-      pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
-      if pialControlPoints is None:
-        logging.error("Could not find pial markup!")
-      else:
-        self.copyControlPoints(inputMarkupNode, origModel, self.origPointLocator, pialControlPoints, pialModel)
+      if not self.updatingFromDerivedMarkup:
+        pialControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
+        if pialControlPoints is None:
+          logging.error("Could not find pial markup!")
+        else:
+          self.copyControlPoints(inputMarkupNode, origModel, self.origPointLocator, pialControlPoints, pialModel)
 
-      inflatedControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
-      if inflatedControlPoints is None:
-        logging.error("Could not find inflated markup!")
-      else:
-        self.copyControlPoints(inputMarkupNode, origModel, self.origPointLocator, inflatedControlPoints, inflatedModel)
+        inflatedControlPoints = self.getDerivedControlPointsNode(inputMarkupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
+        if inflatedControlPoints is None:
+          logging.error("Could not find inflated markup!")
+        else:
+          self.copyControlPoints(inputMarkupNode, origModel, self.origPointLocator, inflatedControlPoints, inflatedModel)
 
-    self.updatingFromMasterMarkup = wasUpdatingFromMasterMarkup
+    finally:
+      self.updatingFromMasterMarkup = wasUpdatingFromMasterMarkup
 
   def onSeedNodeModified(self, seedNode, eventId=None, callData=None):
     if self.updatingSeedNodes:
@@ -640,9 +642,9 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
         copyUndefinedControlPoints = (interactionNode.GetCurrentInteractionMode() == interactionNode.Place)
       self.copyControlPoints(derivedMarkupNode, derivedModelNode, locator, origMarkup, origModel, copyUndefinedControlPoints)
       self.copyControlPoints(derivedMarkupNode, derivedModelNode, locator, otherMarkupNode, otherModelNode, copyUndefinedControlPoints)
-      self.updatingFromDerivedMarkup = False
 
     finally:
+      self.updatingFromDerivedMarkup = False
       slicer.app.resumeRender()
 
   @vtk.calldata_type(vtk.VTK_INT)
@@ -880,17 +882,19 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if nodeType != self.ORIG_NODE_ATTRIBUTE_VALUE:
       return
 
-    wasUpdatingFromMasterMarkup = self.updatingFromMasterMarkup
-    self.updatingFromMasterMarkup = True
+    try:
+      wasUpdatingFromMasterMarkup = self.updatingFromMasterMarkup
+      self.updatingFromMasterMarkup = True
 
-    pialControlPoints = self.getDerivedControlPointsNode(markupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
-    if pialControlPoints:
-      pialControlPoints.SetLocked(markupNode.GetLocked())
-    inflatedControlPoints = self.getDerivedControlPointsNode(markupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
-    if inflatedControlPoints:
-      inflatedControlPoints.SetLocked(markupNode.GetLocked())
+      pialControlPoints = self.getDerivedControlPointsNode(markupNode, self.PIAL_NODE_ATTRIBUTE_VALUE)
+      if pialControlPoints:
+        pialControlPoints.SetLocked(markupNode.GetLocked())
+      inflatedControlPoints = self.getDerivedControlPointsNode(markupNode, self.INFLATED_NODE_ATTRIBUTE_VALUE)
+      if inflatedControlPoints:
+        inflatedControlPoints.SetLocked(markupNode.GetLocked())
 
-    self.updatingFromMasterMarkup = wasUpdatingFromMasterMarkup
+    finally:
+      self.updatingFromMasterMarkup = wasUpdatingFromMasterMarkup
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onMasterMarkupDisplayModified(self, markupNode, eventId=None, callData=None):
