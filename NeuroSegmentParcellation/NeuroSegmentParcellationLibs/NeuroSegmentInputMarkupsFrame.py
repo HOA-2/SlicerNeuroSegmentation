@@ -56,7 +56,7 @@ class NeuroSegmentInputMarkupsFrame(qt.QWidget, VTKObservationMixin):
     tempInputMarkups = self.logic.getInputMarkupNodes(self.parameterNode)
     inputMarkups = []
     for markupsNode in tempInputMarkups:
-      if not markupsNode.IsA(self.className):
+      if not markupsNode or not markupsNode.IsA(self.className):
         continue
       inputMarkups.append(markupsNode)
     return inputMarkups
