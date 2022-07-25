@@ -13,10 +13,24 @@ set(MODULE_PYTHON_SCRIPTS
   NeuroSegmentParcellationLibs/NeuroSegmentInputMarkupsFrame.py
   )
 
-set(MODULE_PYTHON_RESOURCES
+set(MODULE_PYTHON_ICON_RESOURCES
   Resources/Icons/${MODULE_NAME}.png
+  )
+
+set(MODULE_PYTHON_UI_RESOURCES
   Resources/UI/${MODULE_NAME}.ui
+  Resources/UI/NeuroSegmentInputMarkupsWidget.ui
   Resources/UI/NeuroSegmentOutputToolWidget.ui
+  )
+
+set(MODULE_PYTHON_PARCELLATION_RESOURCES
+  Resources/Parcellation/parcellation.qry
+  )
+
+set(MODULE_PYTHON_RESOURCES
+  ${MODULE_PYTHON_ICON_RESOURCES}
+  ${MODULE_PYTHON_UI_RESOURCES}
+  ${MODULE_PYTHON_PARCELLATION_RESOURCES}
   )
 
 #-----------------------------------------------------------------------------
