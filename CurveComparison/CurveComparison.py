@@ -14,7 +14,7 @@ class CurveComparison(ScriptedLoadableModule, VTKObservationMixin):
     ScriptedLoadableModule.__init__(self, parent)
     VTKObservationMixin.__init__(self)
     self.parent.title = "Curve Comparison"
-    self.parent.categories = [""]
+    self.parent.categories = ["Neuro Segmentation"]
     self.parent.dependencies = []
     self.parent.contributors = [""]
     self.parent.helpText = """"""
@@ -72,7 +72,9 @@ class CurveComparisonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def updateWidgetFromMRML(self):
     # TODO: Parameter node
     currentCurveNode = self.ui.inputCurveNodeSelector.currentNode()
-    surfaceNode = currentCurveNode.GetSurfaceConstraintNode()
+    surfaceNode = None
+    if currentCurveNode:
+      surfaceNode = currentCurveNode.GetSurfaceConstraintNode()
     currentTableNode = self.ui.outputTableNodeSelector.currentNode()
 
     wasBlocking  = self.ui.surfaceNodeSelector.blockSignals(True)
