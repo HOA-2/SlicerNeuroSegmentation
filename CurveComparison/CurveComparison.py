@@ -86,6 +86,7 @@ class CurveComparisonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     if surfaceNode and surfaceNode.GetDisplayNode():
       activeName = surfaceNode.GetDisplayNode().GetActiveScalarName()
     self.ui.showOverlayCheckBox.checked = (activeName == self.logic.ISO_REGIONS_ARRAY_NAME)
+    self.ui.showOverlayCheckBox.enabled = not surfaceNode is None
 
     self.ui.computeButton.enabled = (not currentTableNode is None and not currentCurveNode is None and
       not currentCurveNode.GetShortestDistanceSurfaceNode() is None and currentCurveNode.GetNumberOfControlPoints() >= 2)
