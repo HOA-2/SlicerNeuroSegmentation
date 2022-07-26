@@ -1851,7 +1851,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     inputMarkupNodes = self.getInputMarkupNodes()
     baseViewIds = ["vtkMRMLViewNode1", "vtkMRMLSliceNodeRed", "vtkMRMLSliceNodeGreen", "vtkMRMLSliceNodeYellow"]
     for inputMarkupNode in inputMarkupNodes:
-      if not inputMarkupNode.IsA("vtkMRMLMarkupsPlaneNode"):
+      if inputMarkupNode is None or not inputMarkupNode.IsA("vtkMRMLMarkupsPlaneNode"):
         continue
       intersectionModelNodes = self.getIntersectionModelNodes(inputMarkupNode)
       for intersectionNode in intersectionModelNodes:

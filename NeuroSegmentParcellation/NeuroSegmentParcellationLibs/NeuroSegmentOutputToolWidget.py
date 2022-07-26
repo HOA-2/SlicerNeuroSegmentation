@@ -229,6 +229,7 @@ class NeuroSegmentOutputToolWidget(qt.QWidget, VTKObservationMixin):
     numberOfNodeReferences = 0
     if self.toolNode:
       numberOfNodeReferences = self.toolNode.GetNumberOfNodeReferences(self.inputBorderReference)
+    i = 0
     for i in range(numberOfNodeReferences):
       inputNode = self.toolNode.GetNthNodeReference(self.inputBorderReference, i)
       comboBox = self.createComboBox(inputNode, comboBoxClasses)
