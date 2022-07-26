@@ -44,6 +44,36 @@
           },
           {
             "recommendedDisplayRGBValue": [
+              60,
+              60,
+              60
+            ],
+            "CodeMeaning": "CSF",
+            "CodingSchemeDesignator": "SRT",
+            "3dSlicerLabel": "CSF",
+            "cid": "7167",
+            "UMLSConceptUID": "C0555809",
+            "CodeValue": "T-41067",
+            "contextGroupName": "Common Tissue Segmentation Types",
+            "SNOMEDCTConceptID": "275989056"
+          },
+		  {
+            "recommendedDisplayRGBValue": [
+              120,
+              190,
+              150
+            ],
+            "CodeMeaning": "5th Ventricle",
+            "CodingSchemeDesignator": "SRT",
+            "3dSlicerLabel": "5th Ventricle",
+            "cid": "7168",
+            "UMLSConceptUID": "C0555806",
+            "CodeValue": "T-41068",
+            "contextGroupName": "Common Tissue Segmentation Types",
+            "SNOMEDCTConceptID": "275989096"
+          },
+{
+            "recommendedDisplayRGBValue": [
               204,
               182,
               142
@@ -168,9 +198,9 @@
               48,
               255
             ],
-            "CodeMeaning": "GP Left",
+            "CodeMeaning": "Globus Pallidus Left",
             "CodingSchemeDesignator": "SRT",
-            "3dSlicerLabel": "GP Left",
+            "3dSlicerLabel": "Globus Pallidus Left",
             "cid": "7166",
             "UMLSConceptUID": "C0224498",
             "CodeValue": "T-15009",
@@ -183,9 +213,9 @@
               48,
               255
             ],
-            "CodeMeaning": "GP Right",
+            "CodeMeaning": "Globus Pallidus Right",
             "CodingSchemeDesignator": "SRT",
-            "3dSlicerLabel": "GP Right",
+            "3dSlicerLabel": "Globus Pallidus Right",
             "cid": "7166",
             "UMLSConceptUID": "C0026845",
             "CodeValue": "T-13001",
@@ -273,9 +303,9 @@
               58,
               250
             ],
-            "CodeMeaning": "Inf Lat Ven - Left",
+            "CodeMeaning": "Inferior Horn of the Lateral Ventricle Left",
             "CodingSchemeDesignator": "SRT",
-            "3dSlicerLabel": "Inf Lat Ven - Left",
+            "3dSlicerLabel": "Inferior Horn of the Lateral Ventricle Left",
             "cid": "7166",
             "UMLSConceptUID": "C0447146",
             "CodeValue": "T-4806E",
@@ -288,9 +318,9 @@
               58,
               250
             ],
-            "CodeMeaning": "Inf Lat Ven - Right",
+            "CodeMeaning": "Inferior Horn of the Lateral Ventricle Right",
             "CodingSchemeDesignator": "SRT",
-            "3dSlicerLabel": "Inf Lat Ven -Right",
+            "3dSlicerLabel": "Inferior Horn of the Lateral Ventricle Right",
             "cid": "7168",
             "UMLSConceptUID": "C0448146",
             "CodeValue": "T-4803F",
@@ -303,9 +333,9 @@
               216,
               20
             ],
-            "CodeMeaning": "Hippocampus Left",
+            "CodeMeaning": "Hippocampal Formation Left",
             "CodingSchemeDesignator": "SRT",
-            "3dSlicerLabel": "Hippocampus Left",
+            "3dSlicerLabel": "Hippocampal Formation Left",
             "cid": "7166",
             "UMLSConceptUID": "C0447146",
             "CodeValue": "T-4806G",
@@ -318,9 +348,9 @@
               216,
               20
             ],
-            "CodeMeaning": "Hippocampus Right",
+            "CodeMeaning": "Hippocampal Formation Right",
             "CodingSchemeDesignator": "SRT",
-            "3dSlicerLabel": "Hippocampus Right",
+            "3dSlicerLabel": "Hippocampal Formation Right",
             "cid": "7167",
             "UMLSConceptUID": "C0447146",
             "CodeValue": "T-4806H",
@@ -356,7 +386,83 @@
             "CodeValue": "T-4806J",
             "contextGroupName": "Common Tissue Segmentation Types",
             "SNOMEDCTConceptID": "181378009"
+	  },
+		 {
+            "recommendedDisplayRGBValue": [
+              234,
+              169,
+              30
+            ],
+            "CodeMeaning": "Optic Chiasm",
+            "CodingSchemeDesignator": "SRT",
+            "3dSlicerLabel": "Optic Chiasm",
+            "cid": "7169",
+            "UMLSConceptUID": "C0447146",
+            "CodeValue": "T-4806K",
+            "contextGroupName": "Common Tissue Segmentation Types",
+            "SNOMEDCTConceptID": "181378009"
+	 },
+ 	{
+            "recommendedDisplayRGBValue": [
+              177,
+              62,
+              64
+            ],
+            "CodeMeaning": "VDC Anterior Left",
+            "CodingSchemeDesignator": "SRT",
+            "3dSlicerLabel": "VDC Anterior Left",
+            "cid": "7169",
+            "UMLSConceptUID": "C0447146",
+            "CodeValue": "T-4806L",
+            "contextGroupName": "Common Tissue Segmentation Types",
+            "SNOMEDCTConceptID": "181378009"
+	 },
+	 {
+            "recommendedDisplayRGBValue": [
+              177,
+              62,
+              64
+            ],
+            "CodeMeaning": "VDC Anterior Right",
+            "CodingSchemeDesignator": "SRT",
+            "3dSlicerLabel": "VDC Anterior Right",
+            "cid": "7169",
+            "UMLSConceptUID": "C0447146",
+            "CodeValue": "T-4806O",
+            "contextGroupName": "Common Tissue Segmentation Types",
+            "SNOMEDCTConceptID": "181378009"
+	},
+	 {
+            "recommendedDisplayRGBValue": [
+              241,
+              161,
+              162
+            ],
+            "CodeMeaning": "VDC Posterior Left",
+            "CodingSchemeDesignator": "SRT",
+            "3dSlicerLabel": "VDC Posterior Left",
+            "cid": "7169",
+            "UMLSConceptUID": "C0447146",
+            "CodeValue": "T-4806M",
+            "contextGroupName": "Common Tissue Segmentation Types",
+            "SNOMEDCTConceptID": "181378009"
+	}, 
+	{
+            "recommendedDisplayRGBValue": [
+              241,
+              161,
+              162
+            ],
+            "CodeMeaning": "VDC Posterior Right",
+            "CodingSchemeDesignator": "SRT",
+            "3dSlicerLabel": "VDC Posterior Right",
+            "cid": "7169",
+            "UMLSConceptUID": "C0447146",
+            "CodeValue": "T-4806N",
+            "contextGroupName": "Common Tissue Segmentation Types",
+            "SNOMEDCTConceptID": "181378009"
 		  }
+
         ],
         "showAnatomy": true
       },
