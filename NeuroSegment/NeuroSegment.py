@@ -66,6 +66,8 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.logic = NeuroSegmentLogic()
     self._parameterNode = None
 
+    slicer.modules.terminologies.logic().LoadTerminologyFromFile(self.resourcePath("Segmentations/SegmentationCategoryTypeModifier-GeneralSegmentation.json"))
+
     uiWidget = slicer.util.loadUI(self.resourcePath('UI/NeuroSegment.ui'))
     self.layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
@@ -224,7 +226,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     selectedFiles = importDialog.selectedFiles()
     if result != qt.QDialog.Accepted or len(selectedFiles) == 0:
       return
-    
+
     qt.QSettings().setValue(self.logic.IMPORT_EXPORT_GUIDE_DIRECTORY_SETTING, importDialog.directory().path())
     self.logic.loadGuideMarkupsJson(selectedFiles[0])
 

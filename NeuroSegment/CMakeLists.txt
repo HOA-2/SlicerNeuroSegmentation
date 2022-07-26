@@ -6,11 +6,24 @@ set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
   )
 
-set(MODULE_PYTHON_RESOURCES
+set(MODULE_PYTHON_ICON_RESOURCES
   Resources/Icons/${MODULE_NAME}.png
   Resources/Icons/${MODULE_NAME}.png
+  )
+
+set(MODULE_PYTHON_SEGMENTATIONS_RESOURCES
   Resources/Segmentations/DefaultSegmentation.seg.nrrd
+  Resources/Segmentations/SegmentationCategoryTypeModifier-GeneralSegmentation.json
+  )
+
+set(MODULE_PYTHON_UI_RESOURCES
   Resources/UI/NeuroSegment.ui
+  )
+
+set(MODULE_PYTHON_RESOURCES
+  ${MODULE_PYTHON_ICON_RESOURCES}
+  ${MODULE_PYTHON_SEGMENTATIONS_RESOURCES}
+  ${MODULE_PYTHON_UI_RESOURCES}
   )
 
 #-----------------------------------------------------------------------------
