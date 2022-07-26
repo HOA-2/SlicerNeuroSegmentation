@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13.4)
 
-project(NeuroSegmentation)
+project(SlicerNeuroSegmentation)
 
 #-----------------------------------------------------------------------------
 # Extension meta-information
@@ -24,6 +24,7 @@ find_package(SlicerFreeSurfer REQUIRED)
 add_subdirectory(NeuroSegment)
 add_subdirectory(NeuroSegmentParcellation)
 add_subdirectory(SurfaceAverage)
+add_subdirectory(CurveComparison)
 
 #-----------------------------------------------------------------------------
 include(${Slicer_EXTENSION_GENERATE_CONFIG})
