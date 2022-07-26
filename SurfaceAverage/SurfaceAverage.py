@@ -17,19 +17,16 @@ class SurfaceAverage(ScriptedLoadableModule):
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "SurfaceAverage"  # TODO: make this more human readable by adding spaces
-    self.parent.categories = ["Examples"]  # TODO: set categories (folders where the module shows up in the module selector)
-    self.parent.dependencies = []  # TODO: add here list of module names that this module requires
-    self.parent.contributors = ["John Doe (AnyWare Corp.)"]  # TODO: replace with "Firstname Lastname (Organization)"
-    # TODO: update with short description of the module and a link to online module documentation
+    self.parent.title = "Surface Average"
+    self.parent.categories = ["Neuro Segmentation", "Surface Models"]
+    self.parent.dependencies = []
+    self.parent.contributors = ["Kyle Sunderland (Perk Lab, Queen's University)"]
     self.parent.helpText = """
-This is an example of scripted loadable module bundled in an extension.
-See more information in <a href="https://github.com/organization/projectname#SurfaceAverage">module documentation</a>.
+This module takes 2 corresponding FreeSurfer surfaces as input and generates an output surface that is the average of the two.
+The input models must have a 1 to 1 correspence between points.
 """
-    # TODO: replace with organization, grant and thanks
     self.parent.acknowledgementText = """
-This file was originally developed by Jean-Christophe Fillion-Robin, Kitware Inc., Andras Lasso, PerkLab,
-and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR013218-12S1.
+This file was originally developed by Kyle Sunderland (Perk Lab, Queen's University), and was partially funded by Brigham and Women’s Hospital through NIH grant R01MH112748.
 """
 
 #

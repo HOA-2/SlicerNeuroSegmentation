@@ -20,12 +20,16 @@ class NeuroSegmentParcellation(ScriptedLoadableModule, VTKObservationMixin):
     ScriptedLoadableModule.__init__(self, parent)
     VTKObservationMixin.__init__(self)
     self.parent.title = "NeuroSegment Parcellation"
-    self.parent.categories = ["Surface Models"]
-    self.parent.dependencies = []
-    self.parent.contributors = [""]
-    self.parent.helpText = """"""
+    self.parent.categories = ["Neuro Segmentation", "Segmentation", "Surface Models"]
+    self.parent.dependencies = ["FreeSurferMarkups"]
+    self.parent.contributors = ["Kyle Sunderland (Perk Lab, Queen's University)"]
+    self.parent.helpText = """
+This module can be used to create a surfaced based parcellation of FreeSurfer surfaces.
+""" # TODO: Add more help text + link to documentation.
     self.parent.helpText += self.getDefaultModuleDocumentationLink()
-    self.parent.acknowledgementText = """"""
+    self.parent.acknowledgementText = """
+This file was originally developed by Kyle Sunderland (Perk Lab, Queen's University), and was partially funded by Brigham and Women’s Hospital through NIH grant R01MH112748
+"""
     if not slicer.app.commandOptions().noMainWindow:
       slicer.app.connect("startupCompleted()", self.initializeModule)
 

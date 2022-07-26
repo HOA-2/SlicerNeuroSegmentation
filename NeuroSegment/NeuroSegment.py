@@ -20,11 +20,12 @@ class NeuroSegment(ScriptedLoadableModule):
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "NeuroSegment"
-    self.parent.categories = ["Segmentation"]
+    self.parent.categories = ["Neuro Segmentation", "Segmentation"]
     self.parent.dependencies = []
     self.parent.contributors = ["Kyle Sunderland (Perk Lab, Queen's University)"]
     self.parent.helpText = """
 This is a module that organizes a workflow for brain segmentation.
+Segmentations created using this module are automatically populated with empty Segments based on a template.
 """
     self.parent.helpText += self.getDefaultModuleDocumentationLink()
     self.parent.acknowledgementText = """
