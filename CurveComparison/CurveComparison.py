@@ -31,6 +31,11 @@ class CurveComparisonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     ScriptedLoadableModuleWidget.__init__(self, parent)
     VTKObservationMixin.__init__(self)
     self.logic = None
+    self.previousScalarArrayName = ""
+    self.previousArrayLocation = vtk.vtkDataObject.POINT
+    self.previousColorNode = None
+    self.previousAutoScalarRangeSetting = False
+    self.previousScalarRange = (0.0, 1.0)
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
@@ -54,7 +59,7 @@ class CurveComparisonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.updateWidgetFromMRML()
 
-  def inputCurveNodeChanged(self):  
+  def inputCurveNodeChanged(self):
     self.updateWidgetFromMRML()
 
   def surfaceNodeChanged(self):
@@ -67,10 +72,36 @@ class CurveComparisonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
   def onShowOverlayClicked(self):
     surfaceNode = self.ui.surfaceNodeSelector.currentNode()
-    if self.ui.showOverlayCheckBox.checked and surfaceNode and surfaceNode.GetDisplayNode():
-      surfaceNode.GetDisplayNode().SetActiveScalarName(self.logic.ISO_REGIONS_ARRAY_NAME)
-    else:
-      surfaceNode.GetDisplayNode().SetActiveScalarName("")
+    if surfaceNode is None:
+      return
+    surfaceNode.CreateDefaultDisplayNodes()
+    displayNode = surfaceNode.GetDisplayNode()
+
+    colorNode = self.previousColorNode
+    autoScalarRange = self.previousAutoScalarRangeSetting
+    activeScalarName = self.previousScalarArrayName
+    activeScalarLocation = self.previousArrayLocation
+    scalarRange = self.previousScalarRange
+
+    if self.ui.showOverlayCheckBox.checked:
+      self.previousScalarArrayName = displayNode.GetActiveScalarName()
+      self.previousArrayLocation = displayNode.GetActiveAttributeLocation()
+      self.previousColorNode = displayNode.GetColorNode()
+      self.previousAutoScalarRangeSetting = displayNode.GetAutoScalarRange()
+      self.previousScalarRange = displayNode.GetScalarRange()
+      activeScalarName = self.logic.ISO_REGIONS_ARRAY_NAME
+      activeScalarLocation = vtk.vtkDataObject.POINT
+      displayNode.SetActiveScalar(self.logic.ISO_REGIONS_ARRAY_NAME, vtk.vtkDataObject.POINT)
+      scalarRange = [0.0, 1.0]
+      autoScalarRange = True
+      colorNode = slicer.util.getNode("ColdToHotRainbow")
+
+    displayNode.AutoScalarRangeOff()
+    displayNode.SetActiveScalar(activeScalarName, activeScalarLocation)
+    displayNode.SetAndObserveColorNodeID(colorNode.GetID())
+    displayNode.SetScalarRange(scalarRange)
+    displayNode.SetAutoScalarRange(autoScalarRange)
+
     self.updateWidgetFromMRML()
 
   def updateWidgetFromMRML(self):
@@ -143,8 +174,6 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     """
     :param inputCurveNode: User placed curve node to be optimized
     """
-    metrics = []
-
     inputCurvePolyData = vtk.vtkPolyData()
     inputCurvePolyData.SetPoints(inputCurveNode.GetCurvePointsWorld())
 
@@ -282,7 +311,7 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     self.setCurveNodeWeights(optimizerCurveNode, weights)
 
     polyData = inputCurveNode.GetShortestDistanceSurfaceNode().GetPolyData()
-    
+
     pointData = polyData.GetPointData()
     isoRegionsArray = pointData.GetArray(self.ISO_REGIONS_ARRAY_NAME)
 
@@ -344,10 +373,10 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     """
     :param curve: The curve that the overlay will be created from (vtkMRMLMarkupsCurveNode)
     """
-    modelNode = curveNode.GetShortestDistanceSurfaceNode() 
+    modelNode = curveNode.GetShortestDistanceSurfaceNode()
     polyData = modelNode.GetPolyData()
     if polyData is None:
-      #TODO
+      # No polydata. Nothing to compute overlay on.
       return
 
     transformFilter = vtk.vtkTransformPolyDataFilter()
@@ -366,7 +395,7 @@ class CurveComparisonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
 
     pointData = polyData.GetPointData()
     isoRegionsArray = pointData.GetArray(self.ISO_REGIONS_ARRAY_NAME)
-    if isoRegionsArray  is None:
+    if isoRegionsArray is None:
       isoRegionsArray = vtk.vtkIdTypeArray()
       isoRegionsArray.SetName(self.ISO_REGIONS_ARRAY_NAME)
     isoRegionsArray.SetNumberOfValues(polyData.GetNumberOfPoints())
