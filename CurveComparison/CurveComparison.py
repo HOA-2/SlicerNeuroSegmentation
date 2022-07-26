@@ -15,11 +15,15 @@ class CurveComparison(ScriptedLoadableModule, VTKObservationMixin):
     VTKObservationMixin.__init__(self)
     self.parent.title = "Curve Comparison"
     self.parent.categories = ["Neuro Segmentation"]
-    self.parent.dependencies = []
-    self.parent.contributors = [""]
-    self.parent.helpText = """"""
+    self.parent.dependencies = ["FreeSurferMarkups"]
+    self.parent.contributors = ["Kyle Sunderland (Perk Lab, Queen's University)"]
+    self.parent.helpText = """
+This module will calculate the optimal parameters for NeuroSegment curve pathfinding based on an input curve that represents the ground truth.
+""" # TODO: Add more documentation on the method used for pathfinding + optimization
     self.parent.helpText += self.getDefaultModuleDocumentationLink()
-    self.parent.acknowledgementText = """"""
+    self.parent.acknowledgementText = """
+This file was originally developed by Kyle Sunderland (Perk Lab, Queen's University), and was partially funded by Brigham and Women's Hospital through NIH grant R01MH112748
+"""
 
 class CurveComparisonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 

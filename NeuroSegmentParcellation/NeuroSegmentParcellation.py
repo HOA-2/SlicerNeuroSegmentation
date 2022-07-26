@@ -28,7 +28,7 @@ This module can be used to create a surfaced based parcellation of FreeSurfer su
 """ # TODO: Add more help text + link to documentation.
     self.parent.helpText += self.getDefaultModuleDocumentationLink()
     self.parent.acknowledgementText = """
-This file was originally developed by Kyle Sunderland (Perk Lab, Queen's University), and was partially funded by Brigham and Women’s Hospital through NIH grant R01MH112748
+This file was originally developed by Kyle Sunderland (Perk Lab, Queen's University), and was partially funded by Brigham and Women's Hospital through NIH grant R01MH112748
 """
     if not slicer.app.commandOptions().noMainWindow:
       slicer.app.connect("startupCompleted()", self.initializeModule)

@@ -26,7 +26,7 @@ This module takes 2 corresponding FreeSurfer surfaces as input and generates an 
 The input models must have a 1 to 1 correspence between points.
 """
     self.parent.acknowledgementText = """
-This file was originally developed by Kyle Sunderland (Perk Lab, Queen's University), and was partially funded by Brigham and Women’s Hospital through NIH grant R01MH112748.
+This file was originally developed by Kyle Sunderland (Perk Lab, Queen's University), and was partially funded by Brigham and Women's Hospital through NIH grant R01MH112748.
 """
 
 #
