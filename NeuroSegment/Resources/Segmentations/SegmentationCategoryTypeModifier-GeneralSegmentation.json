@@ -57,7 +57,7 @@
             "contextGroupName": "Common Tissue Segmentation Types",
             "SNOMEDCTConceptID": "275989056"
           },
-		  {
+          {
             "recommendedDisplayRGBValue": [
               120,
               190,
@@ -72,7 +72,7 @@
             "contextGroupName": "Common Tissue Segmentation Types",
             "SNOMEDCTConceptID": "275989096"
           },
-{
+          {
             "recommendedDisplayRGBValue": [
               204,
               182,
@@ -342,7 +342,7 @@
             "contextGroupName": "Common Tissue Segmentation Types",
             "SNOMEDCTConceptID": "181378009"
           },
-		  {
+          {
             "recommendedDisplayRGBValue": [
               220,
               216,
@@ -356,8 +356,8 @@
             "CodeValue": "T-4806H",
             "contextGroupName": "Common Tissue Segmentation Types",
             "SNOMEDCTConceptID": "181378009"
-		  },
-		  {
+          },
+          {
             "recommendedDisplayRGBValue": [
               103,
               255,
@@ -372,7 +372,7 @@
             "contextGroupName": "Common Tissue Segmentation Types",
             "SNOMEDCTConceptID": "181378009"
           },
-		  {
+          {
             "recommendedDisplayRGBValue": [
               103,
               255,
@@ -386,8 +386,8 @@
             "CodeValue": "T-4806J",
             "contextGroupName": "Common Tissue Segmentation Types",
             "SNOMEDCTConceptID": "181378009"
-	  },
-		 {
+          },
+          {
             "recommendedDisplayRGBValue": [
               234,
               169,
@@ -401,8 +401,8 @@
             "CodeValue": "T-4806K",
             "contextGroupName": "Common Tissue Segmentation Types",
             "SNOMEDCTConceptID": "181378009"
-	 },
- 	{
+          },
+          {
             "recommendedDisplayRGBValue": [
               177,
               62,
@@ -416,8 +416,8 @@
             "CodeValue": "T-4806L",
             "contextGroupName": "Common Tissue Segmentation Types",
             "SNOMEDCTConceptID": "181378009"
-	 },
-	 {
+          },
+          {
             "recommendedDisplayRGBValue": [
               177,
               62,
@@ -431,8 +431,8 @@
             "CodeValue": "T-4806O",
             "contextGroupName": "Common Tissue Segmentation Types",
             "SNOMEDCTConceptID": "181378009"
-	},
-	 {
+          },
+          {
             "recommendedDisplayRGBValue": [
               241,
               161,
@@ -446,8 +446,8 @@
             "CodeValue": "T-4806M",
             "contextGroupName": "Common Tissue Segmentation Types",
             "SNOMEDCTConceptID": "181378009"
-	}, 
-	{
+          }, 
+          {
             "recommendedDisplayRGBValue": [
               241,
               161,
@@ -461,8 +461,7 @@
             "CodeValue": "T-4806N",
             "contextGroupName": "Common Tissue Segmentation Types",
             "SNOMEDCTConceptID": "181378009"
-		  }
-
+          }
         ],
         "showAnatomy": true
       },
