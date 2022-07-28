@@ -588,6 +588,11 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
 
     outputModelsLayout = qt.QFormLayout()
     outputModelsLayout.verticalSpacing = 6
+
+    self.outputModelsWidget = qt.QWidget()
+    self.outputModelsWidget.setLayout(outputModelsLayout)
+    self.ui.outputModelsCollapsibleButton.layout().addWidget(self.outputModelsWidget)
+
     for toolNode in self.logic.getToolNodes():
       outputModelNode = toolNode.GetNodeReference("BoundaryCut.OutputModel")
       outputModelName = "ERR"
@@ -598,10 +603,6 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       outputModelsLayout.addRow(label, outputModelWidget)
       outputModelWidget.setToolNode(toolNode)
       outputModelWidget.setParameterNode(self.parameterNode)
-
-    self.outputModelsWidget = qt.QWidget()
-    self.outputModelsWidget.setLayout(outputModelsLayout)
-    self.ui.outputModelsCollapsibleButton.layout().addWidget(self.outputModelsWidget)
 
     self.updateOutputStructures()
     self.updateImportWidget()

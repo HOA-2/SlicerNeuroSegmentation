@@ -17,6 +17,8 @@ class NeuroSegmentOutputToolWidget(qt.QWidget, VTKObservationMixin):
     self.inputBorderSelectors = []
     self.inputBorderReference = "BoundaryCut.InputBorder"
 
+    self.deleted = False
+
     self.setup()
 
   def setup(self):
@@ -55,6 +57,7 @@ class NeuroSegmentOutputToolWidget(qt.QWidget, VTKObservationMixin):
 
   def onDestroyed(self):
     self.removeObservers()
+    self.deleted = True
 
   def setParameterNode(self, parameterNode):
     self.parameterNode = parameterNode
@@ -87,6 +90,9 @@ class NeuroSegmentOutputToolWidget(qt.QWidget, VTKObservationMixin):
     """
     Method invoked when the observed tool node is modified.
     """
+    if self.deleted:
+      return
+
     if slicer.mrmlScene.IsImporting():
       self.modifiedDuringImport = True
       return
@@ -172,6 +178,9 @@ class NeuroSegmentOutputToolWidget(qt.QWidget, VTKObservationMixin):
     """
     Update the GUI from the plan node.
     """
+    if self.deleted:
+      return
+
     if self.isUpdatingGUIFromMRML:
       return
     self.isUpdatingGUIFromMRML = True
