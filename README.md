@@ -2,7 +2,7 @@
 
 SlicerNeuroSegmentation is an extension for [3D Slicer](http://slicer.org) designed to provide access to tools for segmenting neurological structures.
 
-![Screenshot of SlicerNeuroSegmentation extension](Images/ScreenShots/NeuroSegmentParcellation_1.png)
+![Screenshot of SlicerNeuroSegmentation extension](Images/Screenshots/NeuroSegmentParcellation_1.png)
 
 ## Modules
 
@@ -10,7 +10,7 @@ SlicerNeuroSegmentation is an extension for [3D Slicer](http://slicer.org) desig
   This module provides access to tools for editing MRI images. Segments that are created using the module are automatically populated with the structures that need to be segmented.
 
 - ### NeuroSegment Parcellation
-  This module can perform volume reconstruction from tracked volume sequences.
+  This module provides tools that facilitate the segmentation of structures in the cerebral cortex by defining planes and tracing along sulci that are represented 3D mesh imported from FreeSurfer.
 
 - ### Curve Comparison
   This module evaluates the curve surface pathfinding parameters to find the parameters that perform optimally compared to a ground truth curve.
