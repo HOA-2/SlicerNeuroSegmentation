@@ -4,12 +4,12 @@ project(SlicerNeuroSegmentation)
 
 #-----------------------------------------------------------------------------
 # Extension meta-information
-set(EXTENSION_HOMEPAGE "https://www.slicer.org/wiki/Documentation/Nightly/Extensions/NeuroSegmentation")
+set(EXTENSION_HOMEPAGE "https://github.com/HOA-2/SlicerNeuroSegmentation")
 set(EXTENSION_CATEGORY "Neuroimaging")
 set(EXTENSION_CONTRIBUTORS "Kyle Sunderland (Perk Lab (Queen's University))")
 set(EXTENSION_DESCRIPTION "Extension for performing segmentation of FreeSurfer images and surfaces in Slicer.")
-set(EXTENSION_ICONURL "http://www.example.com/Slicer/Extensions/NeuroSegmentation.png")
-set(EXTENSION_SCREENSHOTURLS "")
+set(EXTENSION_ICONURL "https://raw.githubusercontent.com/HOA-2/SlicerNeuroSegmentation/main/SlicerNeuroSegmentation.png")
+set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/HOA-2/SlicerNeuroSegmentation/main/Images/Screenshots/NeuroSegmentParcellation_1.png")
 set(EXTENSION_DEPENDS "SlicerFreeSurfer")
 
 #-----------------------------------------------------------------------------
