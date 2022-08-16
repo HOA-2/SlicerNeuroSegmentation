@@ -480,6 +480,7 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.inputModelCollapsibleButton.enabled = self.parameterNode is not None
     self.ui.outputModelsCollapsibleButton.enabled = self.parameterNode is not None
     self.ui.exportSegmentationCollapsibleButton.enabled = self.parameterNode is not None
+    self.ui.applyButton.enabled = self.parameterNode is not None
 
     if self.outputModelsWidget is not None:
       self.outputModelsWidget.deleteLater()
@@ -648,6 +649,9 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     """
     Update the visibility of markups in each view based on the slice visibility checkboxes
     """
+    if self.parameterNode is None:
+      return
+
     with slicer.util.NodeModify(self.parameterNode):
       self.logic.setMarkupSliceViewVisibility(self.parameterNode, self.logic.ORIG_NODE_ATTRIBUTE_VALUE, self.ui.origMarkupsCheckBox.checked)
       self.logic.setMarkupSliceViewVisibility(self.parameterNode, self.logic.PIAL_NODE_ATTRIBUTE_VALUE, self.ui.pialMarkupsCheckBox.checked)
