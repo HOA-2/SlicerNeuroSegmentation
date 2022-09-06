@@ -1,6 +1,6 @@
 # Neuroparcellation
 
-![Neuroparcellation module screenshot](Images/Screenshots/NeuroSegmentParcellation_1.png)
+![Neuroparcellation module screenshot](../Images/Screenshots/NeuroSegmentParcellation_1.png)
 
 ---
 
