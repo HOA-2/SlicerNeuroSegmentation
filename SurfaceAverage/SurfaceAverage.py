@@ -18,7 +18,7 @@ class SurfaceAverage(ScriptedLoadableModule):
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "Surface Average"
-    self.parent.categories = ["Neuro Segmentation", "Surface Models"]
+    self.parent.categories = ["HOA 2", "Neuro Segmentation and Parcellation", "Surface Models"]
     self.parent.dependencies = []
     self.parent.contributors = ["Kyle Sunderland (Perk Lab, Queen's University)"]
     self.parent.helpText = """

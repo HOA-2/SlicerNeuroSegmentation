@@ -19,8 +19,8 @@ class NeuroSegment(ScriptedLoadableModule):
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "NeuroSegment"
-    self.parent.categories = ["Neuro Segmentation", "Segmentation"]
+    self.parent.title = "Neurosegmentation"
+    self.parent.categories = ["HOA 2", "Neuro Segmentation and Parcellation", "Segmentation"]
     self.parent.dependencies = []
     self.parent.contributors = ["Kyle Sunderland (Perk Lab, Queen's University)"]
     self.parent.helpText = """

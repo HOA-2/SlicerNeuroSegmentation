@@ -14,7 +14,7 @@ class CurveComparison(ScriptedLoadableModule, VTKObservationMixin):
     ScriptedLoadableModule.__init__(self, parent)
     VTKObservationMixin.__init__(self)
     self.parent.title = "Curve Comparison"
-    self.parent.categories = ["Neuro Segmentation"]
+    self.parent.categories = ["HOA 2", "Neuro Segmentation and Parcellation"]
     self.parent.dependencies = ["FreeSurferMarkups"]
     self.parent.contributors = ["Kyle Sunderland (Perk Lab, Queen's University)"]
     self.parent.helpText = """

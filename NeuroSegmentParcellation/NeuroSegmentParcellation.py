@@ -19,8 +19,8 @@ class NeuroSegmentParcellation(ScriptedLoadableModule, VTKObservationMixin):
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
     VTKObservationMixin.__init__(self)
-    self.parent.title = "NeuroSegment Parcellation"
-    self.parent.categories = ["Neuro Segmentation", "Segmentation", "Surface Models"]
+    self.parent.title = "Neuroparcellation"
+    self.parent.categories = ["HOA 2", "Neuro Segmentation and Parcellation", "Segmentation"]
     self.parent.dependencies = ["FreeSurferMarkups"]
     self.parent.contributors = ["Kyle Sunderland (Perk Lab, Queen's University)"]
     self.parent.helpText = """
