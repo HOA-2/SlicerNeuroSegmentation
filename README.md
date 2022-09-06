@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/195091636.svg)](https://zenodo.org/badge/latestdoi/195091636)
+
 # SlicerNeuroSegmentation: HOA 2.0 Neurosegmentation And Neuroparcellation
 
 SlicerNeuroSegmentation is an extension for [3D Slicer](http://slicer.org) designed to provide access to tools for segmenting neurological structures.
