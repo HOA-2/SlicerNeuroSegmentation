@@ -15,9 +15,9 @@ authors:
   - given-names: Sylvain
     family-names: Bouix
     email: sylvain@bwh.harvard.edu
-  - {}
 url: 'https://github.com/HOA-2/SlicerNeuroSegmentation'
 repository: 'https://github.com/HOA-2/SlicerNeuroSegmentation'
 title: HOA-2/SlicerNeuroSegmentation: 0.9.0
 version: 0.9.0
+doi: 10.5281/zenodo.7055171
 date-released: 2022-09-06
