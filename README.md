@@ -20,7 +20,7 @@ SlicerNeuroSegmentation is an extension for [3D Slicer](http://slicer.org) desig
 ## User guides
 
 - ### Neurosegmentation
-  Instructions on the steps required to perform segmentation of structures with the Neurosegmentation module can be found [here](docs/General%20Segmentation.md).
+  The manual for performing segmentations with the Neurosegmentation module will be availiable soon.
 
 - ### Neuroparcellation
   Instructions on how to use the Neuroparcellation module can be found [here](docs/NeuroParcellation.md).
