@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/195091636.svg)](https://zenodo.org/badge/latestdoi/195091636)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7055171.svg)](https://doi.org/10.5281/zenodo.7055171)
 
 # SlicerNeuroSegmentation: HOA 2.0 Neurosegmentation And Neuroparcellation
 
