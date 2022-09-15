@@ -9,7 +9,7 @@ set(EXTENSION_CATEGORY "Neuroimaging")
 set(EXTENSION_CONTRIBUTORS "Kyle Sunderland (Perk Lab (Queen's University))")
 set(EXTENSION_DESCRIPTION "Extension for performing segmentation of FreeSurfer images and surfaces in Slicer.")
 set(EXTENSION_ICONURL "https://raw.githubusercontent.com/HOA-2/SlicerNeuroSegmentation/main/SlicerNeuroSegmentation.png")
-set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/HOA-2/SlicerNeuroSegmentation/main/Images/Screenshots/NeuroSegmentParcellation_1.png")
+set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/HOA-2/SlicerNeuroSegmentation/main/Images/Screenshots/NeuroParcellation_1.png https://raw.githubusercontent.com/HOA-2/SlicerNeuroSegmentation/main/Images/Screenshots/NeuroSegmentation_1.png")
 set(EXTENSION_DEPENDS "SlicerFreeSurfer")
 
 #-----------------------------------------------------------------------------
