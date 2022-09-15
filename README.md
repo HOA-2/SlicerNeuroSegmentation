@@ -4,7 +4,9 @@
 
 SlicerNeuroSegmentation is an extension for [3D Slicer](http://slicer.org) designed to provide access to tools for segmenting neurological structures.
 
-![Screenshot of SlicerNeuroSegmentation extension](Images/Screenshots/NeuroSegmentParcellation_1.png)
+Neurosegmentation | Neuroparcellation
+:---------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------:
+![Screenshot of NeuroSegmentation extension](Images/Screenshots/NeuroSegmentation_1.png) | ![Screenshot of NeuroParcellation extension](Images/Screenshots/NeuroParcellation_1.png)
 
 ## Modules
 
