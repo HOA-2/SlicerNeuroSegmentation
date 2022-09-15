@@ -71,7 +71,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     uiWidget = slicer.util.loadUI(self.resourcePath('UI/NeuroSegment.ui'))
     self.layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
-    self.ui.segmentEditorWidget.connect("masterVolumeNodeChanged (vtkMRMLVolumeNode *)", self.onMasterVolumeNodeChanged)
+    self.ui.segmentEditorWidget.connect("sourceVolumeNodeChanged(vtkMRMLVolumeNode *)", self.onSourceVolumeNodeChanged)
     self.ui.undockSliceViewButton.connect('clicked()', self.toggleSliceViews)
     self.ui.infoExpandableWidget.setVisible(False)
 
@@ -666,9 +666,9 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       self.addSecondaryViewClickObservers()
 
       self.updateMainView()
-      masterVolumeNode = self.ui.segmentEditorWidget.masterVolumeNode()
-      if masterVolumeNode is not None:
-        self.onMasterVolumeNodeChanged(masterVolumeNode)
+      sourceVolumeNode = self.ui.segmentEditorWidget.sourceVolumeNode()
+      if sourceVolumeNode is not None:
+        self.onSourceVolumeNodeChanged(sourceVolumeNode)
 
   def removeSecondaryViewClickObservers(self):
     for tag, object in self.sliceViewClickObservers:
@@ -725,7 +725,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.clickNonResponseOn()
     self.clickNonResponseTimer.start()
 
-  def onMasterVolumeNodeChanged(self, volumeNode):
+  def onSourceVolumeNodeChanged(self, volumeNode):
     self.ui.volumeThresholdWidget.setMRMLVolumeNode(volumeNode)
     self.ui.windowLevelWidget.setMRMLVolumeNode(volumeNode)
     layoutManager = slicer.app.layoutManager()
