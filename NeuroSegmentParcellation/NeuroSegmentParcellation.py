@@ -255,6 +255,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.intersectionGlyphComboBox.connect("currentIndexChanged(int)", self.updateMarkupDisplay)
     self.ui.curveIntersectionScaleSlider.connect("valueChanged(double)", self.updateMarkupDisplay)
 
+    self.ui.controlPointVisibilityCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
+
     self.ui.labelVisibilityCheckBox.connect("toggled(bool)", self.updateMarkupDisplay)
 
     self.oldLayout = slicer.app.layoutManager().layout
@@ -556,6 +558,10 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
     self.ui.curveIntersectionScaleSlider.value = self.logic.getIntersectionGlyphScale()
     self.ui.curveIntersectionScaleSlider.blockSignals(wasBlocked)
 
+    wasBlocked = self.ui.controlPointVisibilityCheckBox.blockSignals(True)
+    self.ui.controlPointVisibilityCheckBox.setChecked(self.logic.getControlPointVisibility())
+    self.ui.controlPointVisibilityCheckBox.blockSignals(wasBlocked)
+
     wasBlocked = self.ui.labelVisibilityCheckBox.blockSignals(True)
     self.ui.labelVisibilityCheckBox.setChecked(self.logic.getLabelVisibility())
     self.ui.labelVisibilityCheckBox.blockSignals(wasBlocked)
@@ -667,6 +673,8 @@ class NeuroSegmentParcellationWidget(ScriptedLoadableModuleWidget, VTKObservatio
       self.logic.setRedIntersectionVisibility(self.ui.intersectionViewRedCheckBox.checked)
       self.logic.setGreenIntersectionVisibility(self.ui.intersectionViewGreenCheckBox.checked)
       self.logic.setYellowIntersectionVisibility(self.ui.intersectionViewYellowCheckBox.checked)
+
+      self.logic.setControlPointVisibility(self.ui.controlPointVisibilityCheckBox.checked)
 
       self.logic.setLabelVisibility(self.ui.labelVisibilityCheckBox.checked)
 

@@ -69,6 +69,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
   INTERSECTION_VISIBILITY_GREEN_VIEW = "IntersectionVisibilityGreenView"
   INTERSECTION_VISIBILITY_YELLOW_VIEW = "IntersectionVisibilityYellowView"
 
+  CONTROL_POINT_VIIBILITY = "ControlPointVisibility"
   LABEL_TEXT_VISIBILITY = "LabelTextVisibility"
 
   PLANE_INTERSECTION_VISIBILITY_NAME = "PlaneIntersectionVisibility"
@@ -421,6 +422,7 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.getYellowIntersectionVisibility():
       intersectionViewIDs.append("Yellow")
 
+    controlPointlVisibility = self.getControlPointVisibility()
     labelVisibility = self.getLabelVisibility()
 
     numberOfMarkupNodes = parameterNode.GetNumberOfNodeReferences(self.INPUT_MARKUPS_REFERENCE)
@@ -461,12 +463,20 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
       for markupsNode in currentAndDerivedMarkups:
         markupsNode.GetDisplayNode().SetPropertiesLabelVisibility(labelVisibility)
 
+      controlPointMarkups = [inputMarkupNode, pialControlPoints, inflatedControlPoints]
+
       numberOfToolNodes = parameterNode.GetNumberOfNodeReferences(self.TOOL_NODE_REFERENCE)
       for i in range(numberOfToolNodes):
         toolNode = parameterNode.GetNthNodeReference(self.TOOL_NODE_REFERENCE, i)
         inputSeed = toolNode.GetNodeReference(self.BOUNDARY_CUT_INPUT_SEED_REFERENCE)
         if inputSeed:
+          controlPointMarkups.append(inputSeed)
           inputSeed.GetDisplayNode().SetViewNodeIDs(origMarkupViews)
+
+      for markupsNode in controlPointMarkups:
+        with slicer.util.NodeModify(markupsNode):
+          for i in range(markupsNode.GetNumberOfControlPoints()):
+            markupsNode.SetNthControlPointVisibility(i, controlPointlVisibility)
 
   def onMasterMarkupModified(self, inputMarkupNode, eventId=None, callData=None):
     if self.updatingFromMasterMarkup or self.parameterNode is None:
@@ -703,6 +713,8 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     """
     if parameterNode is None:
       return
+
+    parameterNode.SetParameter(self.CONTROL_POINT_VIIBILITY, str(True))
 
     parameterNode.SetParameter(self.CURVE_VISIBILITY_RED_VIEW, "TRUE")
     parameterNode.SetParameter(self.CURVE_VISIBILITY_GREEN_VIEW, "FALSE")
@@ -1633,6 +1645,12 @@ class NeuroSegmentParcellationLogic(ScriptedLoadableModuleLogic, VTKObservationM
     if self.parameterNode is None:
       return
     return True if self.parameterNode.GetParameter(self.INTERSECTION_VISIBILITY_YELLOW_VIEW) == "TRUE" else False
+
+  def getControlPointVisibility(self):
+    return self.getParameterNode().GetParameter(self.CONTROL_POINT_VIIBILITY) == str(True)
+
+  def setControlPointVisibility(self, visibility):
+    self.getParameterNode().SetParameter(self.CONTROL_POINT_VIIBILITY, str(visibility))
 
   def getLabelVisibility(self):
     return self.getParameterNode().GetParameter(self.LABEL_TEXT_VISIBILITY) == str(True)

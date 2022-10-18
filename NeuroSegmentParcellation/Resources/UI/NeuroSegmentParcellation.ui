@@ -19,37 +19,37 @@
     </widget>
    </item>
    <item row="0" column="1">
-    <widget class="qMRMLNodeComboBox" name="parameterNodeSelector">
+    <widget class="qMRMLNodeComboBox" name="parameterNodeSelector" native="true">
      <property name="toolTip">
       <string>Pick node to store parameter set</string>
      </property>
-     <property name="nodeTypes">
+     <property name="nodeTypes" stdset="0">
       <stringlist>
        <string>vtkMRMLScriptedModuleNode</string>
       </stringlist>
      </property>
-     <property name="showHidden">
+     <property name="showHidden" stdset="0">
       <bool>true</bool>
      </property>
-     <property name="baseName">
+     <property name="baseName" stdset="0">
       <string>NeuroSegmentParcellation</string>
      </property>
-     <property name="renameEnabled">
+     <property name="renameEnabled" stdset="0">
       <bool>true</bool>
      </property>
     </widget>
    </item>
    <item row="1" column="0" colspan="2">
-    <widget class="ctkCollapsibleButton" name="parcellationParametersCollapsibleButton">
-     <property name="text">
+    <widget class="ctkCollapsibleButton" name="parcellationParametersCollapsibleButton" native="true">
+     <property name="text" stdset="0">
       <string>Parcellation parameters</string>
      </property>
-     <property name="collapsed">
+     <property name="collapsed" stdset="0">
       <bool>true</bool>
      </property>
      <layout class="QGridLayout" name="gridLayout">
       <item row="0" column="1">
-       <widget class="ctkPathLineEdit" name="queryFilePathEdit"/>
+       <widget class="ctkPathLineEdit" name="queryFilePathEdit" native="true"/>
       </item>
       <item row="1" column="1">
        <widget class="QPushButton" name="loadQueryButton">
@@ -75,11 +75,11 @@
     </widget>
    </item>
    <item row="2" column="0" colspan="2">
-    <widget class="ctkCollapsibleButton" name="inputModelCollapsibleButton">
-     <property name="text">
+    <widget class="ctkCollapsibleButton" name="inputModelCollapsibleButton" native="true">
+     <property name="text" stdset="0">
       <string>Input models</string>
      </property>
-     <property name="collapsed">
+     <property name="collapsed" stdset="0">
       <bool>false</bool>
      </property>
      <layout class="QFormLayout" name="formLayout_3">
@@ -91,19 +91,19 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="qMRMLNodeComboBox" name="origModelSelector">
-        <property name="nodeTypes">
+       <widget class="qMRMLNodeComboBox" name="origModelSelector" native="true">
+        <property name="nodeTypes" stdset="0">
          <stringlist>
           <string>vtkMRMLModelNode</string>
          </stringlist>
         </property>
-        <property name="noneEnabled">
+        <property name="noneEnabled" stdset="0">
          <bool>true</bool>
         </property>
-        <property name="addEnabled">
+        <property name="addEnabled" stdset="0">
          <bool>false</bool>
         </property>
-        <property name="removeEnabled">
+        <property name="removeEnabled" stdset="0">
          <bool>false</bool>
         </property>
        </widget>
@@ -116,19 +116,19 @@
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="qMRMLNodeComboBox" name="pialModelSelector">
-        <property name="nodeTypes">
+       <widget class="qMRMLNodeComboBox" name="pialModelSelector" native="true">
+        <property name="nodeTypes" stdset="0">
          <stringlist>
           <string>vtkMRMLModelNode</string>
          </stringlist>
         </property>
-        <property name="noneEnabled">
+        <property name="noneEnabled" stdset="0">
          <bool>true</bool>
         </property>
-        <property name="addEnabled">
+        <property name="addEnabled" stdset="0">
          <bool>false</bool>
         </property>
-        <property name="removeEnabled">
+        <property name="removeEnabled" stdset="0">
          <bool>false</bool>
         </property>
        </widget>
@@ -141,19 +141,19 @@
        </widget>
       </item>
       <item row="2" column="1">
-       <widget class="qMRMLNodeComboBox" name="inflatedModelSelector">
-        <property name="nodeTypes">
+       <widget class="qMRMLNodeComboBox" name="inflatedModelSelector" native="true">
+        <property name="nodeTypes" stdset="0">
          <stringlist>
           <string>vtkMRMLModelNode</string>
          </stringlist>
         </property>
-        <property name="noneEnabled">
+        <property name="noneEnabled" stdset="0">
          <bool>true</bool>
         </property>
-        <property name="addEnabled">
+        <property name="addEnabled" stdset="0">
          <bool>false</bool>
         </property>
-        <property name="removeEnabled">
+        <property name="removeEnabled" stdset="0">
          <bool>false</bool>
         </property>
        </widget>
@@ -162,11 +162,11 @@
     </widget>
    </item>
    <item row="3" column="0" colspan="2">
-    <widget class="ctkCollapsibleButton" name="importMarkupsCollapsibleButton">
-     <property name="text">
+    <widget class="ctkCollapsibleButton" name="importMarkupsCollapsibleButton" native="true">
+     <property name="text" stdset="0">
       <string>Import</string>
      </property>
-     <property name="collapsed">
+     <property name="collapsed" stdset="0">
       <bool>true</bool>
      </property>
      <layout class="QFormLayout" name="formLayout_6">
@@ -204,23 +204,23 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="qMRMLNodeComboBox" name="importMarkupComboBox">
-          <property name="nodeTypes">
+         <widget class="qMRMLNodeComboBox" name="importMarkupComboBox" native="true">
+          <property name="nodeTypes" stdset="0">
            <stringlist>
             <string>vtkMRMLMarkupsNode</string>
            </stringlist>
           </property>
-          <property name="addEnabled">
+          <property name="addEnabled" stdset="0">
            <bool>false</bool>
           </property>
-          <property name="removeEnabled">
+          <property name="removeEnabled" stdset="0">
            <bool>false</bool>
           </property>
          </widget>
         </item>
         <item>
          <widget class="ctkComboBox" name="importOverlayComboBox">
-          <property name="defaultText">
+          <property name="defaultText" stdset="0">
            <string>Select an overlay</string>
           </property>
          </widget>
@@ -247,31 +247,31 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="qMRMLNodeComboBox" name="destinationMarkupComboBox">
-          <property name="nodeTypes">
+         <widget class="qMRMLNodeComboBox" name="destinationMarkupComboBox" native="true">
+          <property name="nodeTypes" stdset="0">
            <stringlist>
             <string>vtkMRMLMarkupsNode</string>
            </stringlist>
           </property>
-          <property name="addEnabled">
+          <property name="addEnabled" stdset="0">
            <bool>false</bool>
           </property>
-          <property name="removeEnabled">
+          <property name="removeEnabled" stdset="0">
            <bool>false</bool>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="qMRMLNodeComboBox" name="destinationModelComboBox">
-          <property name="nodeTypes">
+         <widget class="qMRMLNodeComboBox" name="destinationModelComboBox" native="true">
+          <property name="nodeTypes" stdset="0">
            <stringlist>
             <string>vtkMRMLModelNode</string>
            </stringlist>
           </property>
-          <property name="addEnabled">
+          <property name="addEnabled" stdset="0">
            <bool>false</bool>
           </property>
-          <property name="removeEnabled">
+          <property name="removeEnabled" stdset="0">
            <bool>false</bool>
           </property>
          </widget>
@@ -310,24 +310,24 @@
     </widget>
    </item>
    <item row="5" column="0" colspan="2">
-    <widget class="ctkCollapsibleButton" name="inputCurvesCollapsibleButton">
-     <property name="text">
+    <widget class="ctkCollapsibleButton" name="inputCurvesCollapsibleButton" native="true">
+     <property name="text" stdset="0">
       <string>Input curves</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout"/>
     </widget>
    </item>
    <item row="6" column="0" colspan="2">
-    <widget class="ctkCollapsibleButton" name="inputPlanesCollapsibleButton">
-     <property name="text">
+    <widget class="ctkCollapsibleButton" name="inputPlanesCollapsibleButton" native="true">
+     <property name="text" stdset="0">
       <string>Input planes</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2"/>
     </widget>
    </item>
    <item row="7" column="0" colspan="2">
-    <widget class="ctkCollapsibleButton" name="outputModelsCollapsibleButton">
-     <property name="text">
+    <widget class="ctkCollapsibleButton" name="outputModelsCollapsibleButton" native="true">
+     <property name="text" stdset="0">
       <string>Output models</string>
      </property>
      <layout class="QFormLayout" name="formLayout_4"/>
@@ -347,8 +347,8 @@
     </widget>
    </item>
    <item row="9" column="0" colspan="2">
-    <widget class="ctkCollapsibleButton" name="exportSegmentationCollapsibleButton">
-     <property name="text">
+    <widget class="ctkCollapsibleButton" name="exportSegmentationCollapsibleButton" native="true">
+     <property name="text" stdset="0">
       <string>Export to segmentation</string>
      </property>
      <layout class="QFormLayout" name="formLayout_5">
@@ -360,8 +360,8 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="qMRMLNodeComboBox" name="exportSegmentationSelector">
-        <property name="nodeTypes">
+       <widget class="qMRMLNodeComboBox" name="exportSegmentationSelector" native="true">
+        <property name="nodeTypes" stdset="0">
          <stringlist>
           <string>vtkMRMLSegmentationNode</string>
          </stringlist>
@@ -415,8 +415,8 @@
     </spacer>
    </item>
    <item row="4" column="0" colspan="2">
-    <widget class="ctkCollapsibleButton" name="displayCollapsibleButton">
-     <property name="text">
+    <widget class="ctkCollapsibleButton" name="displayCollapsibleButton" native="true">
+     <property name="text" stdset="0">
       <string>Display</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -436,41 +436,7 @@
          <string>General</string>
         </property>
         <layout class="QGridLayout" name="gridLayout_5">
-         <item row="1" column="2">
-          <widget class="QRadioButton" name="sulcRadioButton">
-           <property name="toolTip">
-            <string>Display the sulcal height overlay on the input models</string>
-           </property>
-           <property name="text">
-            <string>sulc</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="0">
-          <widget class="QLabel" name="label_18">
-           <property name="text">
-            <string>Markups label visibility:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="0">
-          <widget class="QLabel" name="label_5">
-           <property name="text">
-            <string>Model scalar overlay:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QRadioButton" name="curvRadioButton">
-           <property name="toolTip">
-            <string>Display the curvature overlay on the input models</string>
-           </property>
-           <property name="text">
-            <string>curv</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="3">
+         <item row="2" column="3">
           <widget class="QRadioButton" name="labelsRadioButton">
            <property name="toolTip">
             <string>Display the parcellation labels on the input models</string>
@@ -480,13 +446,61 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="1">
+         <item row="2" column="1">
+          <widget class="QRadioButton" name="curvRadioButton">
+           <property name="toolTip">
+            <string>Display the curvature overlay on the input models</string>
+           </property>
+           <property name="text">
+            <string>curv</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_5">
+           <property name="text">
+            <string>Scalar overlay:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="2">
+          <widget class="QRadioButton" name="sulcRadioButton">
+           <property name="toolTip">
+            <string>Display the sulcal height overlay on the input models</string>
+           </property>
+           <property name="text">
+            <string>sulc</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
           <widget class="QCheckBox" name="labelVisibilityCheckBox">
            <property name="toolTip">
             <string>Show/hide the markups label text</string>
            </property>
            <property name="text">
             <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_18">
+           <property name="text">
+            <string>Label visibility:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QCheckBox" name="controlPointVisibilityCheckBox">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_19">
+           <property name="text">
+            <string>Control point visibility:</string>
            </property>
           </widget>
          </item>
@@ -575,14 +589,14 @@
           </widget>
          </item>
          <item row="4" column="1" colspan="3">
-          <widget class="ctkSliderWidget" name="curveIntersectionScaleSlider">
-           <property name="singleStep">
+          <widget class="ctkSliderWidget" name="curveIntersectionScaleSlider" native="true">
+           <property name="singleStep" stdset="0">
             <double>0.010000000000000</double>
            </property>
-           <property name="pageStep">
+           <property name="pageStep" stdset="0">
             <double>0.100000000000000</double>
            </property>
-           <property name="maximum">
+           <property name="maximum" stdset="0">
             <double>1.000000000000000</double>
            </property>
           </widget>
