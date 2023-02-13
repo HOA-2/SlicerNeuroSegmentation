@@ -12,6 +12,9 @@ from SegmentEditorEffects import *
 class MoveSegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     """This effect uses Watershed algorithm to partition the input volume"""
 
+    SOURCE_SEGMENT_ID_PARAMETER = "SourceSegmentID"
+    SOURCE_SEGMENTATION_REFERENCE = "MoveSegments.SourceSegmentation"
+
     def __init__(self, scriptedEffect):
         scriptedEffect.name = 'Move segments'
         scriptedEffect.perSegment = True
@@ -36,12 +39,13 @@ class MoveSegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
         return """Move a segment from another segmentation into the selected segment."""
 
     def setupOptionsFrame(self):
-
         # Object scale slider
         self.segmentSelectorWidget = slicer.qMRMLSegmentSelectorWidget()
         self.segmentSelectorWidget.setToolTip('Choose the segment to copy the segment from.')
         self.segmentSelectorWidget.setMRMLScene(slicer.mrmlScene)
         self.scriptedEffect.addLabeledOptionsWidget("Source segment:", self.segmentSelectorWidget)
+        self.segmentSelectorWidget.connect('currentNodeChanged(vtkMRMLNode*)', self.updateMRMLFromGUI)
+        self.segmentSelectorWidget.connect('currentSegmentChanged(QString)', self.updateMRMLFromGUI)
 
         # Apply button
         self.applyButton = qt.QPushButton("Apply")
@@ -55,16 +59,19 @@ class MoveSegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
         return slicer.util.mainWindow().cursor
 
     def setMRMLDefaults(self):
-        pass
+        self.scriptedEffect.setParameterDefault(self.SOURCE_SEGMENT_ID_PARAMETER, "Test")
 
     def updateGUIFromMRML(self):
-        pass
+        wasBlocking = self.segmentSelectorWidget.blockSignals(True)
+        self.segmentSelectorWidget.setCurrentNode(self.scriptedEffect.parameterSetNode().GetNodeReference(self.SOURCE_SEGMENTATION_REFERENCE))
+        self.segmentSelectorWidget.setCurrentSegmentID(self.scriptedEffect.parameter(self.SOURCE_SEGMENT_ID_PARAMETER))
+        self.segmentSelectorWidget.blockSignals(wasBlocking)
 
     def updateMRMLFromGUI(self):
-        pass
+        self.scriptedEffect.parameterSetNode().SetNodeReferenceID(self.SOURCE_SEGMENTATION_REFERENCE, self.segmentSelectorWidget.currentNodeID())
+        self.scriptedEffect.setParameter(self.SOURCE_SEGMENT_ID_PARAMETER, self.segmentSelectorWidget.currentSegmentID())
 
     def onApply(self):
-
         # This can be a long operation - indicate it to the user
         qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
 
