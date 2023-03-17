@@ -180,6 +180,10 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
         return
 
       colors = [e.n for e in node.value.elts]
+      if max(colors) > 1:
+        colors[0] /= 255
+        colors[1] /= 255
+        colors[2] /= 255
       displayNode.SetColor(colors)
       displayNode.SetSelectedColor(colors)
     else:
