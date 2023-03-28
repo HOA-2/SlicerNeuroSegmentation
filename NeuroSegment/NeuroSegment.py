@@ -188,6 +188,8 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.importGuideJSONButton.connect('clicked()', self.onImportGuideCurveJSON)
     self.ui.exportGuideJSONButton.connect('clicked()', self.onExportGuideCurveJSON)
 
+    self.ui.guideCurveTableWidget.connect('itemChanged(QTableWidgetItem*)', self.onNameChanged)
+
     self.setParameterNode(self.logic.getParameterNode())
 
   def onAddGuideCurveClicked(self):
@@ -295,6 +297,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.labelVisibilityCheckBox.blockSignals(wasBlocked)
 
   def updateGuideCurveTable(self):
+    tableWasBlocking = self.ui.guideCurveTableWidget.blockSignals(True)
     self.ui.guideCurveTableWidget.clearContents()
     curves = self.logic.getGuideCurves()
     numberOfCurves = len(curves)
@@ -311,7 +314,6 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       nameItem = self.ui.guideCurveTableWidget.item(i, 0)
       nameItem.setText(curveNode.GetName())
       nameItem.setData(self.NODE_ID_ROLE, nodeID)
-      self.ui.guideCurveTableWidget.connect('itemChanged(QTableWidgetItem*)', self.onNameChanged)
 
       placeWidget = slicer.qSlicerMarkupsPlaceWidget()
       placeWidget.findChild("QToolButton", "MoreButton").setVisible(False)
@@ -322,13 +324,13 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       visibilityButton = qt.QToolButton()
       visibilityButton.setObjectName("visibilityButton")
       visibilityButton.setProperty("ID", nodeID)
-      visibilityButton.connect('clicked(bool)', lambda id=nodeID: self.onVisibilityClicked(id))
+      visibilityButton.connect('clicked(bool)', lambda _, id=nodeID: self.onVisibilityClicked(id))
 
       lockButton = qt.QToolButton()
       lockButton.setObjectName("lockButton")
       lockButton.setProperty("ID", nodeID)
       lockButton.setProperty("ID", nodeID)
-      lockButton.connect('clicked(bool)', lambda id=nodeID: self.onLockClicked(id))
+      lockButton.connect('clicked(bool)', lambda _, id=nodeID: self.onLockClicked(id))
 
       markupWidget = qt.QWidget()
       markupWidget.setLayout(qt.QHBoxLayout())
@@ -341,6 +343,7 @@ class NeuroSegmentWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.updateDisplayVisibilityButtons()
     self.updateLockButtons()
+    self.ui.guideCurveTableWidget.blockSignals(tableWasBlocking)
 
   def onNameChanged(self, item):
     nodeID = item.data(self.NODE_ID_ROLE)
