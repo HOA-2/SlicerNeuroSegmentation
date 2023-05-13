@@ -147,6 +147,8 @@ class NeuroSegmentParcellationVisitor(ast.NodeVisitor):
     toolNode.SetNodeReferenceID(self.logic.BOUNDARY_CUT_INPUT_SEED_REFERENCE, inputSeed.GetID())
     self.currentSeedNode = inputSeed
 
+    # Reset border node references
+    toolNode.RemoveNodeReferenceIDs(self.logic.BOUNDARY_CUT_INPUT_BORDER_REFERENCE)
     nodes = self.visit(node.value)
     for inputNode in nodes:
       toolNode.AddNodeReferenceID(self.logic.BOUNDARY_CUT_INPUT_BORDER_REFERENCE, inputNode.GetID())
