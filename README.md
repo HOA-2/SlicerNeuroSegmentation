@@ -20,8 +20,7 @@ SlicerNeuroSegmentation is an extension for [3D Slicer](http://slicer.org) desig
 ## User guides
 
 - ### Neurosegmentation
-  The manual for performing segmentations with the Neurosegmentation module is located here:
-  https://cma.mgh.harvard.edu/wp-content/uploads/2023/04/HOA-Subcortical-Brain-Structure-Segmentation-Manual.pdf
+  The manual for performing segmentations with the Neurosegmentation module is located [here](https://cma.mgh.harvard.edu/wp-content/uploads/2023/04/HOA-Subcortical-Brain-Structure-Segmentation-Manual.pdf).
 
 - ### Neuroparcellation
   Instructions on the workflow using the Neuroparcellation module can be found [here](https://cma.mgh.harvard.edu/research-2/).
