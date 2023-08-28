@@ -26,6 +26,7 @@ add_subdirectory(NeuroSegmentParcellation)
 add_subdirectory(SurfaceAverage)
 add_subdirectory(CurveComparison)
 add_subdirectory(NeuroSegmentEffects)
+add_subdirectory(MarkupsSnap)
 
 #-----------------------------------------------------------------------------
 include(${Slicer_EXTENSION_GENERATE_CONFIG})
