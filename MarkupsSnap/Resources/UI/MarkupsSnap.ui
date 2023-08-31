@@ -59,7 +59,7 @@
          <string>MarkupsSnap</string>
         </property>
         <property name="noneEnabled">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
         <property name="addEnabled">
          <bool>true</bool>
@@ -97,6 +97,9 @@
         </property>
         <property name="hideChildNodeTypes">
          <stringlist notr="true"/>
+        </property>
+        <property name="noneEnabled">
+         <bool>true</bool>
         </property>
         <property name="addEnabled">
          <bool>false</bool>
